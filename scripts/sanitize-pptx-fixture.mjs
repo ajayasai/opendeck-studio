@@ -12,6 +12,7 @@ if (
     'powerpoint-autofit.pptx',
     'powerpoint-text-decoration.pptx',
     'powerpoint-gradients.pptx',
+    'powerpoint-picture-geometry.pptx',
   ].some((name) => path?.endsWith(name))
 )
   throw new Error('Expected the dedicated original fixture filename.');

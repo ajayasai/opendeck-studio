@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.0-alpha.7 — 2026-11-06
+
+Picture cropping and image-transform compatibility milestone. Full PowerPoint parity remains unfinished.
+
+- Add a visual crop editor with drag/keyboard positioning, zoom, fit/fill/stretch presets, exact crop and fill edges, and horizontal/vertical flips. Save commits one undoable change; Cancel preserves the original.
+- Retain source image bytes, signed source crop rectangles, independent destination fill rectangles, picture flips, rotation, and opacity through supported native and PPTX interchange.
+- Correct contain/cover export to use actual raster dimensions while retaining the picture frame; the previous export path could stretch images despite the editor's fitting choice.
+- Share responsive picture clipping between the editor, thumbnails, crop preview, and presenter. Negative crop outsets remain transparent.
+- Separate encoded image axes from legacy browser auto-orientation. Prevent imported JPEGs from applying EXIF orientation twice, and materialize orientation once for fresh uploads and legacy PPTX export.
+- Keep crop drafts isolated, flush pending numeric edits before Save or drag gestures, and retain concurrent document changes when saving a crop.
+- Add original native and separately XML-derived picture fixtures, independent raster-coordinate comparisons, exact embedded-byte checks, and native open/render/save/reimport verification.
+
+Picture masks, tiled fills, effects, grouped transforms, degenerate fill rectangles, and unsupported raster/vector formats remain bounded limitations. Native tests verify the exercised picture geometry and image bytes, rather than broad PowerPoint equivalence. See [testing evidence](docs/TESTING.md) and [compatibility notes](docs/COMPATIBILITY.md).
+
 ## 0.1.0-alpha.6 — 2026-11-06
 
 Editable gradients and PowerPoint paint compatibility milestone. Full PowerPoint parity remains unfinished.

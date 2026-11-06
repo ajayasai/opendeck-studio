@@ -5,6 +5,9 @@ import { getParagraphs, plainText, safeHyperlink } from './richText';
 import { resolveTextFrame } from './textFrame';
 import { resolveAutoFit } from './textFit';
 import { gradientRenderingWarnings } from './gradient';
+import { readImageDimensions } from './imageDimensions';
+import { fitToRects, imageGeometry } from './imageGeometry';
+import { materializeImageOrientation } from './imageOrientation';
 import {
   DEFAULT_TEXT_CORNER_RADIUS,
   resolveTextDecoration,
@@ -25,6 +28,8 @@ import type {
   TextDecoration,
   GradientFill,
   RelativeGradientRect,
+  ImageElement,
+  ImageRect,
 } from './types';
 
 // ECMA-376: Open Packaging Conventions and PresentationML. Import deliberately
@@ -94,6 +99,63 @@ function textRotationUnits(rotation: number): number {
   return units >= -2147483648 && units <= 2147483647
     ? units
     : Math.round((rotation % 360 || Math.sign(rotation) * 360) * 60000);
+}
+
+function pictureRects(element: ImageElement): { crop?: ImageRect; fillRect?: ImageRect } {
+  if (element.crop !== undefined || element.fillRect !== undefined || element.fit === 'stretch')
+    return { crop: element.crop, fillRect: element.fillRect };
+  const dimensions = readImageDimensions(element.src);
+  const rectangles =
+    dimensions &&
+    fitToRects(element.width, element.height, dimensions.width, dimensions.height, element.fit);
+  if (!rectangles)
+    throw new Error(
+      `Cannot determine embedded image dimensions for “${element.name}”; choose stretch or replace the unreadable image.`,
+    );
+  return rectangles;
+}
+
+function writePicture(doc: Document, picture: Element, source: ImageElement): void {
+  source = materializeImageOrientation(source, readImageDimensions(source.src)?.orientation);
+  const properties = child(picture, 'spPr');
+  const fill = child(picture, 'blipFill');
+  const blip = child(fill, 'blip');
+  if (!properties || !fill || !blip) return;
+  const transform = drawingNode(doc, 'xfrm', {
+    ...(source.rotation !== 0 ? { rot: textRotationUnits(source.rotation) } : {}),
+    ...(source.flipH !== undefined ? { flipH: source.flipH ? '1' : '0' } : {}),
+    ...(source.flipV !== undefined ? { flipV: source.flipV ? '1' : '0' } : {}),
+  });
+  transform.append(
+    drawingNode(doc, 'off', { x: Math.round(source.x * EMU), y: Math.round(source.y * EMU) }),
+    drawingNode(doc, 'ext', {
+      cx: Math.round(source.width * EMU),
+      cy: Math.round(source.height * EMU),
+    }),
+  );
+  const previous = child(properties, 'xfrm');
+  if (previous) previous.replaceWith(transform);
+  else properties.prepend(transform);
+  // Derive display geometry without resizing the editable frame or changing source pixels.
+  const rectangles = pictureRects(source);
+  const rect = (name: string, value: ImageRect) =>
+    drawingNode(
+      doc,
+      name,
+      Object.fromEntries(
+        Object.entries(value).map(([key, ratio]) => [key[0], fitPercentage(ratio!)]),
+      ),
+    );
+  const stretch = drawingNode(doc, 'stretch');
+  if (rectangles.fillRect !== undefined) stretch.appendChild(rect('fillRect', rectangles.fillRect));
+  blip.replaceChildren(drawingNode(doc, 'alphaModFix', { amt: fitPercentage(source.opacity) }));
+  fill.replaceChildren(
+    blip,
+    ...(rectangles.crop !== undefined ? [rect('srcRect', rectangles.crop)] : []),
+    stretch,
+  );
+  // PptxGenJS substitutes its media filename when altText is empty.
+  child(child(picture, 'nvPicPr'), 'cNvPr')?.setAttribute('descr', source.alt);
 }
 
 function writeGradient(doc: Document, gradient: GradientFill, opacity: number): Element {
@@ -429,6 +491,23 @@ export function pptxExportWarnings(deck: Deck): string[] {
           warnings.push(
             'Gradient bounds around arrowheads are approximated; PowerPoint can extend the gradient beyond the line bounds.',
           );
+      } else if (element.type === 'image') {
+        const dimensions = readImageDimensions(element.src);
+        const encoded = materializeImageOrientation(element, dimensions?.orientation);
+        if (Math.abs(encoded.x) > 100000 || Math.abs(encoded.y) > 100000)
+          warnings.push(
+            'Materializing picture orientation places its frame outside the native coordinate bounds; re-import can limit those coordinates.',
+          );
+        const layout = imageGeometry(encoded, dimensions);
+        if (layout?.reason) warnings.push(layout.reason);
+        if (!layout)
+          warnings.push(
+            'An image has unreadable dimensions; contain/cover export requires a readable embedded raster.',
+          );
+        if (textRotationUnits(element.rotation) !== Math.round(element.rotation * 60000))
+          warnings.push(
+            'Picture rotations beyond the DrawingML angle range use an equivalent angle in PPTX.',
+          );
       }
     }
   }
@@ -448,7 +527,7 @@ export function pptxExportWarnings(deck: Deck): string[] {
   if (
     deck.slides.some((slide) =>
       slide.elements.some((element) => {
-        if (element.type === 'text') return false;
+        if (element.type === 'text' || element.type === 'image') return false;
         const linear =
           element.type === 'shape' && (element.shape === 'line' || element.shape === 'arrow');
         // Match the actual inch arguments, including centered horizontal lines.
@@ -463,7 +542,7 @@ export function pptxExportWarnings(deck: Deck): string[] {
     )
   )
     warnings.push(
-      'Non-text objects with positive positions or dimensions of 9,600 px or more may be misplaced or resized in PPTX export because of a library unit limit.',
+      'Shapes, tables, or charts with positive positions or dimensions of 9,600 px or more may be misplaced or resized in PPTX export because of a library unit limit.',
     );
   if (
     deck.slides.some((slide) =>
@@ -602,13 +681,12 @@ export async function exportPptx(deck: Deck): Promise<Blob> {
       } else if (element.type === 'image') {
         if (!imagePattern.test(element.src))
           throw new Error('Only embedded PNG, JPEG, GIF, or WebP images can be exported.');
-        // PptxGenJS handles the intrinsic raster ratio for contain/cover sizing.
+        // Postprocessing writes source/target rectangles using actual raster dimensions.
         slide.addImage({
           ...pos,
           data: element.src,
           altText: element.alt,
           transparency,
-          sizing: { type: element.fit, w: pos.w, h: pos.h },
         });
       } else if (element.type === 'table') {
         const rows = element.rows.map((row, ri) =>
@@ -702,6 +780,10 @@ export async function exportPptx(deck: Deck): Promise<Blob> {
     textShapes.forEach((shape, textIndex) => {
       const textSource = textSources[textIndex];
       if (textSource) writeTextBody(doc, shape, textSource, relations);
+    });
+    const imageSources = source.elements.filter((element) => element.type === 'image');
+    descendants(doc, 'pic').forEach((picture, imageIndex) => {
+      if (imageSources[imageIndex]) writePicture(doc, picture, imageSources[imageIndex]);
     });
     const ordinaryShapes = descendants(doc, 'sp').filter(
       (sp) => attr(descendant(sp, 'cNvSpPr'), 'txBox') !== '1',
@@ -2088,8 +2170,9 @@ export async function importPptx(
       )
         warn('Patterns, effects, and custom geometry are simplified.');
       if (
-        attr(descendant(properties, 'xfrm'), 'flipH') === '1' ||
-        attr(descendant(properties, 'xfrm'), 'flipV') === '1'
+        node.localName !== 'pic' &&
+        (attr(descendant(properties, 'xfrm'), 'flipH') === '1' ||
+          attr(descendant(properties, 'xfrm'), 'flipV') === '1')
       )
         warn('Flipped objects are imported without the flip.');
       if (node.localName === 'sp' || node.localName === 'cxnSp') {
@@ -2241,7 +2324,8 @@ export async function importPptx(
           });
         }
       } else if (node.localName === 'pic') {
-        const blip = descendant(node, 'blip');
+        const pictureFill = child(node, 'blipFill');
+        const blip = child(pictureFill, 'blip');
         const imageRel = slideRels.get(
           relationshipId(blip, 'embed') ?? relationshipId(blip, 'link') ?? '',
         );
@@ -2265,20 +2349,98 @@ export async function importPptx(
         let binary = '';
         for (let offset = 0; offset < bytes.length; offset += 32768)
           binary += String.fromCharCode(...bytes.subarray(offset, offset + 32768));
-        const crop = descendant(node, 'srcRect');
-        if (crop && ['l', 'r', 't', 'b'].some((key) => number(attr(crop, key)) !== 0))
-          warn('Image cropping is approximated by fitting the full image to its frame.');
-        const alpha = child(blip, 'alphaModFix');
-        slide.elements.push({
+        const readRect = (rect: Element | undefined): ImageRect | undefined => {
+          if (!rect) return undefined;
+          const result: ImageRect = {};
+          for (const key of ['left', 'top', 'right', 'bottom'] as const) {
+            const raw = attr(rect, key[0]);
+            if (raw === null) continue;
+            const valid =
+              /^[+-]?\d+$/.test(raw.trim()) || /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)%$/.test(raw.trim());
+            if (!valid) warn('Invalid picture rectangle offsets used zero.');
+            const numeric = raw.trim().endsWith('%')
+              ? Number(raw.trim().slice(0, -1)) / 100
+              : Number(raw) / 100000;
+            if (valid && !Number.isFinite(numeric))
+              warn('Invalid picture rectangle offsets used zero.');
+            const ratio = valid && Number.isFinite(numeric) ? numeric : 0;
+            if (ratio < -21474.83648 || ratio > 21474.83647)
+              warn('Picture rectangle offsets outside the supported range were limited.');
+            result[key] = clamp(ratio, -21474.83648, 21474.83647);
+          }
+          return result;
+        };
+        const crop = readRect(child(pictureFill, 'srcRect'));
+        const stretch = child(pictureFill, 'stretch');
+        const fillRect = readRect(child(stretch, 'fillRect'));
+        if (child(pictureFill, 'tile') || !stretch)
+          warn(
+            'Tiled or unspecified picture-fill modes are imported as a single stretched picture.',
+          );
+        if (['0', 'false'].includes(attr(pictureFill, 'rotWithShape') ?? ''))
+          warn(
+            'Pictures with fixed fill rotation are imported with the fill following the picture.',
+          );
+        const preset = child(properties, 'prstGeom');
+        if (child(properties, 'custGeom') || (preset && attr(preset, 'prst') !== 'rect'))
+          warn(
+            'Picture masks are imported as rectangular frames; the original mask geometry is not retained.',
+          );
+        const outline = child(properties, 'ln');
+        if (
+          (outline && !child(outline, 'noFill') && (paintChild(outline) || child(node, 'style'))) ||
+          (paintChild(properties) && !child(properties, 'noFill'))
+        )
+          warn('Attached picture fills and borders are not retained.');
+        const unsupportedEffects = Array.from(blip?.children ?? []).some(
+          (entry) => !['alphaModFix', 'extLst'].includes(entry.localName),
+        );
+        if (
+          unsupportedEffects ||
+          child(properties, 'effectDag') ||
+          child(properties, 'effectLst')?.children.length
+        )
+          warn(
+            'Picture effects, recoloring, and unsupported transparency operations are not retained.',
+          );
+        const transformNode = child(properties, 'xfrm') ?? child(child(template, 'spPr'), 'xfrm');
+        const flip = (name: string): boolean | undefined => {
+          const value = attr(transformNode, name);
+          if (value === null) return undefined;
+          if (!['0', '1', 'true', 'false'].includes(value))
+            warn('An invalid picture flip used false.');
+          return value === '1' || value === 'true';
+        };
+        const flipH = flip('flipH'),
+          flipV = flip('flipV');
+        const alpha = children(blip, 'alphaModFix').reduce((value, node) => {
+          const raw = attr(node, 'amt');
+          if (raw === null) return value;
+          const valid =
+            /^[+]?\d+$/.test(raw.trim()) || /^[+]?(?:\d+(?:\.\d*)?|\.\d+)%$/.test(raw.trim());
+          if (!valid) warn('An invalid picture transparency multiplier used its default value.');
+          return value * (valid ? percentage(raw, 1) : 1);
+        }, 1);
+        const picture: ImageElement = {
           ...geometry,
           type: 'image',
           src: `data:image/${mime};base64,${btoa(binary)}`,
-          alt: (attr(descendant(node, 'cNvPr'), 'descr') ?? '').slice(0, 2000),
-          fit: 'contain',
-          opacity: alpha
-            ? clamp(number(attr(alpha, 'amt'), 100000) / 100000, 0, 1)
-            : geometry.opacity,
-        });
+          alt: (
+            attr(descendant(node, 'cNvPr'), 'descr') ??
+            attr(descendant(node, 'cNvPr'), 'title') ??
+            ''
+          ).slice(0, 2000),
+          fit: 'stretch',
+          orientation: 'encoded',
+          ...(crop !== undefined ? { crop } : {}),
+          ...(fillRect !== undefined ? { fillRect } : {}),
+          ...(flipH !== undefined ? { flipH } : {}),
+          ...(flipV !== undefined ? { flipV } : {}),
+          opacity: clamp(alpha, 0, 1),
+        };
+        const layout = imageGeometry(picture);
+        if (layout?.reason) warn(layout.reason);
+        slide.elements.push(picture);
       } else if (node.localName === 'graphicFrame') {
         const table = descendant(node, 'tbl');
         const chart = descendant(node, 'chart');

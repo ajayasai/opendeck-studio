@@ -4,6 +4,7 @@ import { validateTextFrame } from './textFrame';
 import { validateAutoFit } from './textFit';
 import { validateTextDecoration } from './textDecoration';
 import { validateGradientFill } from './gradient';
+import { validateImageRect } from './imageGeometry';
 
 export const uid = (): string =>
   globalThis.crypto?.randomUUID?.() ??
@@ -635,7 +636,14 @@ export function validateDeck(input: unknown): Deck {
             type: 'image',
             src,
             alt: string(e.alt, 'image description', 2000),
-            fit: choice(e.fit, ['contain', 'cover'] as const, 'image fit'),
+            fit: choice(e.fit, ['contain', 'cover', 'stretch'] as const, 'image fit'),
+            ...(e.crop !== undefined ? { crop: validateImageRect(e.crop) } : {}),
+            ...(e.fillRect !== undefined ? { fillRect: validateImageRect(e.fillRect) } : {}),
+            ...(e.flipH !== undefined ? { flipH: bool(e.flipH, 'image horizontal flip') } : {}),
+            ...(e.flipV !== undefined ? { flipV: bool(e.flipV, 'image vertical flip') } : {}),
+            ...(e.orientation !== undefined
+              ? { orientation: choice(e.orientation, ['encoded'] as const, 'image orientation') }
+              : {}),
           };
         }
         case 'table': {

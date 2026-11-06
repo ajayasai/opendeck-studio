@@ -52,6 +52,7 @@ import type {
   Theme,
   GradientFill,
   TextDecorationPaint,
+  ImageElement,
 } from './types';
 import { slideBackgroundColor } from './gradient';
 import {
@@ -75,6 +76,9 @@ import { applyTextPatch } from './richText';
 import RichTextEditor from './RichTextLoader';
 import { prepareTextLayout } from './textFit';
 import { fitTextElement } from './textFitting';
+import ImageCropEditor from './ImageCropEditor';
+import { readImageDimensions } from './imageDimensions';
+import { materializeImageOrientation } from './imageOrientation';
 
 const prepareLayout = (before: Deck, next: Deck) => prepareTextLayout(before, next, fitTextElement);
 
@@ -145,6 +149,11 @@ export default function App() {
   const [menu, setMenu] = useState<'file' | 'insert' | 'layout' | 'arrange' | null>(null),
     [library, setLibrary] = useState(false),
     [richText, setRichText] = useState<TextElement | null>(null),
+    [imageCrop, setImageCrop] = useState<{
+      element: ImageElement;
+      deckId: string;
+      slideId: string;
+    } | null>(null),
     [report, setReport] = useState<{ title: string; messages: string[] } | null>(null),
     [toast, setToast] = useState(''),
     [busy, setBusy] = useState(false),
@@ -225,6 +234,7 @@ export default function App() {
     const handler = (ev: BeforeUnloadEvent) => {
       if (
         richText ||
+        imageCrop ||
         !saveAllowed ||
         saveState === 'Saving…' ||
         saveState.startsWith('Save failed')
@@ -235,7 +245,7 @@ export default function App() {
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [saveState, saveAllowed, richText]);
+  }, [saveState, saveAllowed, richText, imageCrop]);
   useEffect(() => {
     if (!stage.current) return;
     const observer = new ResizeObserver((entries) => {
@@ -336,6 +346,17 @@ export default function App() {
       .slides.find((s) => s.id === slide.id)
       ?.elements.find((e) => e.id === element.id);
     if (current?.type === 'text' && !current.locked) setRichText(current);
+  }
+  function editImageCrop(element: ImageElement) {
+    if (!finishCanvasDraft()) return;
+    if (document.activeElement instanceof HTMLElement && isTyping(document.activeElement))
+      document.activeElement.blur();
+    const currentDeck = getCurrentDeck();
+    const current = currentDeck.slides
+      .find((s) => s.id === slide.id)
+      ?.elements.find((e) => e.id === element.id);
+    if (current?.type === 'image' && !current.locked)
+      setImageCrop({ element: current, deckId: currentDeck.id, slideId: slide.id });
   }
   function fitNewElement(element: SlideElement): SlideElement {
     const sx = deck.width / 1280,
@@ -741,7 +762,7 @@ export default function App() {
         );
         return;
       }
-      const e = createElement('image', latest.theme);
+      let e = createElement('image', latest.theme);
       e.src = src;
       e.alt = file.name;
       e.name = file.name;
@@ -753,6 +774,7 @@ export default function App() {
       }
       e.x = (latest.width - e.width) / 2;
       e.y = (latest.height - e.height) / 2;
+      e = materializeImageOrientation(e, readImageDimensions(src)?.orientation);
       commit((current) =>
         current.id !== targetDeckId
           ? current
@@ -807,7 +829,7 @@ export default function App() {
   });
   useEffect(() => {
     const handler = (ev: KeyboardEvent) => {
-      if (presenting || report || help || busy || library || richText) return;
+      if (presenting || report || help || busy || library || richText || imageCrop) return;
       if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 's') {
         ev.preventDefault();
         saveNative();
@@ -1374,6 +1396,7 @@ export default function App() {
             onSelect={(id) => setSelection([id])}
             onLayer={layer}
             onEditRichText={editRichText}
+            onEditImageCrop={editImageCrop}
           />
         </div>
         <footer className="statusbar">
@@ -1583,6 +1606,50 @@ export default function App() {
           onSave={(element) => {
             replaceElements(slide.elements.map((e) => (e.id === element.id ? element : e)));
             setRichText(null);
+          }}
+        />
+      )}
+      {imageCrop && (
+        <ImageCropEditor
+          element={imageCrop.element}
+          onClose={() => setImageCrop(null)}
+          onSave={(updated) => {
+            const current = getCurrentDeck();
+            const target =
+              current.id === imageCrop.deckId
+                ? current.slides
+                    .find((s) => s.id === imageCrop.slideId)
+                    ?.elements.find((e) => e.id === updated.id)
+                : undefined;
+            if (target?.type !== 'image' || target.locked || target.src !== imageCrop.element.src) {
+              notify('The original picture is no longer available for this crop.');
+              setImageCrop(null);
+              return;
+            }
+            if (updated !== imageCrop.element)
+              commit((d) => ({
+                ...d,
+                slides: d.slides.map((s) =>
+                  s.id === imageCrop.slideId
+                    ? {
+                        ...s,
+                        elements: s.elements.map((e) =>
+                          e.id === updated.id && e.type === 'image'
+                            ? {
+                                ...e,
+                                fit: updated.fit,
+                                crop: updated.crop,
+                                fillRect: updated.fillRect,
+                                flipH: updated.flipH,
+                                flipV: updated.flipV,
+                              }
+                            : e,
+                        ),
+                      }
+                    : s,
+                ),
+              }));
+            setImageCrop(null);
           }}
         />
       )}

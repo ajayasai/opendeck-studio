@@ -135,11 +135,25 @@ export interface ShapeElement extends ElementBase {
   fillOpacity?: number;
   strokeOpacity?: number;
 }
+/** Signed fractions of source/target dimensions; omitted edges resolve to zero. */
+export interface ImageRect {
+  left?: number;
+  top?: number;
+  right?: number;
+  bottom?: number;
+}
 export interface ImageElement extends ElementBase {
   type: 'image';
   src: string;
   alt: string;
-  fit: 'contain' | 'cover';
+  fit: 'contain' | 'cover' | 'stretch';
+  /** Explicit rectangles use DrawingML stretch mapping and take precedence over fit. */
+  crop?: ImageRect;
+  fillRect?: ImageRect;
+  flipH?: boolean;
+  flipV?: boolean;
+  /** Encoded pixels ignore embedded EXIF orientation; legacy absent values retain browser auto-orientation. */
+  orientation?: 'encoded';
 }
 export interface TableElement extends ElementBase {
   type: 'table';

@@ -2,7 +2,7 @@
 
 An open-source presentation studio for the browser. Create slides, keep your files locally, and exchange editable content through PowerPoint's PPTX format.
 
-**Status: 0.1.0-alpha.6.** OpenDeck is an original implementation with a focused editor, rich text authoring, and partial PPTX compatibility. It is not a complete replacement for every PowerPoint workflow. The [compatibility matrix](docs/COMPATIBILITY.md) states the boundaries; the [roadmap](docs/ROADMAP.md) tracks the work ahead.
+**Status: 0.1.0-alpha.7.** OpenDeck is an original implementation with a focused editor, rich text authoring, and partial PPTX compatibility. It is not a complete replacement for every PowerPoint workflow. The [compatibility matrix](docs/COMPATIBILITY.md) states the boundaries; the [roadmap](docs/ROADMAP.md) tracks the work ahead.
 
 [Try the public demo](https://ajayasai.github.io/opendeck-studio/) · [Download the release](https://github.com/ajayasai/opendeck-studio/releases) · [Testing evidence](docs/TESTING.md)
 
@@ -39,6 +39,7 @@ npm run preview
 - Attached text-box fills and outlines, independent text/paint transparency, eleven outline styles, and editable rectangle, rounded rectangle, ellipse, and triangle text shapes.
 - Shape-aware text regions and fitting, plus control over first/last paragraph spacing at the box edges.
 - Editable linear, radial, rectangular, and shape gradients for text-box paints, shapes, and slide backgrounds, with individual color stops and transparency.
+- A visual picture crop editor with drag positioning, zoom, precise source/fill edges, horizontal/vertical flips, and reversible edits that retain the original image bytes.
 - Slide organization, five visual themes, reusable layouts, speaker notes, and presentation playback.
 - Object alignment, layer ordering, grid snapping, keyboard shortcuts, and a slide sorter.
 - Fullscreen presenting with a timer, notes panel, next-slide preview, laser pointer, and blackout control.
@@ -67,6 +68,10 @@ Use the fill or outline controls in **Format** to choose a gradient, edit its co
 
 ![Editing gradient color stops in OpenDeck](docs/assets/gradient-editor.jpg)
 
+Select a picture and choose **Format → Crop picture…** to reposition or zoom its contents without moving the frame. **Fit picture**, **Fill frame**, and **Stretch** offer different sizing choices. Exact crop and fill edges retain supported PowerPoint source windows and transparent margins. Save applies one undoable change; Cancel leaves the picture intact. The [picture-geometry example](examples/picture-geometry.pptx) and [native copy](examples/picture-geometry.opendeck) cover crops, flips, rotation, transparency, and JPEG orientation. Their native PowerPoint and browser checks are recorded in the [testing evidence](docs/TESTING.md).
+
+![Visual picture cropping in OpenDeck](docs/assets/picture-crop-editor.jpg)
+
 Tables and charts use simplified models. Advanced PowerPoint content can change or disappear during import/export; keep the original file and review the result before relying on it. Browser line metrics, autofit recalculation, complete-line clipping, unsupported paints/custom geometry, hyperlink theme colors, and some numbering restarts can differ. See the [compatibility notes](docs/COMPATIBILITY.md).
 
 ## Your files
@@ -84,6 +89,8 @@ Use alpha.4 or later for autofit and exact line-spacing backups. Earlier readers
 Use alpha.5 or later for attached text decorations, text-only opacity, and paragraph-edge policy. Earlier readers can discard those optional fields when re-saving. Legacy native files keep their prior include-edges behavior; imported PPTX files use PowerPoint's default of excluding endpoint spacing unless explicitly enabled.
 
 Use alpha.6 or later for gradient and independent shape/background opacity backups. Earlier readers can discard these optional fields when re-saving. Existing solid paints remain unchanged when no gradient is present.
+
+Use alpha.7 or later for picture crop, fill, flip, and encoded-orientation backups. Earlier readers can reject the new stretch mode or lose crop/orientation information. Existing image files keep their prior browser orientation behavior until an explicit conversion is needed for PPTX export.
 
 You can edit without an internet connection after the application and its assets are loaded. For predictable offline access, run the built files on a local static server. This release does not install a PWA or guarantee that a hosted page will reopen offline.
 

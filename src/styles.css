@@ -1184,6 +1184,157 @@ kbd {
   max-width: 920px;
   padding: 28px;
 }
+.crop-editor-modal {
+  max-width: 1020px;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.crop-editor-modal > :not(.crop-editor-scroll) {
+  flex-shrink: 0;
+}
+.crop-editor-scroll {
+  overflow: auto;
+  min-height: 0;
+  padding: 2px;
+}
+.crop-editor-modal .modal-actions {
+  margin-top: 16px;
+}
+.crop-editor-modal h2 {
+  margin: 8px 0;
+}
+.crop-editor-fields,
+.crop-rectangles fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.crop-editor-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 210px;
+  gap: 24px;
+}
+.crop-preview-stage {
+  display: grid;
+  place-items: center;
+  min-height: 240px;
+  padding: 28px;
+  background: #e3e8df;
+  border: 1px solid #c9d4c0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.crop-preview-frame {
+  position: relative;
+  cursor: grab;
+  outline: 2px solid #245c49;
+}
+.crop-preview-frame:active {
+  cursor: grabbing;
+}
+.crop-preview-frame:focus-visible {
+  outline: 3px solid #245c49;
+  outline-offset: 4px;
+}
+.crop-visible-picture {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: repeating-conic-gradient(#f8faf5 0% 25%, #dbe3d6 0% 50%) 50% / 16px 16px;
+}
+.crop-outside-picture {
+  position: absolute;
+  inset: 0;
+  opacity: 0.25;
+  pointer-events: none;
+}
+.crop-outside-picture img {
+  position: absolute;
+  max-width: none;
+  object-fit: fill;
+}
+.crop-guide {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: 1px solid white;
+}
+.crop-guide::before,
+.crop-guide::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+.crop-guide::before {
+  inset: 0 33.333%;
+  border-inline: 1px solid #ffffff80;
+}
+.crop-guide::after {
+  inset: 33.333% 0;
+  border-block: 1px solid #ffffff80;
+}
+.crop-options {
+  min-width: 0;
+}
+.crop-options input[type='range'] {
+  margin: 0;
+  max-width: 100%;
+}
+.crop-presets {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.crop-presets .secondary-button {
+  margin: 0;
+  flex: 1 1 45%;
+}
+.crop-zoom-buttons {
+  display: flex;
+  gap: 6px;
+  margin: -4px 0 16px;
+}
+.crop-zoom-buttons .secondary-button {
+  margin: 0;
+}
+.crop-exact-settings {
+  margin-top: 16px;
+  border: 1px solid #d6dfcb;
+  border-radius: 6px;
+  padding: 12px;
+}
+.crop-exact-settings summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: #30503a;
+}
+.crop-rectangles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 14px;
+}
+.crop-rectangles legend {
+  font-size: 12px;
+  padding-bottom: 8px;
+}
+@media (max-width: 720px) {
+  .crop-editor-layout {
+    grid-template-columns: 1fr;
+  }
+  .crop-preview-stage {
+    min-height: 150px;
+    padding: 18px;
+  }
+  .crop-rectangles {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
 .rich-editor-modal h2 {
   margin: 8px 0;
 }

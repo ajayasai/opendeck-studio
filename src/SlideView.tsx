@@ -5,6 +5,7 @@ import RichTextView from './RichTextView';
 import TextDecorationView from './TextDecorationView';
 import GradientDefinition from './GradientDefinition';
 import SlideBackground, { slideBaseBackground } from './SlideBackground';
+import ImageView from './ImageView';
 
 export function ChartView({ element: e }: { element: ChartElement }) {
   const w = 600,
@@ -223,14 +224,7 @@ export function ElementContent({
     case 'shape':
       return <ShapeView element={e} />;
     case 'image':
-      return (
-        <img
-          src={e.src}
-          alt={e.alt}
-          draggable={false}
-          style={{ width: '100%', height: '100%', objectFit: e.fit }}
-        />
-      );
+      return <ImageView element={e} />;
     case 'table':
       return (
         <table className="slide-table" style={{ fontSize: `${e.fontSize}pt`, color: e.color }}>

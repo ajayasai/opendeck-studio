@@ -9,12 +9,15 @@ import type {
   TextAutoFit,
   TextDecoration,
   GradientFill,
+  ImageElement,
 } from './types';
 import { TEXT_LINE_DASHES } from './textDecoration';
 import { plainText } from './richText';
 import { validateDeck } from './model';
 import { resolveTextFrame } from './textFrame';
 import { readFile } from 'node:fs/promises';
+import { readImageDimensions } from './imageDimensions';
+import { materializeImageOrientation } from './imageOrientation';
 
 const theme: Theme = {
   id: 'test',
@@ -313,7 +316,7 @@ describe('editable PPTX interoperability', () => {
     });
   });
 
-  it.each(['shape', 'image', 'table', 'chart'] as const)(
+  it.each(['shape', 'table', 'chart'] as const)(
     'warns at the positive non-text unit boundary for %s without flagging negative positions',
     (type) => {
       const deck = sample();
@@ -2393,6 +2396,245 @@ describe('editable PPTX interoperability', () => {
     });
     expect(result.warnings.some((w) => w.includes('Grouped objects'))).toBe(true);
   });
+
+  it.each(['contain', 'cover', 'stretch'] as const)(
+    'exports %s using real pixel dimensions while retaining the full editable picture frame',
+    async (fit) => {
+      const deck = sample();
+      const image = deck.slides[0].elements.find((element) => element.type === 'image')!;
+      const raster = await readFile('tests/fixtures/picture-geometry-calibration.png');
+      Object.assign(image, {
+        src: `data:image/png;base64,${raster.toString('base64')}`,
+        fit,
+        x: 96,
+        y: 192,
+        width: 300,
+        height: 300,
+        opacity: 0.123456,
+        alt: '',
+      });
+      deck.slides[0].elements = [image];
+      const before = structuredClone(deck);
+      const bytes = await buffer(await exportPptx(deck));
+      expect(deck).toEqual(before);
+      const again = (await importPptx(bytes)).deck.slides[0].elements[0] as ImageElement;
+      expect(again).toMatchObject({
+        x: 96,
+        y: 192,
+        width: 300,
+        height: 300,
+        fit: 'stretch',
+        orientation: 'encoded',
+        opacity: 0.123456,
+        alt: '',
+        src: image.src,
+      });
+      if (fit === 'contain') {
+        expect(again.crop).toBeUndefined();
+        expect(again.fillRect).toEqual({ left: 0, top: 0.25, right: 0, bottom: 0.25 });
+      } else if (fit === 'cover') {
+        expect(again.crop).toEqual({ left: 0.25, top: 0, right: 0.25, bottom: 0 });
+        expect(again.fillRect).toBeUndefined();
+      } else {
+        expect(again.crop).toBeUndefined();
+        expect(again.fillRect).toBeUndefined();
+      }
+      const zip = await JSZip.loadAsync(bytes);
+      const xml = await zip.file('ppt/slides/slide1.xml')!.async('string');
+      expect(xml).toContain('cx="2857500" cy="2857500"');
+    },
+  );
+
+  it('preserves precise picture transforms, independent signed rectangles, explicit false flips, and embedded bytes', async () => {
+    const deck = sample();
+    const image = deck.slides[0].elements.find((element) => element.type === 'image')!;
+    Object.assign(image, {
+      x: 50000,
+      y: -50000,
+      width: 0.01,
+      height: 99999,
+      rotation: 720,
+      orientation: 'encoded',
+      fit: 'cover',
+      crop: { left: -0.125, top: 0.1234567, right: 0 },
+      fillRect: { top: 0.2, right: -0.3 },
+      flipH: false,
+      flipV: true,
+    });
+    deck.slides[0].elements = [image];
+    const again = (await importPptx(await buffer(await exportPptx(deck)))).deck.slides[0]
+      .elements[0] as ImageElement;
+    expect(again).toMatchObject({
+      x: image.x,
+      y: image.y,
+      width: image.width,
+      height: image.height,
+      rotation: 720,
+      crop: image.crop,
+      fillRect: image.fillRect,
+      flipH: false,
+      flipV: true,
+      src: image.src,
+      orientation: 'encoded',
+    });
+    expect(pptxExportWarnings(deck).join(' ')).not.toContain('library unit limit');
+  });
+
+  it('materializes legacy EXIF display orientation once on export without changing the native source', async () => {
+    const deck = sample();
+    const image = deck.slides[0].elements.find((element) => element.type === 'image')!;
+    const raster = await readFile('tests/fixtures/picture-geometry-exif-6.jpg');
+    Object.assign(image, {
+      src: `data:image/jpeg;base64,${raster.toString('base64')}`,
+      fit: 'stretch',
+      rotation: 37,
+      flipH: true,
+      crop: { left: 0.1, top: 0.2, right: -0.1 },
+      fillRect: { bottom: 0.15 },
+    });
+    deck.slides[0].elements = [image];
+    const before = structuredClone(image);
+    const expected = materializeImageOrientation(image, 6);
+    const again = (await importPptx(await buffer(await exportPptx(deck)))).deck.slides[0]
+      .elements[0] as ImageElement;
+    expect(image).toEqual(before);
+    const { id, ...properties } = expected;
+    expect(id).toBe(image.id);
+    expect(again).toMatchObject(properties);
+    expect(readImageDimensions(again.src)?.orientation).toBe(6);
+  });
+
+  it.each(['powerpoint-picture-geometry', 'powerpoint-picture-geometry-probe'])(
+    'retains independent native picture geometry, raw raster axes, crop/fill rectangles and transparency from %s',
+    async (name) => {
+      const source = await readFile(`tests/fixtures/${name}.pptx`);
+      const imported = await importPptx(
+        source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength),
+      );
+      expect(imported.deck.slides).toHaveLength(9);
+      const pictures = (deck: Deck) =>
+        deck.slides
+          .flatMap((slide) => slide.elements)
+          .filter((element) => element.type === 'image');
+      const initial = pictures(imported.deck);
+      expect(initial).toHaveLength(36);
+      expect(
+        initial.every((picture) => picture.fit === 'stretch' && picture.orientation === 'encoded'),
+      ).toBe(true);
+      if (name === 'powerpoint-picture-geometry') {
+        const find = (name: string) => initial.find((picture) => picture.name === name)!;
+        expect(find('Asymmetric crop').crop).toEqual({
+          left: 0.2,
+          top: 0.1,
+          right: 0.05,
+          bottom: 0.25,
+        });
+        expect(find('Negative all edges').crop).toEqual({
+          left: -0.25,
+          top: -0.25,
+          right: -0.25,
+          bottom: -0.25,
+        });
+        expect(find('Rotate30 horizontal')).toMatchObject({ rotation: 30, flipH: true });
+        expect(find('EXIF orientation 6')).toMatchObject({ rotation: 90 });
+        expect(find('EXIF orientation 7')).toMatchObject({ rotation: 270, flipV: true });
+        expect(readImageDimensions(find('EXIF orientation 6').src)).toMatchObject({
+          width: 800,
+          height: 400,
+          orientation: 6,
+        });
+        expect(imported.warnings.join(' ')).toContain('Picture masks');
+      } else {
+        const find = (name: string) => initial.find((picture) => picture.name === name)!;
+        expect(find('XML absent source rectangle').crop).toBeUndefined();
+        expect(find('XML empty source rectangle').crop).toEqual({});
+        expect(find('XML fill inset').fillRect).toEqual({
+          left: 0.15,
+          top: 0.2,
+          right: 0.05,
+          bottom: 0.1,
+        });
+        expect(find('XML percentage source').crop).toEqual({
+          left: 0.2,
+          top: 0.1,
+          right: 0.05,
+          bottom: 0.25,
+        });
+        expect(find('XML fill outset').fillRect).toEqual({
+          left: -0.25,
+          top: -0.25,
+          right: -0.25,
+          bottom: -0.25,
+        });
+        expect(find('XML image opacity fifty').opacity).toBe(0.5);
+        expect(find('XML raw EXIF 6')).toMatchObject({ rotation: 0, orientation: 'encoded' });
+        expect(readImageDimensions(find('XML raw EXIF 6').src)?.orientation).toBe(6);
+        expect(imported.warnings.join(' ')).toContain('unspecified picture-fill modes');
+        expect(imported.warnings.join(' ')).toContain('fixed fill rotation');
+      }
+      const output = await importPptx(await buffer(await exportPptx(imported.deck)));
+      const canonical = (values: ImageElement[]) =>
+        values.map(({ id, ...element }) => ({ ...element, id: undefined }));
+      expect(canonical(pictures(output.deck))).toEqual(canonical(initial));
+      expect(() => validateDeck(output.deck)).not.toThrow();
+    },
+    20000,
+  );
+
+  it.each([
+    ['<a:tile/>', '', '', 'Tiled or unspecified picture-fill modes'],
+    ['', '', '', 'Tiled or unspecified picture-fill modes'],
+    ['<a:stretch/>', '<a:prstGeom prst="ellipse"/>', '', 'Picture masks'],
+    [
+      '<a:stretch/>',
+      '<a:ln><a:solidFill><a:srgbClr val="FF0000"/></a:solidFill></a:ln>',
+      '',
+      'Attached picture fills and borders',
+    ],
+    ['<a:stretch/>', '', '<a:duotone/>', 'Picture effects'],
+    ['<a:srcRect l="75000" r="25000"/><a:stretch/>', '', '', 'Empty or inverted source cropping'],
+    ['<a:srcRect l="100000" r="100000"/><a:stretch/>', '', '', 'Empty or inverted source cropping'],
+    [
+      '<a:stretch><a:fillRect t="50000" b="50000"/></a:stretch>',
+      '',
+      '',
+      'Empty or inverted picture fill rectangles',
+    ],
+    [
+      '<a:srcRect l="bad" r="999999999999%"/><a:stretch/>',
+      '',
+      '',
+      'offsets outside the supported range',
+    ],
+  ])(
+    'reports unsupported or degenerate picture mapping without losing the embedded source: %s %s %s',
+    async (mapping, properties, effects, warning) => {
+      const bytes = await fixture((zip) => {
+        zip.file(
+          'ppt/slides/slide12.xml',
+          slide(
+            `<p:pic><p:nvPicPr><p:cNvPr id="2" name="Picture" descr="Raster"/><p:cNvPicPr/><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="img">${effects}</a:blip>${mapping}</p:blipFill><p:spPr><a:xfrm flipH="true" flipV="false"><a:off x="914400" y="457200"/><a:ext cx="3657600" cy="914400"/></a:xfrm>${properties}</p:spPr></p:pic>`,
+          ),
+        );
+        zip.file(
+          'ppt/slides/_rels/slide12.xml.rels',
+          rels(relationship('img', 'image', '../media/image.png')),
+        );
+        zip.file('ppt/media/image.png', png.split(',')[1], { base64: true });
+      });
+      const result = await importPptx(bytes);
+      expect(result.warnings.join(' ')).toContain(warning);
+      expect(result.warnings.join(' ')).not.toContain('without the flip');
+      expect(result.deck.slides[0].elements[0]).toMatchObject({
+        src: png,
+        fit: 'stretch',
+        orientation: 'encoded',
+        flipH: true,
+        flipV: false,
+      });
+      expect(() => validateDeck(result.deck)).not.toThrow();
+    },
+  );
 
   it('skips external images instead of fetching them', async () => {
     const result = await importPptx(

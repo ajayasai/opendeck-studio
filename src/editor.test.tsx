@@ -7,7 +7,7 @@ import Canvas from './Canvas';
 import Presenter from './Presenter';
 import { createDeck, createElement, createSlide, validateDeck, THEMES } from './model';
 import { useEditor } from './useEditor';
-import type { Deck, TextElement, GradientFill, ShapeElement } from './types';
+import type { Deck, TextElement, GradientFill, ShapeElement, ImageElement } from './types';
 
 const persistence = vi.hoisted(() => ({
   loadDeck: vi.fn(),
@@ -255,6 +255,54 @@ describe('saved fitting integration', () => {
 });
 
 describe('editor workflows', () => {
+  it('keeps picture crops local until Save and restores the complete crop in one undo step', async () => {
+    const source = createDeck();
+    const picture = {
+      ...createElement('image', source.theme),
+      name: 'Crop integration picture',
+      fit: 'stretch' as const,
+      crop: { left: 0.1, right: 0.2 },
+      fillRect: { top: 0.05 },
+      flipH: false,
+    };
+    source.slides = [{ ...source.slides[0], elements: [picture] }];
+    persistence.loadDeck.mockResolvedValue(source);
+    await boot();
+    await user().click(screen.getByRole('button', { name: 'image: Crop integration picture' }));
+    const width = screen.getByRole('spinbutton', { name: 'Width' });
+    fireEvent.change(width, { target: { value: '500' } });
+    width.focus();
+    fireEvent.click(screen.getByRole('button', { name: 'Crop picture…' }));
+    const dialog = screen.getByRole('dialog', { name: 'Crop picture' });
+    fireEvent.keyDown(within(dialog).getByRole('group', { name: 'Crop preview' }), {
+      key: 'ArrowRight',
+      shiftKey: true,
+    });
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Flip horizontally' }));
+    await flushSave();
+    expect(storedDeck().slides[0].elements[0]).toEqual({ ...picture, width: 500 });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save crop' }));
+    expect(screen.queryByRole('dialog', { name: 'Crop picture' })).toBeNull();
+    await flushSave();
+    const changed = storedDeck().slides[0].elements[0] as ImageElement;
+    expect(changed.flipH).toBe(true);
+    expect(changed.crop?.left).not.toBe(0.1);
+    expect(changed).toMatchObject({
+      width: 500,
+      height: picture.height,
+      src: picture.src,
+      fillRect: { top: 0.05 },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Undo (Ctrl+Z)' }));
+    await flushSave();
+    expect(storedDeck().slides[0].elements[0]).toEqual({ ...picture, width: 500 });
+    fireEvent.click(screen.getByRole('button', { name: 'Crop picture…' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Fill frame' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await flushSave();
+    expect(storedDeck().slides[0].elements[0]).toEqual({ ...picture, width: 500 });
+  }, 15000);
+
   it('maps themed solid and gradient paints together and restores them in one undo step', async () => {
     const source = createDeck();
     const ramp: GradientFill = {

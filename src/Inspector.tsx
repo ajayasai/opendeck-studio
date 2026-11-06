@@ -39,6 +39,7 @@ import type {
   TextDecoration,
   TextDecorationLine,
   GradientFill,
+  ImageElement,
   Theme,
 } from './types';
 
@@ -52,6 +53,7 @@ export interface InspectorProps {
   onSelect: (id: string) => void;
   onLayer: (direction: 'front' | 'back' | 'forward' | 'backward') => void;
   onEditRichText?: (element: TextElement) => void;
+  onEditImageCrop?: (element: ImageElement) => void;
   onFitText?: (element: TextElement) => void;
 }
 
@@ -1072,6 +1074,7 @@ export function Inspector({
   onSelect,
   onLayer,
   onEditRichText,
+  onEditImageCrop,
   onFitText,
 }: InspectorProps) {
   const [tab, setTab] = useState<'format' | 'design' | 'layers'>('format');
@@ -1526,14 +1529,49 @@ export function Inspector({
                     <label className="field">
                       <span>Image fit</span>
                       <select
-                        value={element.fit}
+                        value={
+                          element.crop !== undefined || element.fillRect !== undefined
+                            ? 'custom'
+                            : element.fit
+                        }
                         onChange={(event) =>
-                          onElementPatch({ fit: event.target.value as 'contain' | 'cover' })
+                          onElementPatch({
+                            fit: event.target.value as ImageElement['fit'],
+                            crop: undefined,
+                            fillRect: undefined,
+                          })
                         }
                       >
                         <option value="contain">Contain entire image</option>
                         <option value="cover">Cover and crop</option>
+                        <option value="stretch">Stretch to frame</option>
+                        {(element.crop !== undefined || element.fillRect !== undefined) && (
+                          <option value="custom" disabled>
+                            Custom crop and fill
+                          </option>
+                        )}
                       </select>
+                    </label>
+                    {onEditImageCrop && (
+                      <button className="secondary-button" onClick={() => onEditImageCrop(element)}>
+                        Crop picture…
+                      </button>
+                    )}
+                    <label className="checkbox-field">
+                      <input
+                        type="checkbox"
+                        checked={element.flipH ?? false}
+                        onChange={(event) => onElementPatch({ flipH: event.target.checked })}
+                      />
+                      Flip picture horizontally
+                    </label>
+                    <label className="checkbox-field">
+                      <input
+                        type="checkbox"
+                        checked={element.flipV ?? false}
+                        onChange={(event) => onElementPatch({ flipV: event.target.checked })}
+                      />
+                      Flip picture vertically
                     </label>
                     <p className="inspector-hint">
                       <Image size={14} /> Add images with the Image button in the toolbar.

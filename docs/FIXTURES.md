@@ -189,6 +189,57 @@ The last command requires Pillow and reads native PNGs without editing them. The
 
 To intentionally recreate inputs, run `create-powerpoint-gradient-fixture.ps1` and then `node scripts/prepare-gradient-probe.mjs`. Recreating packages changes timestamps, identifiers and potentially Office defaults. Review content, sanitized metadata, hashes and native evidence before replacing frozen inputs. Regular CI uses the committed files without Office. Metadata, provenance, saved copies, experimental packages, PNGs and browser comparison/calibration files remain under ignored `test-results/gradient-powerpoint/`. Older published fixtures and examples were retained unchanged.
 
+## Original picture geometry fixture and XML controls (alpha.7)
+
+`tests/fixtures/powerpoint-picture-geometry.pptx` contains nine original slides and 36 pictures authored through Microsoft PowerPoint COM. Its images, text and layout are original project content distributed under this repository's [MIT license](../LICENSE). No external photograph, customer document or presentation template is included. Authoring and verification used PowerPoint `16.0`, executable product version `16.0.20527.20150`.
+
+`scripts/create-picture-calibration.py` draws new 800×400 coordinate-encoded PNGs using Pillow: asymmetric colors, grid labels, a directional arrow, a ring and corner names reveal crop and orientation changes. A second PNG adds a transparent corner and half-alpha strip. Eight JPEGs use the same original pixels with EXIF orientation values 1–8. Their metadata contains orientation/resolution information, not camera, contact or location data. They are generated controls, not edited external images.
+
+`scripts/create-powerpoint-picture-geometry-fixture.ps1` embeds those assets in a new windowless presentation. It authors full/distorted aspect ratios, positive and negative crop margins, all four flip combinations, rotation, contain-style source outsets, native rectangular/ellipse/rounded/triangle masks, alpha pixels and all eight EXIF orientations. Separate gray marker rectangles expose transparent space. Shared sanitation removes Office profile attribution and organization metadata. The script records native inserted-image dimensions, transforms and crop properties. The source's slide 4 rotation controls overlap labels and extend beyond the slide edge; this is a recorded fixture layout limitation rather than an export regression.
+
+`scripts/prepare-picture-geometry-probe.mjs` creates the distinct nine-slide, 36-picture `powerpoint-picture-geometry-probe.pptx` with 30 explicit alterations. It is **XML-derived, not directly PowerPoint-authored**. Cases include missing/empty source rectangles, signed and percentage-string source/destination rectangles, partial destination regions, flips, fixed-fill rotation, omitted fill mode, alpha multiplication, and removal of the EXIF-derived shape transforms while retaining the tagged JPEG bytes. PowerPoint subsequently opened, rendered and saved it. The same script writes six separate ignored experiments for zero/inverted spans and tiling; these are not frozen public fixtures.
+
+Frozen inputs and final tested exports:
+
+| File                                                                   | SHA-256                                                            |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `tests/fixtures/powerpoint-picture-geometry.pptx`                      | `8672156cb7178e78e97cc5fa03dd68801217f5f2305fdcabc6ecd75651e0298c` |
+| `tests/fixtures/powerpoint-picture-geometry-probe.pptx`                | `18ef3f301856eac12fd1b136596d9d198da5f5a4146336d16fc2be70ac8427e5` |
+| `examples/picture-geometry.pptx`                                       | `2b16b9a226911ff02555e12fdc97c33534dcee70d3cd6c133d744f6bbefd5202` |
+| Ignored `test-results/picture-geometry-powerpoint/probe-exported.pptx` | `c2f740838df8b5f6be2481c1a0ab5407564e7ff47078ae7164c97ad7d2b68c6b` |
+| `tests/fixtures/picture-geometry-calibration.png`                      | `151141ec52a9ac3c191ad84960dc67088f3295bc95333322e5e2f35abccd46ab` |
+| `tests/fixtures/picture-geometry-alpha.png`                            | `4c4e21f411d4cf076a35eee11ae1e00c6ab9e9b56a55023cd54d8cef09d3f4c0` |
+
+The generated `tests/fixtures/picture-geometry-exif-N.jpg` inputs have these orientation/hash pairs:
+
+| N   | SHA-256                                                            |
+| --- | ------------------------------------------------------------------ |
+| 1   | `cc0fb0c3f8b615d1c7ea7051525914ea01bd277f3e4b5bd8f8cec2954f03b337` |
+| 2   | `115bb5b7a079822313b1d45b2a6cd93aabe0eadf936e004d879afac0d7add1ee` |
+| 3   | `0742e2137c9062db1d61736aebd44eb7ace0a3307e48fa75afccf895c59460a7` |
+| 4   | `49136e9feb46561ec8c05f524d0b507e1c98a628d70d7939795627bb2c31c79a` |
+| 5   | `02152c649db818900aea1864553af4651c614b621fefa4d939d69cc96833639b` |
+| 6   | `193e37ad8b1394274c2e7e152d70b7bfb1ab2d3bb05a4787e4f9780302182a42` |
+| 7   | `771ef9937175021eeac5d2803d691c2bd438e59634ec2325cc347159bd0b94b4` |
+| 8   | `67ca7e9472da1d8a6ad512c88c2544c73ad78e5cf2a43695d5ed1f5365682ad4` |
+
+The public `examples/picture-geometry.opendeck` and `.pptx` derive **directly from the original COM-authored fixture**. Unsupported native picture masks become rectangular frames with warnings. The XML probe has a separate ignored export.
+
+Reproduce export/native acceptance from the committed inputs:
+
+```powershell
+node scripts/generate-picture-geometry-example.mjs
+powershell -File scripts/verify-picture-geometry-with-powerpoint.ps1
+node scripts/check-picture-geometry-office-roundtrip.mjs
+python scripts/analyze-picture-geometry-native.py
+```
+
+The verifier opens only dedicated project files and saves separate ignored copies. The checker verifies current export hashes, independent COM properties and saved-copy semantics. The Python script requires Pillow and samples native PNGs against original bitmap coordinates without using application geometry helpers. [TESTING.md](TESTING.md) records 18 reviewed export renders and 972 passing supported pixel samples, with 26 additional measurements of unsupported fixed-fill rotation kept separate.
+
+An additional original, editor-authored two-slide probe tests six contain/cover/stretch controls and four legacy EXIF 6/7 controls with asymmetric rectangles, existing flips and rotation. `generate-picture-editor-probe.mjs` constructs the geometry directly in the native model; `verify-picture-geometry-with-powerpoint.ps1 -OnlyEditor`, `check-picture-editor-roundtrip.mjs` and `analyze-picture-editor-native.py` verify it independently. Its ignored PPTX hash is `5dccf901d4ec2a85873c72d64053f3c9e7a7a28f18a49689be35f7c16e27ac31`. This closes a different path from the imported fixtures, whose pictures all use explicit stretch mapping.
+
+To recreate the public inputs intentionally, run the calibration Python script, the native authoring PowerShell script and then the XML probe generator. Recreating inputs can change metadata, native defaults, JPEG/PNG encoding and package bytes. Review all content, sanitation, hashes and acceptance results before replacing frozen files. Regular CI reads committed inputs without Office. Generated provenance, COM properties, native saved copies, edge experiments, pixel measurements and PNGs remain under ignored `test-results/picture-geometry-powerpoint/`. Older published fixtures/examples were not changed.
+
 ## Synthetic OOXML and generated round trips
 
 `src/pptx.test.ts` also creates small OOXML packages in memory to isolate relationship ordering, malformed input, theme/layout inheritance, groups, and warning behavior. These synthetic packages deliberately focus on importer cases; they are not all complete, independently validated PowerPoint presentations.
