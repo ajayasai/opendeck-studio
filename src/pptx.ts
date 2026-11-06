@@ -4,6 +4,7 @@ import { contrastText, validateDeck } from './model';
 import { getParagraphs, plainText, safeHyperlink } from './richText';
 import { resolveTextFrame } from './textFrame';
 import { resolveAutoFit } from './textFit';
+import { gradientRenderingWarnings } from './gradient';
 import {
   DEFAULT_TEXT_CORNER_RADIUS,
   resolveTextDecoration,
@@ -22,12 +23,15 @@ import type {
   TextRun,
   TextAutoFit,
   TextDecoration,
+  GradientFill,
+  RelativeGradientRect,
 } from './types';
 
 // ECMA-376: Open Packaging Conventions and PresentationML. Import deliberately
 // creates an editable subset; it is not a lossless OOXML round-trip engine.
 const EMU = 9525;
 const DRAWING_NS = 'http://schemas.openxmlformats.org/drawingml/2006/main';
+const PRESENTATION_NS = 'http://schemas.openxmlformats.org/presentationml/2006/main';
 const RELATIONSHIP_NS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
 const PACKAGE_NS = 'http://schemas.openxmlformats.org/package/2006/relationships';
 const MAX_INPUT = 50 * 1024 * 1024;
@@ -41,6 +45,8 @@ const autoFitWarning =
   'Automatic text fitting can reflow differently in other applications because font metrics and line layout differ.';
 const nativeDash = (dash: string) => dash.replace(/^longDash/, 'lgDash');
 const modelDash = (dash: string) => dash.replace(/^lgDash/, 'longDash');
+const sparseGradientWarning =
+  'Gradients with fewer than two stops are exported as an equivalent two-stop solid ramp so PowerPoint can open the file.';
 const identifier = () => crypto.randomUUID();
 const hex = (color: string, fallback = 'FFFFFF') =>
   /^#[\da-f]{6}$/i.test(color) ? color.slice(1) : fallback;
@@ -90,6 +96,85 @@ function textRotationUnits(rotation: number): number {
     : Math.round((rotation % 360 || Math.sign(rotation) * 360) * 60000);
 }
 
+function writeGradient(doc: Document, gradient: GradientFill, opacity: number): Element {
+  const node = drawingNode(doc, 'gradFill', {
+    ...(gradient.flip !== undefined ? { flip: gradient.flip } : {}),
+    ...(gradient.rotateWithShape !== undefined
+      ? { rotWithShape: gradient.rotateWithShape ? '1' : '0' }
+      : {}),
+  });
+  const stops = drawingNode(doc, 'gsLst');
+  const sourceStops =
+    gradient.stops.length >= 2
+      ? gradient.stops
+      : [
+          { ...(gradient.stops[0] ?? { color: '#000000', opacity: 1 }), position: 0 },
+          { ...(gradient.stops[0] ?? { color: '#000000', opacity: 1 }), position: 1 },
+        ];
+  for (const stop of sourceStops) {
+    const entry = drawingNode(doc, 'gs', { pos: fitPercentage(stop.position) });
+    const rgb = drawingNode(doc, 'srgbClr', { val: hex(stop.color) });
+    rgb.appendChild(drawingNode(doc, 'alpha', { val: fitPercentage(stop.opacity * opacity) }));
+    entry.appendChild(rgb);
+    stops.appendChild(entry);
+  }
+  node.appendChild(stops);
+  const rect = (name: string, value: RelativeGradientRect) =>
+    drawingNode(
+      doc,
+      name,
+      Object.fromEntries(
+        (['left', 'top', 'right', 'bottom'] as const)
+          .filter((side) => value[side] !== undefined)
+          .map((side) => [side[0], fitPercentage(value[side]!)]),
+      ),
+    );
+  if (gradient.kind === 'linear')
+    node.appendChild(
+      drawingNode(doc, 'lin', {
+        ...(gradient.angle !== undefined
+          ? { ang: Math.min(21599999, Math.round(gradient.angle * 60000)) }
+          : {}),
+        ...(gradient.scaled !== undefined ? { scaled: gradient.scaled ? '1' : '0' } : {}),
+      }),
+    );
+  else {
+    const path = drawingNode(
+      doc,
+      'path',
+      gradient.path !== undefined ? { path: gradient.path } : {},
+    );
+    if (gradient.fillToRect !== undefined)
+      path.appendChild(rect('fillToRect', gradient.fillToRect));
+    node.appendChild(path);
+  }
+  if (gradient.tileRect !== undefined) node.appendChild(rect('tileRect', gradient.tileRect));
+  return node;
+}
+
+function writePaint(doc: Document, value: TextDecoration['fill'], opacity = 1): Element {
+  if (!value) return drawingNode(doc, 'noFill');
+  if (value.gradient) return writeGradient(doc, value.gradient, value.opacity * opacity);
+  const fill = drawingNode(doc, 'solidFill');
+  const rgb = drawingNode(doc, 'srgbClr', { val: hex(value.color) });
+  rgb.appendChild(drawingNode(doc, 'alpha', { val: fitPercentage(value.opacity * opacity) }));
+  fill.appendChild(rgb);
+  return fill;
+}
+
+function replacePaint(parent: Element, paint: Element): void {
+  const previous = paintChild(parent);
+  if (previous) previous.replaceWith(paint);
+  else if (parent.localName === 'ln') parent.prepend(paint);
+  else
+    parent.insertBefore(
+      paint,
+      Array.from(parent.children).find((child) =>
+        ['ln', 'effectLst', 'effectDag', 'scene3d', 'sp3d', 'extLst'].includes(child.localName),
+      ) ?? null,
+    );
+}
+
 function writeTextBody(
   doc: Document,
   shape: Element,
@@ -125,16 +210,7 @@ function writeTextBody(
         }),
       );
     preset.appendChild(adjustments);
-    const paint = (value: TextDecoration['fill']): Element => {
-      if (!value) return drawingNode(doc, 'noFill');
-      const fill = drawingNode(doc, 'solidFill');
-      const rgb = drawingNode(doc, 'srgbClr', { val: hex(value.color) });
-      rgb.appendChild(
-        drawingNode(doc, 'alpha', { val: fitPercentage(value.opacity * source.opacity) }),
-      );
-      fill.appendChild(rgb);
-      return fill;
-    };
+    const paint = (value: TextDecoration['fill']) => writePaint(doc, value, source.opacity);
     const line = drawingNode(doc, 'ln', { w: Math.round((decoration.line?.width ?? 0) * EMU) });
     if (decoration.line?.cap)
       line.setAttribute(
@@ -329,6 +405,46 @@ function writeTextBody(
 
 export function pptxExportWarnings(deck: Deck): string[] {
   const warnings: string[] = [];
+  const gradients: Array<{ gradient: GradientFill; opacity: number }> = [];
+  for (const slide of deck.slides) {
+    if (slide.backgroundGradient)
+      gradients.push({ gradient: slide.backgroundGradient, opacity: slide.backgroundOpacity ?? 1 });
+    for (const element of slide.elements) {
+      if (element.type === 'text') {
+        for (const paint of [element.decoration?.fill, element.decoration?.line])
+          if (paint?.gradient)
+            gradients.push({ gradient: paint.gradient, opacity: paint.opacity * element.opacity });
+      } else if (element.type === 'shape') {
+        if (element.fillGradient)
+          gradients.push({
+            gradient: element.fillGradient,
+            opacity: (element.fillOpacity ?? 1) * element.opacity,
+          });
+        if (element.strokeGradient)
+          gradients.push({
+            gradient: element.strokeGradient,
+            opacity: (element.strokeOpacity ?? 1) * element.opacity,
+          });
+        if (element.shape === 'arrow' && (element.strokeGradient || element.fillGradient))
+          warnings.push(
+            'Gradient bounds around arrowheads are approximated; PowerPoint can extend the gradient beyond the line bounds.',
+          );
+      }
+    }
+  }
+  for (const { gradient, opacity } of gradients) {
+    if (gradient.stops.length < 2) warnings.push(sparseGradientWarning);
+    warnings.push(
+      ...gradientRenderingWarnings(
+        opacity === 1
+          ? gradient
+          : {
+              ...gradient,
+              stops: gradient.stops.map((stop) => ({ ...stop, opacity: stop.opacity * opacity })),
+            },
+      ),
+    );
+  }
   if (
     deck.slides.some((slide) =>
       slide.elements.some((element) => {
@@ -587,6 +703,68 @@ export async function exportPptx(deck: Deck): Promise<Blob> {
       const textSource = textSources[textIndex];
       if (textSource) writeTextBody(doc, shape, textSource, relations);
     });
+    const ordinaryShapes = descendants(doc, 'sp').filter(
+      (sp) => attr(descendant(sp, 'cNvSpPr'), 'txBox') !== '1',
+    );
+    const ordinarySources = source.elements.filter((element) => element.type === 'shape');
+    ordinaryShapes.forEach((shape, shapeIndex) => {
+      const element = ordinarySources[shapeIndex];
+      const properties = child(shape, 'spPr');
+      if (!element || !properties) return;
+      const linear = element.shape === 'line' || element.shape === 'arrow';
+      if (element.fillGradient !== undefined || element.fillOpacity !== undefined)
+        replacePaint(
+          properties,
+          writePaint(
+            doc,
+            element.fill === 'transparent' && !element.fillGradient
+              ? null
+              : {
+                  color: element.fill,
+                  opacity: element.fillOpacity ?? 1,
+                  gradient: element.fillGradient,
+                },
+            element.opacity,
+          ),
+        );
+      const useFill = linear && element.stroke === 'transparent' && !element.strokeGradient;
+      const gradient = element.strokeGradient ?? (useFill ? element.fillGradient : undefined);
+      const alpha = useFill ? element.fillOpacity : element.strokeOpacity;
+      if (gradient !== undefined || alpha !== undefined) {
+        const line = child(properties, 'ln') ?? drawingNode(doc, 'ln');
+        if (!line.parentNode) properties.appendChild(line);
+        replacePaint(
+          line,
+          writePaint(
+            doc,
+            !linear && (element.stroke === 'transparent' || element.strokeWidth === 0) && !gradient
+              ? null
+              : {
+                  color: useFill ? element.fill : element.stroke,
+                  opacity: alpha ?? 1,
+                  gradient,
+                },
+            element.opacity,
+          ),
+        );
+      }
+    });
+    if (source.backgroundGradient !== undefined || source.backgroundOpacity !== undefined) {
+      const root = child(doc.documentElement, 'cSld');
+      if (root) {
+        const bg = child(root, 'bg') ?? doc.createElementNS(PRESENTATION_NS, 'p:bg');
+        const props = doc.createElementNS(PRESENTATION_NS, 'p:bgPr');
+        props.appendChild(
+          writePaint(doc, {
+            color: source.background,
+            opacity: source.backgroundOpacity ?? 1,
+            gradient: source.backgroundGradient,
+          }),
+        );
+        bg.replaceChildren(props);
+        if (!bg.parentNode) root.prepend(bg);
+      }
+    }
     zip.file(relPath, new XMLSerializer().serializeToString(relations));
     xml = new XMLSerializer().serializeToString(doc);
     if (source.transition !== 'none') {
@@ -717,6 +895,12 @@ function color(node: Element | undefined | null, colors: Colors, fallback: strin
 }
 
 type Paint = NonNullable<TextDecoration['fill']>;
+interface PaintCandidate {
+  node?: Element;
+  reference?: Element;
+  none?: boolean;
+  unresolved?: boolean;
+}
 const paintNames = ['noFill', 'solidFill', 'gradFill', 'pattFill', 'blipFill', 'grpFill'];
 const paintChild = (node: Element | undefined) =>
   node && Array.from(node.children).find((entry) => paintNames.includes(entry.localName));
@@ -724,6 +908,190 @@ const paintChild = (node: Element | undefined) =>
 function percentage(value: string | null, fallback = 0): number {
   if (value?.trim().endsWith('%')) return number(value.trim().slice(0, -1), fallback * 100) / 100;
   return number(value, fallback * 100000) / 100000;
+}
+
+function paintReference(
+  ref: Element | undefined,
+  kind: 'fill' | 'ln',
+  themeDoc: Document | undefined,
+): PaintCandidate | undefined {
+  if (!ref) return undefined;
+  const idx = number(attr(ref, 'idx'), -1);
+  if (idx === 0 || (kind === 'fill' && idx === 1000)) return { none: true };
+  const matrix = descendant(themeDoc, 'fmtScheme');
+  const list = child(
+    matrix,
+    kind === 'ln' ? 'lnStyleLst' : idx > 1000 ? 'bgFillStyleLst' : 'fillStyleLst',
+  );
+  const style = list?.children[idx - (idx > 1000 && kind === 'fill' ? 1001 : 1)];
+  return style ? { node: style, reference: ref } : { none: true, unresolved: true };
+}
+
+function shapePaintCandidates(
+  nodes: Array<Element | undefined>,
+  themeDoc: Document | undefined,
+): { fill: PaintCandidate[]; line: PaintCandidate[] } {
+  const fill: PaintCandidate[] = [],
+    line: PaintCandidate[] = [];
+  for (const node of nodes) {
+    const properties = child(node, 'spPr');
+    const directFill = paintChild(properties),
+      directLine = child(properties, 'ln');
+    if (directFill) fill.push({ node: directFill });
+    const fillRef = paintReference(child(child(node, 'style'), 'fillRef'), 'fill', themeDoc);
+    if (fillRef) fill.push(fillRef);
+    if (directLine) line.push({ node: directLine });
+    const lineRef = paintReference(child(child(node, 'style'), 'lnRef'), 'ln', themeDoc);
+    if (lineRef) line.push(lineRef);
+  }
+  return { fill, line };
+}
+
+function readGradient(candidates: PaintCandidate[], colors: Colors, warn: Warn): GradientFill {
+  const ratio = (value: string | null, fallback: number, label: string): number => {
+    const source = value?.trim() ?? '';
+    if (!/^[+-]?\d+$/.test(source) && !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)%$/.test(source)) {
+      warn(`Invalid or missing gradient ${label} used its default value.`);
+      return fallback;
+    }
+    const result = percentage(source, fallback);
+    if (!Number.isFinite(result)) {
+      warn(`Invalid gradient ${label} used its default value.`);
+      return fallback;
+    }
+    return result;
+  };
+  const chain: PaintCandidate[] = [];
+  for (const candidate of candidates) {
+    if (candidate.none || candidate.node?.localName !== 'gradFill') break;
+    chain.push(candidate);
+  }
+  const firstAttr = (nodes: Array<Element | undefined>, name: string) =>
+    nodes.map((node) => attr(node, name)).find((value) => value !== null);
+  const nodes = chain.map((candidate) => candidate.node);
+  const choiceNodes: Element[] = [];
+  for (const node of nodes) {
+    const choice =
+      node && Array.from(node.children).find((entry) => ['lin', 'path'].includes(entry.localName));
+    if (!choice) continue;
+    if (choiceNodes[0] && choice.localName !== choiceNodes[0].localName) break;
+    choiceNodes.push(choice);
+  }
+  const gradient: GradientFill = {
+    kind: choiceNodes[0]?.localName === 'path' ? 'path' : 'linear',
+    stops: [],
+  };
+  const listSource = chain.find((candidate) => child(candidate.node, 'gsLst'));
+  if (!listSource)
+    gradient.stops = [
+      { position: 0, color: '#000000', opacity: 1 },
+      { position: 1, color: '#FFFFFF', opacity: 1 },
+    ];
+  else {
+    const entries = children(child(listSource.node, 'gsLst'), 'gs');
+    if (entries.length > 256) warn('A gradient exceeded 256 stops; extra stops were omitted.');
+    if (entries.length < 2)
+      warn(
+        'A gradient has fewer than two stops; PowerPoint requires a normalized two-stop ramp when this file is exported.',
+      );
+    const placeholder = listSource.reference
+      ? decorationColor(listSource.reference, colors, warn)
+      : undefined;
+    gradient.stops = entries.slice(0, 256).map((entry) => {
+      const position = ratio(attr(entry, 'pos'), 0, 'stop position');
+      if (position < 0 || position > 1)
+        warn('Gradient stop positions outside 0–100% were limited.');
+      return {
+        position: clamp(position, 0, 1),
+        ...decorationColor(entry, colors, warn, placeholder),
+      };
+    });
+  }
+  const boolean = (value: string | undefined, name: string): boolean | undefined => {
+    if (value === undefined) return undefined;
+    if (['0', '1', 'false', 'true'].includes(value)) return value === '1' || value === 'true';
+    warn(`Invalid gradient ${name} used false.`);
+    return false;
+  };
+  const flip = firstAttr(nodes, 'flip');
+  if (flip !== undefined) {
+    if (['none', 'x', 'y', 'xy'].includes(flip)) gradient.flip = flip as GradientFill['flip'];
+    else {
+      warn('An unsupported gradient tile flip was imported as none.');
+      gradient.flip = 'none';
+    }
+  }
+  const rotate = boolean(firstAttr(nodes, 'rotWithShape'), 'rotation behavior');
+  if (rotate !== undefined) gradient.rotateWithShape = rotate;
+  const readRect = (rect: Element): RelativeGradientRect => {
+    const result: RelativeGradientRect = {};
+    for (const side of ['left', 'top', 'right', 'bottom'] as const) {
+      const value = attr(rect, side[0]);
+      if (value === null) continue;
+      const offset = ratio(value, 0, 'rectangle offset');
+      if (offset < -21474.83648 || offset > 21474.83647)
+        warn('Gradient rectangle offsets outside the supported range were limited.');
+      result[side] = clamp(offset, -21474.83648, 21474.83647);
+    }
+    return result;
+  };
+  if (gradient.kind === 'linear') {
+    const angle = firstAttr(choiceNodes, 'ang');
+    if (angle !== undefined) {
+      const valid = /^[+-]?\d+$/.test(angle.trim()) && Number.isFinite(Number(angle));
+      if (!valid) warn('Invalid gradient angle used zero.');
+      const value = valid ? Number(angle) / 60000 : 0;
+      if (value < 0 || value >= 360) warn('A gradient angle outside one turn was normalized.');
+      gradient.angle = value >= 0 && value < 360 ? value : ((value % 360) + 360) % 360;
+    }
+    const scaled = boolean(firstAttr(choiceNodes, 'scaled'), 'angle scaling');
+    if (scaled !== undefined) gradient.scaled = scaled;
+  } else {
+    const path = firstAttr(choiceNodes, 'path');
+    if (path !== undefined) {
+      if (['circle', 'rect', 'shape'].includes(path)) gradient.path = path as GradientFill['path'];
+      else {
+        warn('An unsupported gradient path was imported as a shape path.');
+        gradient.path = 'shape';
+      }
+    }
+    const focus = choiceNodes.map((node) => child(node, 'fillToRect')).find(Boolean);
+    if (focus) gradient.fillToRect = readRect(focus);
+  }
+  const tile = nodes.map((node) => child(node, 'tileRect')).find(Boolean);
+  if (tile) gradient.tileRect = readRect(tile);
+  for (const warning of gradientRenderingWarnings(gradient)) warn(warning);
+  return gradient;
+}
+
+function readPaintCandidates(
+  candidates: PaintCandidate[],
+  colors: Colors,
+  warn: Warn,
+): Paint | null {
+  const candidate = candidates[0];
+  if (candidate?.unresolved)
+    warn('An unresolved theme decoration reference was imported without its paint.');
+  if (!candidate || candidate.none || candidate.node?.localName === 'noFill') return null;
+  if (candidate.node?.localName === 'gradFill') {
+    const gradient = readGradient(candidates, colors, warn);
+    return { color: gradient.stops[0]?.color ?? '#000000', opacity: 1, gradient };
+  }
+  if (candidate.node?.localName !== 'solidFill') {
+    warn('Pattern, picture, and group paints are not retained.');
+    return null;
+  }
+  for (const source of candidates) {
+    if (source.none || source.node?.localName !== 'solidFill') break;
+    if (Array.from(source.node.children).some((entry) => entry.localName.endsWith('Clr')))
+      return decorationColor(
+        source.node,
+        colors,
+        warn,
+        source.reference ? decorationColor(source.reference, colors, warn) : undefined,
+      );
+  }
+  return decorationColor(candidate.node, colors, warn);
 }
 
 /** Materialize solid DrawingML paint; luminance/saturation operate in HSL, not RGB. */
@@ -793,6 +1161,8 @@ function decorationColor(
             : (r - g) / delta + 4;
     return [h / 6, delta === 0 ? 0 : delta / (1 - Math.abs(2 * l - 1)), l];
   };
+  const linear = (v: number) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+  const srgb = (v: number) => (v <= 0.0031308 ? v * 12.92 : 1.055 * v ** (1 / 2.4) - 0.055);
   if (c.localName === 'hslClr')
     channels = fromHsl(
       number(attr(c, 'hue')) / 21600000,
@@ -800,7 +1170,6 @@ function decorationColor(
       percentage(attr(c, 'lum')),
     );
   else if (c.localName === 'scrgbClr') {
-    const srgb = (v: number) => (v <= 0.0031308 ? v * 12.92 : 1.055 * v ** (1 / 2.4) - 0.055);
     channels = ['r', 'g', 'b'].map((key) => srgb(clamp(percentage(attr(c, key)), 0, 1)));
   } else {
     if (!rgb || !/^[\da-f]{6}$/i.test(rgb)) {
@@ -815,8 +1184,12 @@ function decorationColor(
     if (kind === 'alpha') opacity = fraction;
     else if (kind === 'alphaMod') opacity *= fraction;
     else if (kind === 'alphaOff') opacity += fraction;
-    else if (kind === 'tint') channels = channels.map((v) => v * fraction + 1 - fraction);
-    else if (kind === 'shade') channels = channels.map((v) => v * fraction);
+    // Native theme-stop probes confirm tint/shade mix linear-light channels;
+    // HSL luminance transforms above/below remain a different operation.
+    else if (kind === 'tint')
+      channels = channels.map((v) => srgb(clamp(linear(v) * fraction + 1 - fraction, 0, 1)));
+    else if (kind === 'shade')
+      channels = channels.map((v) => srgb(clamp(linear(v) * fraction, 0, 1)));
     else if (/^(lum|sat|hue)(Mod|Off)?$/.test(kind)) {
       const hsl = toHsl(),
         index = kind.startsWith('hue') ? 0 : kind.startsWith('sat') ? 1 : 2;
@@ -862,66 +1235,14 @@ function readDecoration(
   themeDoc: Document | undefined,
   warn: Warn,
 ): TextDecoration {
-  type Candidate = { node?: Element; reference?: Element; none?: boolean; unresolved?: boolean };
-  const matrix = descendant(themeDoc, 'fmtScheme');
-  const reference = (node: Element | undefined, kind: 'fill' | 'ln'): Candidate | undefined => {
-    const ref = child(child(node, 'style'), `${kind}Ref`);
-    if (!ref) return undefined;
-    const idx = number(attr(ref, 'idx'), -1);
-    if (idx === 0 || (kind === 'fill' && idx === 1000)) return { none: true };
-    const list = child(
-      matrix,
-      kind === 'ln' ? 'lnStyleLst' : idx > 1000 ? 'bgFillStyleLst' : 'fillStyleLst',
-    );
-    const style = list?.children[idx - (idx > 1000 && kind === 'fill' ? 1001 : 1)];
-    if (!style) {
-      return { none: true, unresolved: true };
-    }
-    return { node: style, reference: ref };
-  };
-  const fillCandidates: Candidate[] = [],
-    lineCandidates: Candidate[] = [];
-  for (const node of nodes) {
-    const props = child(node, 'spPr');
-    const fill = paintChild(props),
-      line = child(props, 'ln');
-    if (fill) fillCandidates.push({ node: fill });
-    const fillRef = reference(node, 'fill');
-    if (fillRef) fillCandidates.push(fillRef);
-    if (line) lineCandidates.push({ node: line });
-    const lineRef = reference(node, 'ln');
-    if (lineRef) lineCandidates.push(lineRef);
-  }
-  const readPaint = (candidates: Candidate[]): Paint | null => {
-    const candidate = candidates[0];
-    if (candidate?.unresolved)
-      warn('An unresolved theme decoration reference was imported without its paint.');
-    if (!candidate || candidate.none || candidate.node?.localName === 'noFill') return null;
-    if (candidate.node?.localName !== 'solidFill') {
-      warn('Gradient, pattern, picture, and group text-box paints are not retained.');
-      return null;
-    }
-    // An empty same-type fill inherits its missing color. A different paint
-    // choice (including explicit noFill) ends this supported merge chain.
-    for (const source of candidates) {
-      if (source.none || source.node?.localName !== 'solidFill') break;
-      if (Array.from(source.node.children).some((entry) => entry.localName.endsWith('Clr')))
-        return decorationColor(
-          source.node,
-          colors,
-          warn,
-          source.reference ? decorationColor(source.reference, colors, warn) : undefined,
-        );
-    }
-    return decorationColor(candidate.node, colors, warn);
-  };
-  const fill = readPaint(fillCandidates);
+  const { fill: fillCandidates, line: lineCandidates } = shapePaintCandidates(nodes, themeDoc);
+  const fill = readPaintCandidates(fillCandidates, colors, warn);
   const linePaint = lineCandidates
     .map((candidate) =>
       candidate.none ? candidate : { ...candidate, node: paintChild(candidate.node) },
     )
     .filter((candidate) => candidate.none || candidate.node);
-  const paint = readPaint(linePaint);
+  const paint = readPaintCandidates(linePaint, colors, warn);
   const lineAttr = (name: string) =>
     lineCandidates.map((c) => attr(c.node, name)).find((v) => v !== null);
   const lineChoice = (names: string[]) =>
@@ -1291,6 +1612,10 @@ function readParagraphs(
       const italic = firstDefinedAttribute(styles, 'i');
       const underline = firstDefinedAttribute(styles, 'u');
       const runPaint = styles.map((style) => paintChild(style)).find(Boolean);
+      if (runPaint && !['solidFill', 'noFill'].includes(runPaint.localName))
+        warn(
+          'Gradient, pattern, and picture glyph paints are not retained; text uses a solid color.',
+        );
       textAlphas?.push(
         runPaint?.localName === 'noFill'
           ? 0
@@ -1666,19 +1991,32 @@ export async function importPptx(
     }
     const layoutTemplates = descendants(layout, 'sp');
     const masterTemplates = descendants(master, 'sp');
-    const bg =
-      child(child(slideDoc.documentElement, 'cSld'), 'bg') ??
-      child(child(layout?.documentElement, 'cSld'), 'bg') ??
-      child(child(master?.documentElement, 'cSld'), 'bg');
-    const background = color(descendant(bg, 'solidFill'), colors, '#ffffff');
-    if (descendant(bg, 'blipFill') || descendant(bg, 'gradFill') || descendant(bg, 'bgRef'))
-      warn('Picture, gradient, and style-reference slide backgrounds are simplified.');
+    const backgrounds = [slideDoc, layout, master].map((doc) =>
+      child(child(doc?.documentElement, 'cSld'), 'bg'),
+    );
+    const backgroundCandidates: PaintCandidate[] = [];
+    for (const bg of backgrounds) {
+      const paint = paintChild(child(bg, 'bgPr'));
+      if (paint) backgroundCandidates.push({ node: paint });
+      const ref = paintReference(child(bg, 'bgRef'), 'fill', themeDoc);
+      if (ref) backgroundCandidates.push(ref);
+    }
+    const backgroundPaint = readPaintCandidates(backgroundCandidates, colors, warn);
+    const background = backgroundPaint?.color ?? '#ffffff';
     const slide: Slide = {
       id: identifier(),
       name: (
         attr(child(slideDoc.documentElement, 'cSld'), 'name') || `Slide ${slideIndex + 1}`
       ).slice(0, 256),
       background,
+      ...(backgroundPaint?.gradient ? { backgroundGradient: backgroundPaint.gradient } : {}),
+      ...(backgroundPaint
+        ? backgroundPaint.opacity !== 1
+          ? { backgroundOpacity: backgroundPaint.opacity }
+          : {}
+        : backgroundCandidates.length
+          ? { backgroundOpacity: 0 }
+          : {}),
       elements: [],
       notes: '',
       transition: 'none',
@@ -1744,12 +2082,11 @@ export async function importPptx(
       const geometry = base(node, template, transform);
       const properties = child(node, 'spPr');
       if (
-        descendant(properties, 'gradFill') ||
         descendant(properties, 'pattFill') ||
         descendant(properties, 'effectLst') ||
         descendant(properties, 'custGeom')
       )
-        warn('Gradients, patterns, effects, and custom geometry are simplified.');
+        warn('Patterns, effects, and custom geometry are simplified.');
       if (
         attr(descendant(properties, 'xfrm'), 'flipH') === '1' ||
         attr(descendant(properties, 'xfrm'), 'flipV') === '1'
@@ -1780,15 +2117,31 @@ export async function importPptx(
           rightArrow: 'arrow',
           straightConnector1: 'line',
         };
-        const solidFill = child(properties, 'solidFill');
+        const visibleFill = Array.from(properties?.children ?? []).some((entry) =>
+          ['solidFill', 'gradFill', 'pattFill', 'blipFill', 'grpFill'].includes(entry.localName),
+        );
         const line = child(properties, 'ln');
         const isTextBox = ['1', 'true'].includes(attr(descendant(node, 'cNvSpPr'), 'txBox') ?? '');
         const unifiedText =
           (text || isTextBox) &&
           ['rect', 'roundRect', 'ellipse', 'triangle'].includes(preset) &&
           inheritedPreset?.localName !== 'custGeom';
-        if (!text && descendant(node, 'ph') && !solidFill && !line) return;
+        if (!text && descendant(node, 'ph') && !visibleFill && !line) return;
         if (!unifiedText && !isTextBox) {
+          const candidates = shapePaintCandidates(shapeCascade, themeDoc);
+          const fillPaint = readPaintCandidates(candidates.fill, colors, warn);
+          const strokePaint = readPaintCandidates(
+            candidates.line
+              .map((candidate) =>
+                candidate.none ? candidate : { ...candidate, node: paintChild(candidate.node) },
+              )
+              .filter((candidate) => candidate.none || candidate.node),
+            colors,
+            warn,
+          );
+          const inheritedWidth = candidates.line
+            .map((candidate) => attr(candidate.node, 'w'))
+            .find((value) => value !== null);
           if (!shapeMap[preset])
             warn(`Unsupported shape geometry “${preset}” was approximated by a rectangle.`);
           let kind = shapeMap[preset] ?? 'rect';
@@ -1816,13 +2169,16 @@ export async function importPptx(
             ...lineGeometry,
             type: 'shape',
             shape: kind,
-            fill: child(properties, 'noFill')
-              ? 'transparent'
-              : color(solidFill, colors, text ? 'transparent' : theme.accent),
-            stroke: child(line, 'noFill')
-              ? 'transparent'
-              : color(child(line, 'solidFill'), colors, 'transparent'),
-            strokeWidth: child(line, 'noFill') ? 0 : clamp(number(attr(line, 'w')) / EMU, 0, 100),
+            opacity: 1,
+            fill: fillPaint?.color ?? 'transparent',
+            stroke: strokePaint?.color ?? 'transparent',
+            strokeWidth: strokePaint ? clamp(number(inheritedWidth) / EMU, 0, 100) : 0,
+            ...(fillPaint?.gradient ? { fillGradient: fillPaint.gradient } : {}),
+            ...(strokePaint?.gradient ? { strokeGradient: strokePaint.gradient } : {}),
+            ...(fillPaint && fillPaint.opacity !== 1 ? { fillOpacity: fillPaint.opacity } : {}),
+            ...(strokePaint && strokePaint.opacity !== 1
+              ? { strokeOpacity: strokePaint.opacity }
+              : {}),
           });
         }
         if (text || isTextBox) {

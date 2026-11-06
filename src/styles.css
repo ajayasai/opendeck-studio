@@ -537,7 +537,10 @@ kbd {
   transform-origin: top left;
   overflow: hidden;
 }
-.editing-slide.show-grid {
+.canvas-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
   background-image:
     linear-gradient(#7892761c 1px, transparent 1px),
     linear-gradient(90deg, #7892761c 1px, transparent 1px);
@@ -834,9 +837,11 @@ kbd {
 }
 .color-field > span:first-child {
   flex: 1;
+  min-width: 0;
 }
-.color-field input {
+.color-field input[type='color'] {
   width: 26px;
+  flex-shrink: 0;
   height: 26px;
   border: 1px solid #dbe3d2;
   border-radius: 4px;
@@ -844,10 +849,45 @@ kbd {
   background: white;
   cursor: pointer;
 }
-.color-value {
-  font-size: 9px;
-  color: #839171;
-  width: 53px;
+.color-field input.color-hex {
+  width: 75px;
+  flex-shrink: 0;
+  min-width: 0;
+  padding: 5px;
+  font:
+    10px ui-monospace,
+    Consolas,
+    monospace;
+  color: #546847;
+}
+.gradient-controls {
+  min-width: 0;
+}
+.gradient-stop-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: -7px 0 10px;
+}
+.gradient-stop-actions button.secondary-button {
+  flex: 1;
+  margin: 0;
+}
+.gradient-advanced {
+  border: 1px solid #dce5d2;
+  border-radius: 5px;
+  padding: 9px;
+  margin: 12px 0;
+}
+.gradient-advanced summary {
+  cursor: pointer;
+  font-size: 10px;
+  color: #546847;
+}
+.gradient-advanced legend {
+  padding: 12px 0 8px;
+  font-size: 10px;
+  color: #546847;
 }
 .checkbox-field {
   font-size: 10px;

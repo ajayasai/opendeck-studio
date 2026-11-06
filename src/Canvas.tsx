@@ -6,6 +6,7 @@ import { replacePlainText } from './richText';
 import { resolveTextFrame, textContentRect } from './textFrame';
 import { textScale } from './textLayout';
 import TextDecorationView from './TextDecorationView';
+import SlideBackground, { slideBaseBackground } from './SlideBackground';
 
 interface Props {
   ref?: Ref<CanvasHandle>;
@@ -233,7 +234,7 @@ export default function Canvas({
         style={{
           width: deck.width,
           height: deck.height,
-          backgroundColor: slide.background,
+          backgroundColor: slideBaseBackground(slide),
           transform: `scale(${zoom})`,
         }}
         onPointerDown={(ev) => {
@@ -246,6 +247,8 @@ export default function Canvas({
           onSelect([]);
         }}
       >
+        <SlideBackground slide={slide} width={deck.width} height={deck.height} />
+        {grid && <div className="canvas-grid" aria-hidden="true" />}
         {elements.map((e) => (
           <div
             key={e.id}

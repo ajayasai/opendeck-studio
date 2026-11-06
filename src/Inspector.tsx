@@ -21,6 +21,7 @@ import { THEMES } from './model';
 import { replacePlainText } from './richText';
 import { resolveTextFrame, textContentRect } from './textFrame';
 import { resolveAutoFit } from './textFit';
+import { gradientColorAt, MAX_GRADIENT_STOPS, resolveGradientRect } from './gradient';
 import {
   DEFAULT_TEXT_CORNER_RADIUS,
   resolveTextDecoration,
@@ -37,6 +38,7 @@ import type {
   TextAutoFit,
   TextDecoration,
   TextDecorationLine,
+  GradientFill,
   Theme,
 } from './types';
 
@@ -252,11 +254,23 @@ function TextDecorationControls({
       </label>
       {decoration.fill && (
         <>
-          <ColorField
-            label="Text box fill color"
-            value={decoration.fill.color}
-            onChange={(color) => onChange({ ...decoration, fill: { ...decoration.fill!, color } })}
+          <GradientControls
+            label="Text box fill"
+            gradient={decoration.fill.gradient}
+            color={decoration.fill.color}
+            onChange={(gradient) =>
+              onChange({ ...decoration, fill: { ...decoration.fill!, gradient } })
+            }
           />
+          {!decoration.fill.gradient && (
+            <ColorField
+              label="Text box fill color"
+              value={decoration.fill.color}
+              onChange={(color) =>
+                onChange({ ...decoration, fill: { ...decoration.fill!, color } })
+              }
+            />
+          )}
           <NumberField
             label="Fill opacity (%)"
             value={decoration.fill.opacity * 100}
@@ -285,11 +299,23 @@ function TextDecorationControls({
       </label>
       {decoration.line && (
         <>
-          <ColorField
-            label="Text box outline color"
-            value={decoration.line.color}
-            onChange={(color) => onChange({ ...decoration, line: { ...decoration.line!, color } })}
+          <GradientControls
+            label="Text box outline"
+            gradient={decoration.line.gradient}
+            color={decoration.line.color}
+            onChange={(gradient) =>
+              onChange({ ...decoration, line: { ...decoration.line!, gradient } })
+            }
           />
+          {!decoration.line.gradient && (
+            <ColorField
+              label="Text box outline color"
+              value={decoration.line.color}
+              onChange={(color) =>
+                onChange({ ...decoration, line: { ...decoration.line!, color } })
+              }
+            />
+          )}
           <NumberField
             label="Outline opacity (%)"
             value={decoration.line.opacity * 100}
@@ -384,6 +410,276 @@ function TextDecorationControls({
         </>
       )}
     </section>
+  );
+}
+
+function GradientControls({
+  label,
+  gradient,
+  color,
+  onChange,
+  allowRotation = true,
+}: {
+  label: string;
+  gradient?: GradientFill;
+  color: string;
+  onChange: (value: GradientFill | undefined) => void;
+  allowRotation?: boolean;
+}) {
+  const [selected, setSelected] = useState(0);
+  const selectedIndex = Math.min(selected, Math.max(0, (gradient?.stops.length ?? 1) - 1));
+  const stop = gradient?.stops[selectedIndex];
+  const fallback = /^#[0-9a-f]{6}$/i.test(color) ? color : '#245c49';
+  const lightFallback =
+    [1, 3, 5].reduce((sum, start) => sum + parseInt(fallback.slice(start, start + 2), 16), 0) / 3 >
+    220;
+  const replaceStop = (patch: Partial<GradientFill['stops'][number]>) => {
+    if (!gradient || !stop) return;
+    const entries = gradient.stops.map((item, index) => ({
+      stop: index === selectedIndex ? { ...item, ...patch } : item,
+      index,
+    }));
+    if (patch.position !== undefined) entries.sort((a, b) => a.stop.position - b.stop.position);
+    setSelected(entries.findIndex((entry) => entry.index === selectedIndex));
+    onChange({ ...gradient, stops: entries.map((entry) => entry.stop) });
+  };
+  const addStop = () => {
+    if (!gradient || gradient.stops.length >= MAX_GRADIENT_STOPS) return;
+    const ordered = [...gradient.stops].sort((a, b) => a.position - b.position);
+    const boundaries = [0, ...ordered.map((item) => item.position), 1];
+    let start = 0,
+      end = 1,
+      gap = -1;
+    for (let index = 0; index < boundaries.length - 1; index++) {
+      if (boundaries[index + 1] - boundaries[index] > gap) {
+        start = boundaries[index];
+        end = boundaries[index + 1];
+        gap = end - start;
+      }
+    }
+    const position = (start + end) / 2;
+    const next = { position, ...gradientColorAt(gradient, position) };
+    const stops = [...ordered, next].sort((a, b) => a.position - b.position);
+    setSelected(stops.indexOf(next));
+    onChange({ ...gradient, stops });
+  };
+  return (
+    <div className="gradient-controls">
+      <label className="field">
+        <span>{label} type</span>
+        <select
+          value={
+            gradient ? (gradient.kind === 'linear' ? 'linear' : (gradient.path ?? 'rect')) : 'solid'
+          }
+          onChange={(event) => {
+            const kind = event.target.value;
+            if (kind === 'solid') {
+              onChange(undefined);
+              return;
+            }
+            const base: GradientFill = gradient ?? {
+              kind: 'linear',
+              stops: [
+                { position: 0, color: fallback, opacity: 1 },
+                { position: 1, color: lightFallback ? '#245c49' : '#ffffff', opacity: 1 },
+              ],
+              rotateWithShape: true,
+            };
+            const { angle, scaled, path: _path, fillToRect, ...common } = base;
+            onChange(
+              kind === 'linear'
+                ? { ...common, kind: 'linear', angle: angle ?? 0, scaled: scaled ?? true }
+                : {
+                    ...common,
+                    kind: 'path',
+                    path: kind as 'circle' | 'rect' | 'shape',
+                    fillToRect: fillToRect ?? { left: 0.5, top: 0.5, right: 0.5, bottom: 0.5 },
+                  },
+            );
+          }}
+        >
+          <option value="solid">Solid color</option>
+          <option value="linear">Linear gradient</option>
+          <option value="circle">Radial gradient</option>
+          <option value="rect">Rectangular gradient</option>
+          <option value="shape">Shape gradient</option>
+        </select>
+      </label>
+      {gradient && (
+        <>
+          <label className="field">
+            <span>{label} gradient stop</span>
+            <select
+              value={stop ? selectedIndex : ''}
+              onChange={(event) => setSelected(Number(event.target.value))}
+            >
+              {gradient.stops.length === 0 && <option value="">No color stops</option>}
+              {gradient.stops.map((item, index) => (
+                <option key={index} value={index}>
+                  {index + 1} · {Math.round(item.position * 10000) / 100}% ·{' '}
+                  {item.color.toUpperCase()}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="gradient-stop-actions">
+            <button
+              className="secondary-button"
+              disabled={gradient.stops.length >= MAX_GRADIENT_STOPS}
+              aria-label={`Add ${label.toLowerCase()} stop`}
+              onClick={addStop}
+            >
+              Add stop
+            </button>
+            <button
+              className="secondary-button"
+              disabled={gradient.stops.length <= 1}
+              aria-label={`Remove ${label.toLowerCase()} stop`}
+              onClick={() => {
+                const stops = gradient.stops.filter((_, index) => index !== selectedIndex);
+                setSelected(Math.max(0, selectedIndex - 1));
+                onChange({ ...gradient, stops });
+              }}
+            >
+              Remove stop
+            </button>
+          </div>
+          {stop && (
+            <div key={selectedIndex}>
+              <ColorField
+                label={`${label} stop color`}
+                value={stop.color}
+                onChange={(color) => replaceStop({ color })}
+              />
+              <div className="field-grid">
+                <NumberField
+                  label={`${label} stop position (%)`}
+                  value={stop.position * 100}
+                  min={0}
+                  max={100}
+                  step={0.1}
+                  onChange={(value) => replaceStop({ position: value / 100 })}
+                />
+                <NumberField
+                  label={`${label} stop opacity (%)`}
+                  value={stop.opacity * 100}
+                  min={0}
+                  max={100}
+                  step={0.1}
+                  onChange={(value) => replaceStop({ opacity: value / 100 })}
+                />
+              </div>
+            </div>
+          )}
+          {gradient.kind === 'linear' && (
+            <>
+              <NumberField
+                label={`${label} gradient angle (°)`}
+                value={gradient.angle ?? 0}
+                min={0}
+                max={359.99998}
+                step={1}
+                onChange={(angle) => onChange({ ...gradient, angle })}
+              />
+              <label className="checkbox-field">
+                <input
+                  type="checkbox"
+                  checked={gradient.scaled ?? false}
+                  onChange={(event) => onChange({ ...gradient, scaled: event.target.checked })}
+                />
+                Scale {label.toLowerCase()} angle with the box
+              </label>
+            </>
+          )}
+          {allowRotation && (
+            <label className="checkbox-field">
+              <input
+                type="checkbox"
+                checked={gradient.rotateWithShape ?? true}
+                onChange={(event) =>
+                  onChange({ ...gradient, rotateWithShape: event.target.checked })
+                }
+              />
+              Rotate {label.toLowerCase()} gradient with the object
+            </label>
+          )}
+          <details className="gradient-advanced">
+            <summary>{label} gradient geometry</summary>
+            {(['fillToRect', 'tileRect'] as const)
+              .filter((key) => key !== 'fillToRect' || gradient.kind === 'path')
+              .map((key) => (
+                <fieldset className="inspector-fieldset" key={key}>
+                  <legend>{key === 'fillToRect' ? 'Focus rectangle' : 'Tile rectangle'}</legend>
+                  <div className="field-grid">
+                    {(['left', 'top', 'right', 'bottom'] as const).map((side) => (
+                      <NumberField
+                        key={side}
+                        label={`${label} ${key === 'fillToRect' ? 'focus' : 'tile'} ${side} (%)`}
+                        value={
+                          (gradient[key]?.[side] ??
+                            (key === 'fillToRect' && gradient[key] === undefined ? 0.5 : 0)) * 100
+                        }
+                        min={-2147483.648}
+                        max={2147483.647}
+                        step={1}
+                        onChange={(value) =>
+                          onChange({
+                            ...gradient,
+                            [key]: {
+                              ...resolveGradientRect(gradient[key], key === 'fillToRect' ? 0.5 : 0),
+                              [side]: value / 100,
+                            },
+                          })
+                        }
+                      />
+                    ))}
+                  </div>
+                  <button
+                    className="secondary-button"
+                    onClick={() => onChange({ ...gradient, [key]: undefined })}
+                  >
+                    Reset {label.toLowerCase()} {key === 'fillToRect' ? 'focus' : 'tile'}
+                  </button>
+                </fieldset>
+              ))}
+          </details>
+        </>
+      )}
+    </div>
+  );
+}
+
+function BackgroundControls({
+  slide,
+  onChange,
+}: {
+  slide: Slide;
+  onChange: (patch: Partial<Slide>) => void;
+}) {
+  return (
+    <>
+      <GradientControls
+        label="Background"
+        allowRotation={false}
+        gradient={slide.backgroundGradient}
+        color={slide.background}
+        onChange={(backgroundGradient) => onChange({ backgroundGradient })}
+      />
+      {!slide.backgroundGradient && (
+        <ColorField
+          label="Background"
+          value={slide.background}
+          onChange={(background) => onChange({ background })}
+        />
+      )}
+      <NumberField
+        label="Background opacity (%)"
+        value={(slide.backgroundOpacity ?? 1) * 100}
+        min={0}
+        max={100}
+        onChange={(value) => onChange({ backgroundOpacity: value / 100 })}
+      />
+    </>
   );
 }
 
@@ -541,9 +837,31 @@ function ColorField({
   onChange: (value: string) => void;
   allowTransparent?: boolean;
 }) {
+  const [draft, setDraft] = useState(value === 'transparent' ? '' : value.toUpperCase());
+  const [error, setError] = useState('');
+  const changed = useRef(false);
+  const errorId = useId();
+  useEffect(() => {
+    changed.current = false;
+    setDraft(value === 'transparent' ? '' : value.toUpperCase());
+    setError('');
+  }, [value]);
+  const commit = () => {
+    if (!changed.current) return;
+    changed.current = false;
+    const candidate = draft.trim().replace(/^#?/, '#');
+    if (!/^#[0-9a-f]{6}$/i.test(candidate)) {
+      setDraft(value === 'transparent' ? '' : value.toUpperCase());
+      setError('Use a six-digit hex color, such as #245C49. The color was not changed.');
+      return;
+    }
+    setDraft(candidate.toUpperCase());
+    setError('');
+    if (candidate.toLowerCase() !== value.toLowerCase()) onChange(candidate);
+  };
   return (
     <div className="field">
-      <label className="color-field">
+      <div className="color-field">
         <span>{label}</span>
         <input
           type="color"
@@ -551,10 +869,38 @@ function ColorField({
           value={/^#[0-9a-f]{6}$/i.test(value) ? value : '#ffffff'}
           onChange={(event) => onChange(event.target.value)}
         />
-        <span className="color-value">
-          {value === 'transparent' ? 'None' : value.toUpperCase()}
-        </span>
-      </label>
+        <input
+          className="color-hex"
+          type="text"
+          aria-label={`${label} hex`}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? errorId : undefined}
+          value={draft}
+          placeholder="None"
+          spellCheck={false}
+          maxLength={7}
+          onChange={(event) => {
+            changed.current = true;
+            setDraft(event.target.value);
+            setError('');
+          }}
+          onBlur={commit}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') event.currentTarget.blur();
+            if (event.key === 'Escape') {
+              changed.current = false;
+              setDraft(value === 'transparent' ? '' : value.toUpperCase());
+              setError('');
+              event.stopPropagation();
+            }
+          }}
+        />
+      </div>
+      {error && (
+        <p className="field-error" role="alert" id={errorId}>
+          {error}
+        </p>
+      )}
       {allowTransparent && (
         <label className="checkbox-field">
           <input
@@ -793,11 +1139,7 @@ export function Inspector({
                     maxLength={256}
                     onChange={(name) => onSlidePatch({ name })}
                   />
-                  <ColorField
-                    label="Background"
-                    value={slide.background}
-                    onChange={(background) => onSlidePatch({ background })}
-                  />
+                  <BackgroundControls slide={slide} onChange={onSlidePatch} />
                   <label className="field">
                     <span>Transition</span>
                     <select
@@ -1101,18 +1443,66 @@ export function Inspector({
                         <option value="arrow">Arrow</option>
                       </select>
                     </label>
-                    <ColorField
+                    <GradientControls
                       label="Fill"
-                      value={element.fill}
-                      onChange={(fill) => onElementPatch({ fill })}
-                      allowTransparent
+                      gradient={element.fillGradient}
+                      color={element.fill}
+                      onChange={(fillGradient) =>
+                        onElementPatch({
+                          fillGradient,
+                          ...(fillGradient && element.fill === 'transparent'
+                            ? { fill: '#245c49' }
+                            : {}),
+                        })
+                      }
                     />
-                    <ColorField
+                    {!element.fillGradient && (
+                      <ColorField
+                        label="Fill"
+                        value={element.fill}
+                        onChange={(fill) => onElementPatch({ fill })}
+                        allowTransparent
+                      />
+                    )}
+                    {(element.fill !== 'transparent' || element.fillGradient) && (
+                      <NumberField
+                        label="Fill opacity (%)"
+                        value={(element.fillOpacity ?? 1) * 100}
+                        min={0}
+                        max={100}
+                        onChange={(value) => onElementPatch({ fillOpacity: value / 100 })}
+                      />
+                    )}
+                    <GradientControls
                       label="Stroke"
-                      value={element.stroke}
-                      onChange={(stroke) => onElementPatch({ stroke })}
-                      allowTransparent
+                      gradient={element.strokeGradient}
+                      color={element.stroke}
+                      onChange={(strokeGradient) =>
+                        onElementPatch({
+                          strokeGradient,
+                          ...(strokeGradient && element.stroke === 'transparent'
+                            ? { stroke: '#245c49' }
+                            : {}),
+                        })
+                      }
                     />
+                    {!element.strokeGradient && (
+                      <ColorField
+                        label="Stroke"
+                        value={element.stroke}
+                        onChange={(stroke) => onElementPatch({ stroke })}
+                        allowTransparent
+                      />
+                    )}
+                    {(element.stroke !== 'transparent' || element.strokeGradient) && (
+                      <NumberField
+                        label="Stroke opacity (%)"
+                        value={(element.strokeOpacity ?? 1) * 100}
+                        min={0}
+                        max={100}
+                        onChange={(value) => onElementPatch({ strokeOpacity: value / 100 })}
+                      />
+                    )}
                     <NumberField
                       label="Stroke width"
                       value={element.strokeWidth}
@@ -1273,11 +1663,7 @@ export function Inspector({
             </section>
             <section className="panel-section">
               <h3>This slide</h3>
-              <ColorField
-                label="Background"
-                value={slide.background}
-                onChange={(background) => onSlidePatch({ background })}
-              />
+              <BackgroundControls slide={slide} onChange={onSlidePatch} />
               <label className="field">
                 <span>Transition</span>
                 <select

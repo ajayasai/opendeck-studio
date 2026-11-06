@@ -2,7 +2,7 @@
 
 An open-source presentation studio for the browser. Create slides, keep your files locally, and exchange editable content through PowerPoint's PPTX format.
 
-**Status: 0.1.0-alpha.5.** OpenDeck is an original implementation with a focused editor, rich text authoring, and partial PPTX compatibility. It is not a complete replacement for every PowerPoint workflow. The [compatibility matrix](docs/COMPATIBILITY.md) states the boundaries; the [roadmap](docs/ROADMAP.md) tracks the work ahead.
+**Status: 0.1.0-alpha.6.** OpenDeck is an original implementation with a focused editor, rich text authoring, and partial PPTX compatibility. It is not a complete replacement for every PowerPoint workflow. The [compatibility matrix](docs/COMPATIBILITY.md) states the boundaries; the [roadmap](docs/ROADMAP.md) tracks the work ahead.
 
 [Try the public demo](https://ajayasai.github.io/opendeck-studio/) · [Download the release](https://github.com/ajayasai/opendeck-studio/releases) · [Testing evidence](docs/TESTING.md)
 
@@ -38,6 +38,7 @@ npm run preview
 - Shrink-to-fit text and automatic box resizing, preserving authored font sizes and saved PowerPoint fitting factors; relative or exact point-based paragraph line spacing.
 - Attached text-box fills and outlines, independent text/paint transparency, eleven outline styles, and editable rectangle, rounded rectangle, ellipse, and triangle text shapes.
 - Shape-aware text regions and fitting, plus control over first/last paragraph spacing at the box edges.
+- Editable linear, radial, rectangular, and shape gradients for text-box paints, shapes, and slide backgrounds, with individual color stops and transparency.
 - Slide organization, five visual themes, reusable layouts, speaker notes, and presentation playback.
 - Object alignment, layer ordering, grid snapping, keyboard shortcuts, and a slide sorter.
 - Fullscreen presenting with a timer, notes panel, next-slide preview, laser pointer, and blackout control.
@@ -62,6 +63,10 @@ Use **Format → Text box appearance** for solid fills, outlines, preset geometr
 
 ![Attached text fills and outlines in OpenDeck](docs/assets/text-decoration-editor.jpg)
 
+Use the fill or outline controls in **Format** to choose a gradient, edit its color stops, position, and opacity, or adjust its angle and focus. Slide backgrounds have the same controls in **Format** and **Design**. Theme changes recolor matching gradient stops as one undoable change. The [gradient example](examples/gradients.pptx) and [native copy](examples/gradients.opendeck) exercise native PowerPoint ramps, preset paths, transparency, rotation, and theme inheritance. Both the original nine-slide fixture and an eleven-slide XML-derived probe passed PowerPoint open/render/save/reimport checks. Complex path tiling and transparent color interpolation remain approximations.
+
+![Editing gradient color stops in OpenDeck](docs/assets/gradient-editor.jpg)
+
 Tables and charts use simplified models. Advanced PowerPoint content can change or disappear during import/export; keep the original file and review the result before relying on it. Browser line metrics, autofit recalculation, complete-line clipping, unsupported paints/custom geometry, hyperlink theme colors, and some numbering restarts can differ. See the [compatibility notes](docs/COMPATIBILITY.md).
 
 ## Your files
@@ -77,6 +82,8 @@ Use alpha.3 or later for text-frame backups. Earlier readers can discard the opt
 Use alpha.4 or later for autofit and exact line-spacing backups. Earlier readers can discard those optional fields when re-saving. Existing documents retain their saved geometry and font sizes when opened.
 
 Use alpha.5 or later for attached text decorations, text-only opacity, and paragraph-edge policy. Earlier readers can discard those optional fields when re-saving. Legacy native files keep their prior include-edges behavior; imported PPTX files use PowerPoint's default of excluding endpoint spacing unless explicitly enabled.
+
+Use alpha.6 or later for gradient and independent shape/background opacity backups. Earlier readers can discard these optional fields when re-saving. Existing solid paints remain unchanged when no gradient is present.
 
 You can edit without an internet connection after the application and its assets are loaded. For predictable offline access, run the built files on a local static server. This release does not install a PWA or guarantee that a hosted page will reopen offline.
 

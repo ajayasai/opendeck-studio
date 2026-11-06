@@ -8,6 +8,45 @@ import { applyTextPatch, withParagraphs } from './richText';
 import type { TextAutoFit, TextDecoration, TextElement, TextFrame } from './types';
 
 afterEach(cleanup);
+
+describe('Inspector hex color entry', () => {
+  it('commits a keyboard-entered color once and updates the whole text box', async () => {
+    const { onPatch } = setup();
+    const input = screen.getByRole('textbox', { name: 'Text color hex' });
+    const user = userEvent.setup();
+    await user.clear(input);
+    await user.type(input, '123abc');
+    expect(onPatch).not.toHaveBeenCalled();
+    await user.tab();
+    expect(onPatch).toHaveBeenCalledExactlyOnceWith({ color: '#123abc' });
+    expect(current().color).toBe('#123abc');
+    expect(current().paragraphs![0].runs[0].color).toBe('#123abc');
+    expect((input as HTMLInputElement).value).toBe('#123ABC');
+  });
+
+  it('rejects invalid drafts and lets Escape discard a color change', () => {
+    const { source, onPatch } = setup();
+    const input = screen.getByRole('textbox', { name: 'Text color hex' });
+    fireEvent.change(input, { target: { value: 'zz0000' } });
+    fireEvent.blur(input);
+    expect(screen.getByRole('alert').textContent).toContain('The color was not changed');
+    expect(current().color).toBe(source.color);
+    fireEvent.change(input, { target: { value: '#000000' } });
+    fireEvent.keyDown(input, { key: 'Escape' });
+    fireEvent.blur(input);
+    expect((input as HTMLInputElement).value).toBe(source.color.toUpperCase());
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(onPatch).not.toHaveBeenCalled();
+  });
+
+  it('does not rewrite untouched colors and disables hex entry for locked objects', () => {
+    const { onPatch } = setup({ locked: true });
+    const input = screen.getByRole('textbox', { name: 'Text color hex' });
+    expect(input.matches(':disabled')).toBe(true);
+    expect(onPatch).not.toHaveBeenCalled();
+  });
+});
+
 const sampleFrame = (): TextFrame => ({
   insets: { top: 12.125, right: 23, bottom: 34, left: 45 },
   wrap: 'none',

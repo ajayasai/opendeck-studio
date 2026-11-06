@@ -20,9 +20,35 @@ export interface TextFrame {
   /** Absent in legacy native files: include before/after spacing at the outer paragraphs. */
   paragraphSpacingAtEdges?: boolean;
 }
+export interface GradientStop {
+  position: number;
+  color: string;
+  opacity: number;
+}
+/** Ratios relative to the corresponding box edges; omitted sides retain native defaults. */
+export interface RelativeGradientRect {
+  left?: number;
+  top?: number;
+  right?: number;
+  bottom?: number;
+}
+export interface GradientFill {
+  kind: 'linear' | 'path';
+  stops: GradientStop[];
+  /** Clockwise degrees, 0 inclusive to 360 exclusive. */
+  angle?: number;
+  scaled?: boolean;
+  path?: 'circle' | 'rect' | 'shape';
+  fillToRect?: RelativeGradientRect;
+  tileRect?: RelativeGradientRect;
+  flip?: 'none' | 'x' | 'y' | 'xy';
+  rotateWithShape?: boolean;
+}
 export interface TextDecorationPaint {
   color: string;
   opacity: number;
+  /** The solid color remains a fallback for readers without gradient support. */
+  gradient?: GradientFill;
 }
 export interface TextDecorationLine extends TextDecorationPaint {
   width: number;
@@ -104,6 +130,10 @@ export interface ShapeElement extends ElementBase {
   fill: string;
   stroke: string;
   strokeWidth: number;
+  fillGradient?: GradientFill;
+  strokeGradient?: GradientFill;
+  fillOpacity?: number;
+  strokeOpacity?: number;
 }
 export interface ImageElement extends ElementBase {
   type: 'image';
@@ -131,6 +161,8 @@ export interface Slide {
   id: string;
   name: string;
   background: string;
+  backgroundGradient?: GradientFill;
+  backgroundOpacity?: number;
   elements: SlideElement[];
   notes: string;
   transition: 'none' | 'fade' | 'slide';

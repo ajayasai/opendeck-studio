@@ -3,6 +3,7 @@ import { validateParagraphs } from './richText';
 import { validateTextFrame } from './textFrame';
 import { validateAutoFit } from './textFit';
 import { validateTextDecoration } from './textDecoration';
+import { validateGradientFill } from './gradient';
 
 export const uid = (): string =>
   globalThis.crypto?.randomUUID?.() ??
@@ -607,6 +608,18 @@ export function validateDeck(input: unknown): Deck {
             fill: color(e.fill, 'shape fill', true),
             stroke: color(e.stroke, 'shape stroke', true),
             strokeWidth: number(e.strokeWidth, 'stroke width', 0, 100),
+            ...(e.fillGradient !== undefined
+              ? { fillGradient: validateGradientFill(e.fillGradient) }
+              : {}),
+            ...(e.strokeGradient !== undefined
+              ? { strokeGradient: validateGradientFill(e.strokeGradient) }
+              : {}),
+            ...(e.fillOpacity !== undefined
+              ? { fillOpacity: number(e.fillOpacity, 'shape fill opacity', 0, 1) }
+              : {}),
+            ...(e.strokeOpacity !== undefined
+              ? { strokeOpacity: number(e.strokeOpacity, 'shape stroke opacity', 0, 1) }
+              : {}),
           };
         case 'image': {
           const src = string(e.src, 'image', 28_000_000);
@@ -680,6 +693,12 @@ export function validateDeck(input: unknown): Deck {
       id: slideId,
       name: string(s.name, 'slide name', 256),
       background: color(s.background, 'slide background'),
+      ...(s.backgroundGradient !== undefined
+        ? { backgroundGradient: validateGradientFill(s.backgroundGradient) }
+        : {}),
+      ...(s.backgroundOpacity !== undefined
+        ? { backgroundOpacity: number(s.backgroundOpacity, 'slide background opacity', 0, 1) }
+        : {}),
       elements,
       notes: string(s.notes, 'speaker notes', 100000),
       transition: choice(s.transition, ['none', 'fade', 'slide'] as const, 'transition'),

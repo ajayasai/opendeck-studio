@@ -165,6 +165,31 @@ describe('native text decoration validation', () => {
 });
 
 describe('decorated text authoring backdrop', () => {
+  it('samples the gradient backdrop and multiplies stop, paint and object alpha once', () => {
+    const element = {
+      color: '#ffffff',
+      opacity: 0.5,
+      decoration: {
+        shape: 'rect' as const,
+        line: null,
+        fill: {
+          color: '#ff0000',
+          opacity: 0.5,
+          gradient: {
+            kind: 'linear' as const,
+            stops: [
+              { position: 0, color: '#000000', opacity: 0.5 },
+              { position: 1, color: '#000000', opacity: 0.5 },
+            ],
+          },
+        },
+      },
+    };
+    const original = structuredClone(element);
+    expect(textPreviewBackground(element, '#ffffff')).toBe('#dfdfdf');
+    expect(element).toEqual(original);
+  });
+
   it('composites fill alpha and whole-object alpha over the slide color', () => {
     const element = {
       color: '#ffffff',

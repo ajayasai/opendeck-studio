@@ -1,4 +1,5 @@
 import type { TextDecoration, TextDecorationLine, TextDecorationPaint, TextElement } from './types';
+import { gradientColorAt, validateGradientFill } from './gradient';
 
 export const DEFAULT_TEXT_CORNER_RADIUS = 0.16667;
 export const TEXT_LINE_DASHES = [
@@ -33,7 +34,11 @@ export function validateTextDecoration(input: unknown): TextDecoration {
     const source = object(value, label);
     if (typeof source.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(source.color))
       throw new Error(`Invalid text decoration ${label} color: use a six-digit hex color.`);
-    return { color: source.color, opacity: number(source.opacity, `${label} opacity`, 1) };
+    return {
+      color: source.color,
+      opacity: number(source.opacity, `${label} opacity`, 1),
+      ...(source.gradient !== undefined ? { gradient: validateGradientFill(source.gradient) } : {}),
+    };
   };
   const source = object(input, '');
   if (!['rect', 'roundRect', 'ellipse', 'triangle'].includes(source.shape as string))
@@ -87,10 +92,11 @@ export function textPreviewBackground(
   const fallback = (red + green + blue) / 3 > 165 ? '#1e3029' : '#ffffff';
   const base = background ?? fallback;
   const fill = resolveTextDecoration(element).fill;
-  const alpha = (fill?.opacity ?? 0) * element.opacity;
+  const sample = fill?.gradient ? gradientColorAt(fill.gradient, 0.5) : fill;
+  const alpha = (fill?.opacity ?? 0) * element.opacity * (fill?.gradient ? sample!.opacity : 1);
   if (!fill || alpha === 0) return base;
   const under = channels(base);
-  return `#${channels(fill.color)
+  return `#${channels(sample!.color)
     .map((value, index) =>
       Math.round(value * alpha + under[index] * (1 - alpha))
         .toString(16)

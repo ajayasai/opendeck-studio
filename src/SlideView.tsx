@@ -1,8 +1,10 @@
-import type { CSSProperties } from 'react';
-import type { ChartElement, Deck, Slide, SlideElement } from './types';
+import { useId, type CSSProperties } from 'react';
+import type { ChartElement, Deck, Slide, SlideElement, ShapeElement } from './types';
 import { contrastText } from './model';
 import RichTextView from './RichTextView';
 import TextDecorationView from './TextDecorationView';
+import GradientDefinition from './GradientDefinition';
+import SlideBackground, { slideBaseBackground } from './SlideBackground';
 
 export function ChartView({ element: e }: { element: ChartElement }) {
   const w = 600,
@@ -115,6 +117,94 @@ export function ChartView({ element: e }: { element: ChartElement }) {
   );
 }
 
+function ShapeView({ element: e }: { element: ShapeElement }) {
+  const id = `shape-paint-${useId().replace(/:/g, '')}`;
+  const fill = e.fillGradient ? `url(#${id}-fill)` : e.fill;
+  const stroke = e.strokeGradient ? `url(#${id}-stroke)` : e.stroke;
+  const paint = {
+    fill,
+    fillOpacity: e.fillOpacity ?? 1,
+    stroke,
+    strokeOpacity: e.strokeOpacity ?? 1,
+    strokeWidth: e.strokeWidth,
+  };
+  const lineUsesFill = !e.strokeGradient && e.stroke === 'transparent';
+  const cornerRadius = Math.min(22, e.height / 4) / Math.min(e.width, e.height);
+  return (
+    <svg
+      width="100%"
+      height="100%"
+      viewBox={`0 0 ${e.width} ${e.height}`}
+      overflow="visible"
+      aria-hidden="true"
+    >
+      {(e.fillGradient || e.strokeGradient) && (
+        <defs>
+          {e.fillGradient && (
+            <GradientDefinition
+              id={`${id}-fill`}
+              gradient={e.fillGradient}
+              width={e.width}
+              height={e.height}
+              rotation={e.rotation}
+              shape={e.shape}
+              cornerRadius={cornerRadius}
+            />
+          )}
+          {e.strokeGradient && (
+            <GradientDefinition
+              id={`${id}-stroke`}
+              gradient={e.strokeGradient}
+              width={e.width}
+              height={e.height}
+              rotation={e.rotation}
+              shape={e.shape}
+              cornerRadius={cornerRadius}
+            />
+          )}
+        </defs>
+      )}
+      {e.shape === 'ellipse' ? (
+        <ellipse
+          cx={e.width / 2}
+          cy={e.height / 2}
+          rx={Math.max(0, (e.width - e.strokeWidth) / 2)}
+          ry={Math.max(0, (e.height - e.strokeWidth) / 2)}
+          {...paint}
+        />
+      ) : e.shape === 'triangle' ? (
+        <polygon
+          points={`${e.width / 2},${e.strokeWidth / 2} ${e.width - e.strokeWidth / 2},${e.height - e.strokeWidth / 2} ${e.strokeWidth / 2},${e.height - e.strokeWidth / 2}`}
+          {...paint}
+        />
+      ) : e.shape === 'line' || e.shape === 'arrow' ? (
+        <g
+          fill="none"
+          stroke={lineUsesFill ? fill : stroke}
+          strokeOpacity={lineUsesFill ? (e.fillOpacity ?? 1) : (e.strokeOpacity ?? 1)}
+          strokeWidth={Math.max(2, e.strokeWidth)}
+        >
+          <path d={`M0 ${e.height / 2} H${e.width}`} />
+          {e.shape === 'arrow' && (
+            <path
+              d={`M${e.width - 14},${e.height / 2 - 8} L${e.width},${e.height / 2} L${e.width - 14},${e.height / 2 + 8}`}
+            />
+          )}
+        </g>
+      ) : (
+        <rect
+          x={e.strokeWidth / 2}
+          y={e.strokeWidth / 2}
+          width={Math.max(0, e.width - e.strokeWidth)}
+          height={Math.max(0, e.height - e.strokeWidth)}
+          rx={e.shape === 'roundRect' ? Math.min(22, e.height / 4) : 0}
+          {...paint}
+        />
+      )}
+    </svg>
+  );
+}
+
 export function ElementContent({
   element: e,
   interactiveLinks = false,
@@ -131,62 +221,7 @@ export function ElementContent({
         </>
       );
     case 'shape':
-      return (
-        <svg
-          width="100%"
-          height="100%"
-          viewBox={`0 0 ${e.width} ${e.height}`}
-          overflow="visible"
-          aria-hidden="true"
-        >
-          {e.shape === 'ellipse' ? (
-            <ellipse
-              cx={e.width / 2}
-              cy={e.height / 2}
-              rx={Math.max(0, (e.width - e.strokeWidth) / 2)}
-              ry={Math.max(0, (e.height - e.strokeWidth) / 2)}
-              fill={e.fill}
-              stroke={e.stroke}
-              strokeWidth={e.strokeWidth}
-            />
-          ) : e.shape === 'triangle' ? (
-            <polygon
-              points={`${e.width / 2},${e.strokeWidth / 2} ${e.width - e.strokeWidth / 2},${e.height - e.strokeWidth / 2} ${e.strokeWidth / 2},${e.height - e.strokeWidth / 2}`}
-              fill={e.fill}
-              stroke={e.stroke}
-              strokeWidth={e.strokeWidth}
-            />
-          ) : e.shape === 'line' || e.shape === 'arrow' ? (
-            <>
-              <path
-                d={`M0 ${e.height / 2} H${e.width}`}
-                fill="none"
-                stroke={e.stroke === 'transparent' ? e.fill : e.stroke}
-                strokeWidth={Math.max(2, e.strokeWidth)}
-              />
-              {e.shape === 'arrow' && (
-                <path
-                  d={`M${e.width - 14},${e.height / 2 - 8} L${e.width},${e.height / 2} L${e.width - 14},${e.height / 2 + 8}`}
-                  fill="none"
-                  stroke={e.stroke === 'transparent' ? e.fill : e.stroke}
-                  strokeWidth={Math.max(2, e.strokeWidth)}
-                />
-              )}
-            </>
-          ) : (
-            <rect
-              x={e.strokeWidth / 2}
-              y={e.strokeWidth / 2}
-              width={Math.max(0, e.width - e.strokeWidth)}
-              height={Math.max(0, e.height - e.strokeWidth)}
-              rx={e.shape === 'roundRect' ? Math.min(22, e.height / 4) : 0}
-              fill={e.fill}
-              stroke={e.stroke}
-              strokeWidth={e.strokeWidth}
-            />
-          )}
-        </svg>
-      );
+      return <ShapeView element={e} />;
     case 'image':
       return (
         <img
@@ -258,11 +293,12 @@ export function SlideView({
       style={{
         width: deck.width,
         height: deck.height,
-        background: slide.background,
+        background: slideBaseBackground(slide),
         transform: `scale(${scale})`,
         transformOrigin: 'top left',
       }}
     >
+      <SlideBackground slide={slide} width={deck.width} height={deck.height} />
       {slide.elements.map((e, i) => (
         <div
           key={e.id}

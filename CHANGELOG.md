@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.0-alpha.6 — 2026-11-06
+
+Editable gradients and PowerPoint paint compatibility milestone. Full PowerPoint parity remains unfinished.
+
+- Add linear, radial, rectangular, and shape gradients to text-box fills/outlines, ordinary shapes, and slide backgrounds.
+- Edit individual stop colors, positions, and opacity; add/remove stops; control angle, scaling, rotation, focus, and tiling. Keyboard hex entry complements the color picker.
+- Preserve ordered and duplicate stops, independent paint opacity, and optional gradient metadata in native backups and supported PPTX interchange.
+- Resolve theme and placeholder gradients, background inheritance, and native defaults. Correct paint tint/shade conversion using native color evidence.
+- Render gradients consistently on the canvas and in presentation playback, including supported fixed-axis rotation and rectangular/circular focus behavior.
+- Recolor matching gradient stops with theme changes and restore the complete prior paints with one undo.
+- Normalize zero/one-stop native gradients to equivalent two-stop PPTX ramps with a warning because PowerPoint rejects explicit shorter lists.
+- Add original nine-slide and separately XML-derived eleven-slide fixtures, native stop/geometry round-trip checks, and focused model, rendering, inspector, theme, and PPTX regressions.
+
+PowerPoint 16.0 opened, rendered, saved, and re-imported both fixture paths. Supported gradient stops, effective alpha, geometry, rich text, fitting, notes, and counts passed semantic checks. Browser font metrics, complex path/tile behavior, and transparent color interpolation remain limitations. See [testing evidence](docs/TESTING.md) and [compatibility notes](docs/COMPATIBILITY.md).
+
 ## 0.1.0-alpha.5 — 2026-11-06
 
 Attached text decoration and preset geometry milestone. Full PowerPoint parity remains unfinished.

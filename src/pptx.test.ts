@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import JSZip from 'jszip';
 import { exportPptx, importPptx, pptxExportWarnings } from './pptx';
-import type { Deck, ElementBase, Theme, TextElement, TextAutoFit, TextDecoration } from './types';
+import type {
+  Deck,
+  ElementBase,
+  Theme,
+  TextElement,
+  TextAutoFit,
+  TextDecoration,
+  GradientFill,
+} from './types';
 import { TEXT_LINE_DASHES } from './textDecoration';
 import { plainText } from './richText';
 import { validateDeck } from './model';
@@ -280,7 +288,9 @@ describe('editable PPTX interoperability', () => {
       rotation: 20,
       fill: '#aabbcc',
       strokeWidth: 2,
-      opacity: 0.8,
+      opacity: 1,
+      fillOpacity: 0.8,
+      strokeOpacity: 0.8,
     });
     expect(objects.find((e) => e.type === 'image')).toMatchObject({
       src: png,
@@ -1152,8 +1162,8 @@ describe('editable PPTX interoperability', () => {
     ['<a:lumMod val="50000"/>', '#800000'],
     ['<a:lumMod val="50000"/><a:lumOff val="50000"/>', '#ff8080'],
     ['<a:satMod val="0"/>', '#808080'],
-    ['<a:tint val="25000"/>', '#ffbfbf'],
-    ['<a:shade val="25000"/>', '#400000'],
+    ['<a:tint val="25000"/>', '#ffe1e1'],
+    ['<a:shade val="25000"/>', '#890000'],
   ])(
     'resolves decoration color transforms %s in the specified color model',
     async (transform, expected) => {
@@ -1176,6 +1186,41 @@ describe('editable PPTX interoperability', () => {
       });
     },
   );
+
+  it('matches independently measured native tint/shade colors and sequential transform order', async () => {
+    // scripts/prepare-gradient-color-probe.mjs and the isolated PowerPoint probe
+    // measured these RGBs without using the OpenDeck exporter or color resolver.
+    const cases = [
+      ['FF0000', '<a:shade val="25000"/>', '#890000'],
+      ['FF0000', '<a:shade val="50000"/>', '#bc0000'],
+      ['808080', '<a:shade val="50000"/>', '#5c5c5c'],
+      ['808080', '<a:tint val="50000"/>', '#cdcdcd'],
+      ['808080', '<a:shade val="50000"/><a:tint val="50000"/>', '#c4c4c4'],
+      ['808080', '<a:tint val="50000"/><a:shade val="50000"/>', '#969696'],
+    ];
+    const result = await importPptx(
+      await fixture((zip) =>
+        zip.file(
+          'ppt/slides/slide12.xml',
+          slide(
+            cases
+              .map(([base, transform], index) =>
+                textShape('Native color', String(index + 2)).replace(
+                  '</p:spPr>',
+                  `<a:solidFill><a:srgbClr val="${base}">${transform}</a:srgbClr></a:solidFill></p:spPr>`,
+                ),
+              )
+              .join(''),
+          ),
+        ),
+      ),
+    );
+    expect(
+      result.deck.slides[0].elements.map(
+        (element) => (element as TextElement).decoration?.fill?.color,
+      ),
+    ).toEqual(cases.map((entry) => entry[2]));
+  });
 
   it('materializes theme style paint and partial line inheritance from slide, layout, and master', async () => {
     const result = await importPptx(
@@ -1291,7 +1336,6 @@ describe('editable PPTX interoperability', () => {
   );
 
   it.each([
-    ['<a:gradFill/>', 'paints are not retained'],
     ['<a:pattFill prst="pct50"/>', 'paints are not retained'],
     [
       '<a:ln w="12700" cmpd="dbl"><a:solidFill><a:srgbClr val="000000"/></a:solidFill></a:ln>',
@@ -1316,6 +1360,502 @@ describe('editable PPTX interoperability', () => {
     );
     expect(result.warnings.join(' ')).toContain(warning);
     expect(() => validateDeck(result.deck)).not.toThrow();
+  });
+
+  it.each(['linear', 'path'] as const)(
+    'round-trips editable %s gradients across text, outlines, ordinary shapes, and slide backgrounds',
+    async (kind) => {
+      const gradient: GradientFill = {
+        kind,
+        stops: [
+          { position: 0, color: '#ff0000', opacity: 0.5 },
+          { position: 0.4, color: '#00ff00', opacity: 0.25 },
+          { position: 0.4, color: '#0000ff', opacity: 1 },
+          { position: 1, color: '#ffffff', opacity: 0.8 },
+        ],
+        ...(kind === 'linear'
+          ? { angle: 37.5, scaled: true }
+          : {
+              path: 'rect' as const,
+              fillToRect: { left: -0.2, top: 0.5, right: 0.8, bottom: 0.5 },
+            }),
+        tileRect: { left: -0.3, top: 0, right: 0.15 },
+        flip: 'xy',
+        rotateWithShape: false,
+      };
+      const deck = sample();
+      const text = deck.slides[0].elements[0] as TextElement;
+      text.opacity = 0.5;
+      text.decoration = {
+        shape: 'ellipse',
+        fill: { color: '#112233', opacity: 0.8, gradient },
+        line: { color: '#445566', opacity: 0.6, width: 3, dash: 'dash', gradient },
+      };
+      const shape = deck.slides[0].elements[1];
+      if (shape.type !== 'shape') throw new Error('Test shape missing');
+      shape.opacity = 0.5;
+      shape.fillGradient = gradient;
+      shape.fillOpacity = 0.6;
+      shape.strokeGradient = gradient;
+      shape.strokeOpacity = 0.7;
+      deck.slides[0].backgroundGradient = gradient;
+      deck.slides[0].backgroundOpacity = 0.9;
+      const before = structuredClone(deck);
+      const bytes = await buffer(await exportPptx(deck));
+      expect(deck).toEqual(before);
+      const zip = await JSZip.loadAsync(bytes);
+      const xml = new DOMParser().parseFromString(
+        await zip.file('ppt/slides/slide1.xml')!.async('string'),
+        'application/xml',
+      );
+      expect(xml.getElementsByTagNameNS('*', 'gradFill')).toHaveLength(5);
+      expect(
+        Array.from(
+          xml.getElementsByTagNameNS('*', 'gradFill')[0].getElementsByTagNameNS('*', 'gs'),
+        ).map((stop) => stop.getAttribute('pos')),
+      ).toEqual(['0', '40000', '40000', '100000']);
+      const result = await importPptx(bytes);
+      const texts = result.deck.slides[0].elements.filter((e) => e.type === 'text');
+      const shapes = result.deck.slides[0].elements.filter((e) => e.type === 'shape');
+      const effective = (factor: number): GradientFill => ({
+        ...gradient,
+        stops: gradient.stops.map((stop) => ({
+          ...stop,
+          opacity: Number((stop.opacity * factor).toFixed(12)),
+        })),
+      });
+      expect(texts[0].decoration?.fill).toEqual({
+        color: '#ff0000',
+        opacity: 1,
+        gradient: effective(0.4),
+      });
+      expect(texts[0].decoration?.line?.gradient).toEqual(effective(0.3));
+      expect(shapes[0]).toMatchObject({
+        opacity: 1,
+        fillGradient: effective(0.3),
+        strokeGradient: effective(0.35),
+      });
+      expect(result.deck.slides[0].backgroundGradient).toEqual(effective(0.9));
+      expect(result.deck.slides[0].backgroundOpacity).toBeUndefined();
+      expect(() => validateDeck(result.deck)).not.toThrow();
+    },
+  );
+
+  it.each(['circle', 'rect', 'shape'] as const)(
+    'preserves %s path metadata with absent versus empty focus rectangles and signed percentage offsets',
+    async (path) => {
+      const paint = `<a:gradFill rotWithShape="0" flip="none"><a:gsLst><a:gs pos="0%"><a:srgbClr val="123456"/></a:gs><a:gs pos="100%"><a:srgbClr val="ABCDEF"/></a:gs></a:gsLst><a:path path="${path}"><a:fillToRect/></a:path><a:tileRect l="-20%" r="25000"/></a:gradFill>`;
+      const result = await importPptx(
+        await fixture((zip) =>
+          zip.file(
+            'ppt/slides/slide12.xml',
+            slide(textShape('Path').replace('</p:spPr>', `${paint}</p:spPr>`)),
+          ),
+        ),
+      );
+      const gradient = (result.deck.slides[0].elements[0] as TextElement).decoration?.fill
+        ?.gradient;
+      expect(gradient).toMatchObject({
+        kind: 'path',
+        path,
+        fillToRect: {},
+        tileRect: { left: -0.2, right: 0.25 },
+        rotateWithShape: false,
+        flip: 'none',
+      });
+      const again = await importPptx(await buffer(await exportPptx(result.deck)));
+      expect((again.deck.slides[0].elements[0] as TextElement).decoration?.fill?.gradient).toEqual(
+        gradient,
+      );
+    },
+  );
+
+  it('inherits gradient stops as a whole while merging supported local linear attributes and preserving an explicit empty tile rectangle', async () => {
+    const result = await importPptx(
+      await fixture((zip) => {
+        zip.file(
+          'ppt/slides/slide12.xml',
+          slide(
+            placeholderText(
+              'idx="1"',
+              '<a:bodyPr/>',
+              '<p:spPr><a:gradFill rotWithShape="0"><a:lin scaled="0"/><a:tileRect/></a:gradFill></p:spPr>',
+            ),
+          ),
+        );
+        zip.file(
+          'ppt/slideLayouts/slideLayout1.xml',
+          `<p:sldLayout ${ns}><p:cSld><p:spTree>${placeholderText('idx="1"', '<a:bodyPr/>', '<p:spPr><a:gradFill flip="x" rotWithShape="1"><a:gsLst><a:gs pos="0"><a:schemeClr val="accent1"/></a:gs><a:gs pos="100000"><a:srgbClr val="FFFFFF"/></a:gs></a:gsLst><a:lin ang="1800000" scaled="1"/><a:tileRect l="25000"/></a:gradFill></p:spPr>')}</p:spTree></p:cSld></p:sldLayout>`,
+        );
+      }),
+    );
+    expect((result.deck.slides[0].elements[0] as TextElement).decoration?.fill?.gradient).toEqual({
+      kind: 'linear',
+      stops: [
+        { position: 0, color: '#9a4b13', opacity: 1 },
+        { position: 1, color: '#ffffff', opacity: 1 },
+      ],
+      angle: 30,
+      scaled: false,
+      rotateWithShape: false,
+      flip: 'x',
+      tileRect: {},
+    });
+  });
+
+  it.each(['', '<a:gs pos="30000"><a:srgbClr val="224466"/></a:gs>'])(
+    'preserves an explicitly empty or single gradient stop list without inheriting ancestor stops: %s',
+    async (stops) => {
+      const result = await importPptx(
+        await fixture((zip) => {
+          zip.file(
+            'ppt/slides/slide12.xml',
+            slide(
+              placeholderText(
+                'idx="1"',
+                '<a:bodyPr/>',
+                `<p:spPr><a:gradFill><a:gsLst>${stops}</a:gsLst></a:gradFill></p:spPr>`,
+              ),
+            ),
+          );
+          zip.file(
+            'ppt/slideLayouts/slideLayout1.xml',
+            `<p:sldLayout ${ns}><p:cSld><p:spTree>${placeholderText('idx="1"', '<a:bodyPr/>', '<p:spPr><a:gradFill><a:gsLst><a:gs pos="0"><a:srgbClr val="FF0000"/></a:gs><a:gs pos="100000"><a:srgbClr val="00FF00"/></a:gs></a:gsLst><a:path path="circle"/></a:gradFill></p:spPr>')}</p:spTree></p:cSld></p:sldLayout>`,
+          );
+        }),
+      );
+      const gradient = (result.deck.slides[0].elements[0] as TextElement).decoration?.fill
+        ?.gradient;
+      expect(gradient?.kind).toBe('path');
+      expect(gradient?.stops).toHaveLength(stops ? 1 : 0);
+      expect(result.warnings.join(' ')).toContain('fewer than two stops');
+      expect(pptxExportWarnings(result.deck).join(' ')).toContain('equivalent two-stop solid ramp');
+      const before = structuredClone(result.deck);
+      const bytes = await buffer(await exportPptx(result.deck));
+      expect(result.deck).toEqual(before);
+      const expectedStops = [0, 1].map((position) => ({
+        position,
+        color: stops ? '#224466' : '#000000',
+        opacity: 1,
+      }));
+      expect((await importPptx(bytes)).deck.slides[0].elements[0]).toMatchObject({
+        decoration: { fill: { gradient: { ...gradient, stops: expectedStops } } },
+      });
+    },
+  );
+
+  it('resolves gradient background references through the theme matrix and uses the reference color at each inherited stop', async () => {
+    const result = await importPptx(
+      await fixture((zip) => {
+        zip.file(
+          'ppt/slides/slide12.xml',
+          slide(textShape('Background')).replace(
+            '<p:spTree>',
+            '<p:bg><p:bgRef idx="1001"><a:srgbClr val="FF0000"/></p:bgRef></p:bg><p:spTree>',
+          ),
+        );
+        zip.file(
+          'ppt/theme/theme1.xml',
+          `<a:theme ${ns}><a:themeElements><a:fmtScheme name="Gradient"><a:bgFillStyleLst><a:gradFill><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"><a:shade val="50000"/></a:schemeClr></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"><a:tint val="50000"/></a:schemeClr></a:gs></a:gsLst><a:lin ang="5400000"/></a:gradFill></a:bgFillStyleLst></a:fmtScheme></a:themeElements></a:theme>`,
+        );
+      }),
+    );
+    expect(result.deck.slides[0].backgroundGradient).toEqual({
+      kind: 'linear',
+      angle: 90,
+      stops: [
+        { position: 0, color: '#bc0000', opacity: 1 },
+        { position: 1, color: '#ffbcbc', opacity: 1 },
+      ],
+    });
+    expect(result.warnings.join(' ')).not.toContain('style-reference slide backgrounds');
+  });
+
+  it('keeps solid companion shape opacity independent of gradient stop alpha', async () => {
+    const result = await importPptx(
+      await fixture((zip) =>
+        zip.file(
+          'ppt/slides/slide12.xml',
+          slide(
+            textShape('')
+              .replace(' txBox="1"', '')
+              .replace(/<p:txBody>[\s\S]*<\/p:txBody>/, '')
+              .replace(
+                '</p:spPr>',
+                '<a:solidFill><a:srgbClr val="ABCDEF"><a:alpha val="30000"/></a:srgbClr></a:solidFill><a:ln w="19050"><a:gradFill><a:gsLst><a:gs pos="0"><a:srgbClr val="000000"><a:alpha val="40000"/></a:srgbClr></a:gs><a:gs pos="100000"><a:srgbClr val="FFFFFF"/></a:gs></a:gsLst><a:lin/></a:gradFill></a:ln></p:spPr>',
+              ),
+          ),
+        ),
+      ),
+    );
+    expect(result.deck.slides[0].elements[0]).toMatchObject({
+      type: 'shape',
+      opacity: 1,
+      fillOpacity: 0.3,
+      strokeGradient: {
+        stops: [
+          { position: 0, color: '#000000', opacity: 0.4 },
+          { position: 1, color: '#ffffff', opacity: 1 },
+        ],
+      },
+    });
+    const again = await importPptx(await buffer(await exportPptx(result.deck)));
+    expect(again.deck.slides[0].elements[0]).toMatchObject({
+      opacity: 1,
+      fillOpacity: 0.3,
+      strokeGradient: { stops: [{ opacity: 0.4 }, { opacity: 1 }] },
+    });
+  });
+
+  it('preserves unsorted and duplicate gradient stop positions and warns on malformed numeric input', async () => {
+    const result = await importPptx(
+      await fixture((zip) =>
+        zip.file(
+          'ppt/slides/slide12.xml',
+          slide(
+            textShape('Stops').replace(
+              '</p:spPr>',
+              '<a:gradFill><a:gsLst><a:gs pos="100000"><a:srgbClr val="FFFFFF"/></a:gs><a:gs pos="invalid"><a:srgbClr val="000000"/></a:gs><a:gs pos="-20%"><a:srgbClr val="FF0000"/></a:gs></a:gsLst><a:lin ang="-60000" scaled="false"/><a:tileRect l="invalid" t="999999999999%"/></a:gradFill></p:spPr>',
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(
+      (result.deck.slides[0].elements[0] as TextElement).decoration?.fill?.gradient,
+    ).toMatchObject({
+      kind: 'linear',
+      angle: 359,
+      scaled: false,
+      stops: [{ position: 1 }, { position: 0 }, { position: 0 }],
+      tileRect: { left: 0, top: 21474.83647 },
+    });
+    expect(result.warnings.join(' ')).toMatch(/Invalid or missing gradient stop position/);
+    expect(result.warnings.join(' ')).toContain('outside');
+    expect(() => validateDeck(result.deck)).not.toThrow();
+  });
+
+  it('defaults malformed gradient angles and bounds oversized stop lists without sorting retained entries', async () => {
+    const stops = Array.from(
+      { length: 257 },
+      (_, index) => `<a:gs pos="${index % 2 ? 100000 : 0}"><a:srgbClr val="123456"/></a:gs>`,
+    ).join('');
+    const result = await importPptx(
+      await fixture((zip) =>
+        zip.file(
+          'ppt/slides/slide12.xml',
+          slide(
+            textShape('Bounded').replace(
+              '</p:spPr>',
+              `<a:gradFill><a:gsLst>${stops}</a:gsLst><a:lin ang="12.5"/></a:gradFill></p:spPr>`,
+            ),
+          ),
+        ),
+      ),
+    );
+    const gradient = (result.deck.slides[0].elements[0] as TextElement).decoration!.fill!.gradient!;
+    expect(gradient.angle).toBe(0);
+    expect(gradient.stops).toHaveLength(256);
+    expect(gradient.stops.slice(0, 4).map((stop) => stop.position)).toEqual([0, 1, 0, 1]);
+    expect(result.warnings.join(' ')).toContain('exceeded 256 stops');
+    expect(result.warnings.join(' ')).toContain('Invalid gradient angle');
+    expect(() => validateDeck(result.deck)).not.toThrow();
+  });
+
+  it('retains a visibly painted empty placeholder instead of dropping its gradient', async () => {
+    const result = await importPptx(
+      await fixture((zip) =>
+        zip.file(
+          'ppt/slides/slide12.xml',
+          slide(
+            placeholderText(
+              'idx="1"',
+              '<a:bodyPr/>',
+              '<p:spPr><a:gradFill><a:lin ang="0"/></a:gradFill></p:spPr>',
+            ).replace('Frame text', ''),
+          ),
+        ),
+      ),
+    );
+    expect(result.deck.slides[0].elements).toHaveLength(1);
+    expect(result.deck.slides[0].elements[0]).toMatchObject({
+      type: 'text',
+      text: '',
+      decoration: { fill: { gradient: { kind: 'linear', angle: 0 } } },
+    });
+  });
+
+  it.each([
+    ['<a:noFill/>', undefined, 0],
+    [
+      '<a:solidFill><a:srgbClr val="ABCDEF"><a:alpha val="30000"/></a:srgbClr></a:solidFill>',
+      undefined,
+      0.3,
+    ],
+    ['<a:gradFill><a:lin scaled="0"/></a:gradFill>', false, undefined],
+    ['', true, undefined],
+  ])(
+    'resolves slide background paint inheritance with explicit stopping paint: %s',
+    async (local, scaled, opacity) => {
+      const result = await importPptx(
+        await fixture((zip) => {
+          zip.file(
+            'ppt/slides/slide12.xml',
+            slide(textShape('Background')).replace(
+              '<p:spTree>',
+              `<p:bg><p:bgPr>${local}</p:bgPr></p:bg><p:spTree>`,
+            ),
+          );
+          zip.file(
+            'ppt/slideLayouts/slideLayout1.xml',
+            `<p:sldLayout ${ns}><p:cSld><p:bg><p:bgPr><a:gradFill><a:gsLst><a:gs pos="0"><a:srgbClr val="112233"/></a:gs><a:gs pos="100000"><a:srgbClr val="445566"/></a:gs></a:gsLst><a:lin ang="1200000" scaled="1"/></a:gradFill></p:bgPr></p:bg><p:spTree/></p:cSld></p:sldLayout>`,
+          );
+        }),
+      );
+      const background = result.deck.slides[0];
+      expect(background.backgroundOpacity).toBe(opacity);
+      if (scaled === undefined) expect(background.backgroundGradient).toBeUndefined();
+      else
+        expect(background.backgroundGradient).toEqual({
+          kind: 'linear',
+          angle: 20,
+          scaled,
+          stops: [
+            { position: 0, color: '#112233', opacity: 1 },
+            { position: 1, color: '#445566', opacity: 1 },
+          ],
+        });
+      const again = (await importPptx(await buffer(await exportPptx(result.deck)))).deck.slides[0];
+      expect(again.backgroundOpacity).toBe(background.backgroundOpacity);
+      expect(again.backgroundGradient).toEqual(background.backgroundGradient);
+    },
+  );
+
+  it('imports independently authored native gradients including theme paints and inherited layout/master backgrounds', async () => {
+    const bytes = await readFile('tests/fixtures/powerpoint-gradients.pptx');
+    const result = await importPptx(
+      bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+    );
+    expect(result.deck.slides).toHaveLength(9);
+    const shapes = result.deck.slides
+      .flatMap((entry) => entry.elements)
+      .filter((entry) => entry.type === 'shape');
+    const texts = result.deck.slides
+      .flatMap((entry) => entry.elements)
+      .filter((entry) => entry.type === 'text');
+    const shape = (name: string) => shapes.find((entry) => entry.name === name)!;
+    const text = (name: string) => texts.find((entry) => entry.name === name)!;
+    expect(shape('Linear 30').fillGradient).toMatchObject({
+      angle: 30,
+      scaled: true,
+      rotateWithShape: true,
+    });
+    // COM authored the midpoint after its endpoints; preserve the original list order.
+    expect(shape('Linear 30').fillGradient?.stops.map((stop) => stop.position)).toEqual([
+      0, 1, 0.5,
+    ]);
+    expect(shape('Center Rectangle').fillGradient).toMatchObject({
+      kind: 'path',
+      path: 'rect',
+      fillToRect: { left: 0.5, top: 0.5, right: 0.5, bottom: 0.5 },
+      tileRect: {},
+    });
+    expect(shape('Corner variant 1').fillGradient).toMatchObject({
+      fillToRect: { right: 1, bottom: 1 },
+      tileRect: { left: -1, top: -1 },
+    });
+    expect(shape('Rotated 30 follow False').fillGradient?.rotateWithShape).toBe(false);
+    // Independently measured COM stop colors in the frozen original fixture.
+    // Theme tint must operate in linear light; mixing sRGB channels made these visibly too dark.
+    for (const [style, colors] of [
+      [22, ['#9b9b9b', '#8e8e8e', '#797979']],
+      [23, ['#9cafbf', '#8fa3b4', '#7a95ab']],
+      [24, ['#f5b8a4', '#f2ab96', '#f59e81']],
+      [25, ['#9db49e', '#90a891', '#7b9c7d']],
+    ] as const) {
+      const gradient = shape(`Theme gradient style ${style}`).fillGradient!;
+      expect(gradient).toMatchObject({ angle: 90, scaled: false });
+      expect(gradient.stops.map((stop) => stop.color)).toEqual(colors);
+    }
+    expect(text('Attached text gradient').decoration?.fill?.gradient?.angle).toBe(0);
+    expect(text('Layout inherited gradient').decoration?.fill?.gradient?.angle).toBe(30);
+    expect(text('Local override gradient').decoration?.fill?.gradient?.angle).toBe(90);
+    for (const name of ['Master gradient placeholder 2', 'Master gradient placeholder 3'])
+      expect(text(name).decoration?.fill?.gradient?.angle).toBe(90);
+    expect(result.deck.slides[5].backgroundGradient?.angle).toBe(30);
+    expect(result.deck.slides[8].backgroundGradient?.angle).toBe(0);
+    expect(() => validateDeck(result.deck)).not.toThrow();
+    const gradients = (deck: Deck) =>
+      deck.slides.map((entry) => ({
+        background: entry.backgroundGradient,
+        paints: entry.elements.map((element) =>
+          element.type === 'shape'
+            ? [element.fillGradient, element.strokeGradient]
+            : element.type === 'text'
+              ? [element.decoration?.fill?.gradient, element.decoration?.line?.gradient]
+              : [],
+        ),
+      }));
+    const again = await importPptx(await buffer(await exportPptx(result.deck)));
+    expect(gradients(again.deck)).toEqual(gradients(result.deck));
+  });
+
+  it('preserves native-opened XML gradient probes, including omitted defaults, duplicate stops, and outlines', async () => {
+    const bytes = await readFile('tests/fixtures/powerpoint-gradient-probe.pptx');
+    const result = await importPptx(
+      bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+    );
+    expect(result.deck.slides).toHaveLength(11);
+    const shapes = result.deck.slides
+      .flatMap((entry) => entry.elements)
+      .filter((entry) => entry.type === 'shape');
+    const shape = (name: string) => shapes.find((entry) => entry.name === name)!;
+    expect(shape('XML scaled false30').fillGradient?.scaled).toBe(false);
+    expect(shape('XML scaled true30').fillGradient?.scaled).toBe(true);
+    expect(shape('XML scaled absent30').fillGradient?.scaled).toBeUndefined();
+    expect(shape('XML absent stop list').fillGradient?.stops).toEqual([
+      { position: 0, color: '#000000', opacity: 1 },
+      { position: 1, color: '#FFFFFF', opacity: 1 },
+    ]);
+    expect(
+      shape('XML duplicate hard stops').fillGradient?.stops.map((stop) => stop.position),
+    ).toEqual([0, 0.4, 0.4, 1]);
+    expect(shape('XML circle on rectangle').fillGradient?.path).toBe('circle');
+    expect(shape('XML shape on triangle').fillGradient?.path).toBe('shape');
+    expect(shape('XML fillToRect absent').fillGradient?.fillToRect).toBeUndefined();
+    expect(shape('XML fillToRect empty').fillGradient?.fillToRect).toEqual({});
+    expect(shape('XML path kind absent').fillGradient?.path).toBeUndefined();
+    expect(shape('XML circle absent focus').fillGradient?.fillToRect).toBeUndefined();
+    expect(shape('XML circle empty focus').fillGradient?.fillToRect).toEqual({});
+    expect(shape('XML gradient missing flags').fillGradient).toEqual({
+      kind: 'linear',
+      angle: 30,
+      stops: shape('XML duplicate hard stops').fillGradient!.stops,
+    });
+    const outline = result.deck.slides[5].elements.find(
+      (entry) => entry.name === 'XML attached gradient outline',
+    ) as TextElement;
+    expect(outline.decoration?.line?.gradient?.stops).toHaveLength(3);
+    expect(shape('XML gradient outline on rectangle').strokeGradient).toMatchObject({
+      angle: 90,
+      scaled: false,
+    });
+    const paints = (deck: Deck) =>
+      JSON.stringify(
+        deck.slides.map((entry) => ({
+          background: entry.backgroundGradient,
+          paints: entry.elements.map((element) =>
+            element.type === 'shape'
+              ? [element.fillGradient, element.strokeGradient]
+              : element.type === 'text'
+                ? [element.decoration?.fill?.gradient, element.decoration?.line?.gradient]
+                : [],
+          ),
+        })),
+      ).toLowerCase();
+    const again = await importPptx(await buffer(await exportPptx(result.deck)));
+    expect(JSON.parse(paints(again.deck))).toEqual(JSON.parse(paints(result.deck)));
+    expect(() => validateDeck(again.deck)).not.toThrow();
   });
 
   it.each([

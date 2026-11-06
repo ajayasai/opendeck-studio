@@ -5,9 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import Canvas from './Canvas';
 import Presenter from './Presenter';
-import { createDeck, createElement, createSlide, validateDeck } from './model';
+import { createDeck, createElement, createSlide, validateDeck, THEMES } from './model';
 import { useEditor } from './useEditor';
-import type { Deck, TextElement } from './types';
+import type { Deck, TextElement, GradientFill, ShapeElement } from './types';
 
 const persistence = vi.hoisted(() => ({
   loadDeck: vi.fn(),
@@ -255,6 +255,63 @@ describe('saved fitting integration', () => {
 });
 
 describe('editor workflows', () => {
+  it('maps themed solid and gradient paints together and restores them in one undo step', async () => {
+    const source = createDeck();
+    const ramp: GradientFill = {
+      kind: 'linear',
+      angle: 35,
+      scaled: true,
+      stops: [
+        { position: 0, color: source.theme.accent.toUpperCase(), opacity: 0.6 },
+        { position: 0.8, color: '#123456', opacity: 1 },
+      ],
+    };
+    const label = createElement('text', source.theme);
+    label.decoration = {
+      shape: 'ellipse',
+      fill: { color: source.theme.accent, opacity: 0.5, gradient: ramp },
+      line: { color: source.theme.foreground, opacity: 1, width: 3, dash: 'solid', gradient: ramp },
+    };
+    const shape = createElement('shape', source.theme);
+    shape.fillGradient = ramp;
+    shape.strokeGradient = ramp;
+    shape.fillOpacity = 0.7;
+    source.slides = [
+      {
+        ...source.slides[0],
+        backgroundGradient: ramp,
+        backgroundOpacity: 0.8,
+        elements: [label, shape],
+      },
+    ];
+    persistence.loadDeck.mockResolvedValue(source);
+    await boot();
+    fireEvent.click(screen.getByRole('tab', { name: 'Design' }));
+    fireEvent.click(screen.getByText('Midnight', { exact: true }));
+    await flushSave();
+    const result = storedDeck(),
+      theme = THEMES.find((value) => value.name === 'Midnight')!;
+    const expected = { ...ramp, stops: [{ ...ramp.stops[0], color: theme.accent }, ramp.stops[1]] };
+    expect(result.slides[0].backgroundGradient).toEqual(expected);
+    expect(result.slides[0].backgroundOpacity).toBe(0.8);
+    const text = result.slides[0].elements[0] as TextElement;
+    expect(text.decoration!.fill).toEqual({
+      color: theme.accent,
+      opacity: 0.5,
+      gradient: expected,
+    });
+    expect(text.decoration!.line!.color).toBe(theme.foreground);
+    expect(text.decoration!.line!.gradient).toEqual(expected);
+    const updatedShape = result.slides[0].elements[1] as ShapeElement;
+    expect(updatedShape.fillGradient).toEqual(expected);
+    expect(updatedShape.strokeGradient).toEqual(expected);
+    expect(updatedShape.fillOpacity).toBe(0.7);
+    expect(() => validateDeck(result)).not.toThrow();
+    fireEvent.click(screen.getByRole('button', { name: 'Undo (Ctrl+Z)' }));
+    await flushSave();
+    expect(storedDeck().slides).toEqual(source.slides);
+  }, 15000);
+
   it('adds a slide, edits its name, and restores slide creation with undo/redo', async () => {
     await boot();
     await user().click(screen.getByRole('button', { name: 'Add slide' }));

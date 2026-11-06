@@ -1,0 +1,4322 @@
+{
+  "schemaVersion": 1,
+  "id": "a891e8a5-2b04-4c7e-833e-2e66ec8405f5",
+  "title": "Original gradient geometry and inheritance controls",
+  "width": 1280,
+  "height": 720,
+  "theme": {
+    "id": "imported",
+    "name": "Imported",
+    "background": "#ffffff",
+    "foreground": "#000000",
+    "accent": "#156082",
+    "muted": "#6b7771",
+    "fontFamily": "Aptos"
+  },
+  "slides": [
+    {
+      "id": "b4924169-c13b-4eca-ad1f-ac25df3fdc08",
+      "name": "Slide 1",
+      "background": "#ffffff",
+      "elements": [
+        {
+          "id": "b08c8980-f09b-445b-9dc0-f73a3636b753",
+          "name": "Heading 1",
+          "x": 53.333333333333336,
+          "y": 26.666666666666668,
+          "width": 1173.3333333333333,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Linear angle and aspect-ratio controls",
+          "fontSize": 26,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": true,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Linear angle and aspect-ratio controls",
+                  "fontSize": 26,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": true,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "bc6da4f4-3a33-454f-a1a7-2a15a740a515",
+          "name": "Label angle 0",
+          "x": 53.333333333333336,
+          "y": 102.66666666666667,
+          "width": 560,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "0 degrees",
+          "fontSize": 16,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "0 degrees",
+                  "fontSize": 16,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "59918794-67b0-4b92-82e5-192427b6630a",
+          "name": "Linear 0",
+          "x": 53.333333333333336,
+          "y": 140,
+          "width": 546.6666666666666,
+          "height": 133.33333333333334,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#ff0000",
+          "stroke": "transparent",
+          "strokeWidth": 0,
+          "fillGradient": {
+            "kind": "linear",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#ff0000",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#0000ff",
+                "opacity": 1
+              },
+              {
+                "position": 0.5,
+                "color": "#00ff00",
+                "opacity": 1
+              }
+            ],
+            "angle": 0,
+            "scaled": true,
+            "rotateWithShape": true,
+            "flip": "none",
+            "tileRect": {}
+          }
+        },
+        {
+          "id": "cd5601c4-c931-4133-9306-d7ce6489b62a",
+          "name": "Label angle 30",
+          "x": 680,
+          "y": 102.66666666666667,
+          "width": 560,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "30 degrees",
+          "fontSize": 16,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "30 degrees",
+                  "fontSize": 16,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "9e6fb95a-30d1-4ae5-af31-38f7ed996bc3",
+          "name": "Linear 30",
+          "x": 680,
+          "y": 140,
+          "width": 546.6666666666666,
+          "height": 133.33333333333334,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#ff0000",
+          "stroke": "transparent",
+          "strokeWidth": 0,
+          "fillGradient": {
+            "kind": "linear",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#ff0000",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#0000ff",
+                "opacity": 1
+              },
+              {
+                "position": 0.5,
+                "color": "#00ff00",
+                "opacity": 1
+              }
+            ],
+            "angle": 30,
+            "scaled": true,
+            "rotateWithShape": true,
+            "flip": "none",
+            "tileRect": {}
+          }
+        },
+        {
+          "id": "a856f2a7-f4c3-4dbf-9efa-b46a3b2e4277",
+          "name": "Label angle 45",
+          "x": 53.333333333333336,
+          "y": 289.3333333333333,
+          "width": 560,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "45 degrees",
+          "fontSize": 16,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "45 degrees",
+                  "fontSize": 16,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "47959017-5258-4517-8b12-75feb888c5a1",
+          "name": "Linear 45",
+          "x": 53.333333333333336,
+          "y": 326.6666666666667,
+          "width": 546.6666666666666,
+          "height": 133.33333333333334,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#ff0000",
+          "stroke": "transparent",
+          "strokeWidth": 0,
+          "fillGradient": {
+            "kind": "linear",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#ff0000",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#0000ff",
+                "opacity": 1
+              },
+              {
+                "position": 0.5,
+                "color": "#00ff00",
+                "opacity": 1
+              }
+            ],
+            "angle": 45,
+            "scaled": true,
+            "rotateWithShape": true,
+            "flip": "none",
+            "tileRect": {}
+          }
+        },
+        {
+          "id": "fab9937a-4216-4cb7-a1e8-1fc06da66860",
+          "name": "Label angle 90",
+          "x": 680,
+          "y": 289.3333333333333,
+          "width": 560,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "90 degrees",
+          "fontSize": 16,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "90 degrees",
+                  "fontSize": 16,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "d4eedc96-b675-4fbe-870f-c31e9ef65d38",
+          "name": "Linear 90",
+          "x": 680,
+          "y": 326.6666666666667,
+          "width": 546.6666666666666,
+          "height": 133.33333333333334,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#ff0000",
+          "stroke": "transparent",
+          "strokeWidth": 0,
+          "fillGradient": {
+            "kind": "linear",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#ff0000",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#0000ff",
+                "opacity": 1
+              },
+              {
+                "position": 0.5,
+                "color": "#00ff00",
+                "opacity": 1
+              }
+            ],
+            "angle": 90,
+            "scaled": true,
+            "rotateWithShape": true,
+            "flip": "none",
+            "tileRect": {}
+          }
+        },
+        {
+          "id": "41b6956b-61ee-4d47-9adf-85c059cf99c1",
+          "name": "Label angle 180",
+          "x": 53.333333333333336,
+          "y": 476,
+          "width": 560,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "180 degrees",
+          "fontSize": 16,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "180 degrees",
+                  "fontSize": 16,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "77e63a5e-6ebe-433f-a794-55aec16518c4",
+          "name": "Linear 180",
+          "x": 53.333333333333336,
+          "y": 513.3333333333334,
+          "width": 546.6666666666666,
+          "height": 133.33333333333334,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#ff0000",
+          "stroke": "transparent",
+          "strokeWidth": 0,
+          "fillGradient": {
+            "kind": "linear",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#ff0000",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#0000ff",
+                "opacity": 1
+              },
+              {
+                "position": 0.5,
+                "color": "#00ff00",
+                "opacity": 1
+              }
+            ],
+            "angle": 180,
+            "scaled": true,
+            "rotateWithShape": true,
+            "flip": "none",
+            "tileRect": {}
+          }
+        },
+        {
+          "id": "53f2ffff-e5ff-419d-a6e2-608eec67044b",
+          "name": "Label angle 270",
+          "x": 680,
+          "y": 476,
+          "width": 560,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "270 degrees",
+          "fontSize": 16,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "270 degrees",
+                  "fontSize": 16,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "f842a955-b535-4f4d-8f86-e2a367c0119c",
+          "name": "Linear 270",
+          "x": 680,
+          "y": 513.3333333333334,
+          "width": 546.6666666666666,
+          "height": 133.33333333333334,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#ff0000",
+          "stroke": "transparent",
+          "strokeWidth": 0,
+          "fillGradient": {
+            "kind": "linear",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#ff0000",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#0000ff",
+                "opacity": 1
+              },
+              {
+                "position": 0.5,
+                "color": "#00ff00",
+                "opacity": 1
+              }
+            ],
+            "angle": 270,
+            "scaled": true,
+            "rotateWithShape": true,
+            "flip": "none",
+            "tileRect": {}
+          }
+        }
+      ],
+      "notes": "Original COM linear gradients at six angles, non-square bounds. Three distinct stops isolate geometry from the special two-color interpolation rule.",
+      "transition": "none",
+      "hidden": false
+    },
+    {
+      "id": "06e7d1dc-1081-4193-bace-f500436bf554",
+      "name": "Slide 2",
+      "background": "#ffffff",
+      "elements": [
+        {
+          "id": "5d67f953-7a7a-45ef-b89d-0c2b5864cb86",
+          "name": "Heading 2",
+          "x": 53.333333333333336,
+          "y": 26.666666666666668,
+          "width": 1173.3333333333333,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Stop interpolation and independent transparency",
+          "fontSize": 26,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": true,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Stop interpolation and independent transparency",
+                  "fontSize": 26,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": true,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "aa654dad-1612-4a0e-975a-73a52466d31e",
+          "name": "Label Two endpoint black white",
+          "x": 53.333333333333336,
+          "y": 104,
+          "width": 1173.3333333333333,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Two endpoint black white",
+          "fontSize": 13,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Two endpoint black white",
+                  "fontSize": 13,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "df2b9b3b-6d69-4cdc-b49c-cdd462ca517d",
+          "name": "Two endpoint black white",
+          "x": 53.333333333333336,
+          "y": 133.33333333333334,
+          "width": 1173.3333333333333,
+          "height": 57.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#000000",
+          "stroke": "transparent",
+          "strokeWidth": 0,
+          "fillGradient": {
+            "kind": "linear",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#000000",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#ffffff",
+                "opacity": 1
+              }
+            ],
+            "angle": 0,
+            "scaled": true,
+            "rotateWithShape": true,
+            "flip": "none",
+            "tileRect": {}
+          }
+        },
+        {
+          "id": "bc11da05-b954-4dd8-90b4-f56a7acfd1a5",
+          "name": "Label Two endpoint red blue",
+          "x": 53.333333333333336,
+          "y": 200,
+          "width": 1173.3333333333333,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Two endpoint red blue",
+          "fontSize": 13,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Two endpoint red blue",
+                  "fontSize": 13,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "c2c53d27-7155-4f6c-a7d3-d277bfc99edf",
+          "name": "Two endpoint red blue",
+          "x": 53.333333333333336,
+          "y": 229.33333333333334,
+          "width": 1173.3333333333333,
+          "height": 57.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#ff0000",
+          "stroke": "transparent",
+          "strokeWidth": 0,
+          "fillGradient": {
+            "kind": "linear",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#ff0000",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#0000ff",
+                "opacity": 1
+              }
+            ],
+            "angle": 0,
+            "scaled": true,
+            "rotateWithShape": true,
+            "flip": "none",
+            "tileRect": {}
+          }
+        },
+        {
+          "id": "1066a74f-5bc9-46b7-84a4-2e7780348330",
+          "name": "Label Two stops last99percent",
+          "x": 53.333333333333336,
+          "y": 296,
+          "width": 1173.3333333333333,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Two stops last99percent",
+          "fontSize": 13,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Two stops last99percent",
+                  "fontSize": 13,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "ea4d862d-e2d2-4bfc-8fdf-b34ea3bc7365",
+          "name": "Two stops last99percent",
+          "x": 53.333333333333336,
+          "y": 325.3333333333333,
+          "width": 1173.3333333333333,
+          "height": 57.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#000000",
+          "stroke": "transparent",
+          "strokeWidth": 0,
+          "fillGradient": {
+            "kind": "linear",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#000000",
+                "opacity": 1
+              },
+              {
+                "position": 0.99,
+                "color": "#ffffff",
+                "opacity": 1
+              }
+            ],
+            "angle": 0,
+            "scaled": true,
+            "rotateWithShape": true,
+            "flip": "none",
+            "tileRect": {}
+          }
+        },
+        {
+          "id": "44f65b18-8ed3-42cc-886e-561d62cf0d64",
+          "name": "Label Three symmetric stops",
+          "x": 53.333333333333336,
+          "y": 392,
+          "width": 1173.3333333333333,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Three symmetric stops",
+          "fontSize": 13,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Three symmetric stops",
+                  "fontSize": 13,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "1244cdcf-0200-4af4-99af-820bc1b36496",
+          "name": "Three symmetric stops",
+          "x": 53.333333333333336,
+          "y": 421.3333333333333,
+          "width": 1173.3333333333333,
+          "height": 57.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#000000",
+          "stroke": "transparent",
+          "strokeWidth": 0,
+          "fillGradient": {
+            "kind": "linear",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#000000",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#000000",
+                "opacity": 1
+              },
+              {
+                "position": 0.5,
+                "color": "#ffffff",
+                "opacity": 1
+              }
+            ],
+            "angle": 0,
+            "scaled": true,
+            "rotateWithShape": true,
+            "flip": "none",
+            "tileRect": {}
+          }
+        },
+        {
+          "id": "c14e12c8-c4d0-4867-bf4b-8a1057c50705",
+          "name": "Label Four linear stops",
+          "x": 53.333333333333336,
+          "y": 488,
+          "width": 1173.3333333333333,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Four linear stops",
+          "fontSize": 13,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Four linear stops",
+                  "fontSize": 13,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "32fcba3c-a85e-48fd-8813-180124c13bba",
+          "name": "Four linear stops",
+          "x": 53.333333333333336,
+          "y": 517.3333333333334,
+          "width": 1173.3333333333333,
+          "height": 57.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#000000",
+          "stroke": "transparent",
+          "strokeWidth": 0,
+          "fillGradient": {
+            "kind": "linear",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#000000",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#ffffff",
+                "opacity": 1
+              },
+              {
+                "position": 0.25,
+                "color": "#ff0000",
+                "opacity": 1
+              },
+              {
+                "position": 0.75,
+                "color": "#0000ff",
+                "opacity": 1
+              }
+            ],
+            "angle": 0,
+            "scaled": true,
+            "rotateWithShape": true,
+            "flip": "none",
+            "tileRect": {}
+          }
+        },
+        {
+          "id": "ba34a6e4-43aa-4b88-a2a0-c323f797f927",
+          "name": "Label Two stops alpha",
+          "x": 53.333333333333336,
+          "y": 584,
+          "width": 1173.3333333333333,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Two stops alpha",
+          "fontSize": 13,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Two stops alpha",
+                  "fontSize": 13,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "e84c84ef-d324-47e9-9501-37631c0f11ee",
+          "name": "Two stops alpha",
+          "x": 53.333333333333336,
+          "y": 613.3333333333334,
+          "width": 1173.3333333333333,
+          "height": 57.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#ff0000",
+          "stroke": "transparent",
+          "strokeWidth": 0,
+          "fillGradient": {
+            "kind": "linear",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#ff0000",
+                "opacity": 0
+              },
+              {
+                "position": 1,
+                "color": "#0000ff",
+                "opacity": 1
+              }
+            ],
+            "angle": 0,
+            "scaled": true,
+            "rotateWithShape": true,
+            "flip": "none",
+            "tileRect": {}
+          }
+        }
+      ],
+      "notes": "Six native controls. Endpoint black-to-white tests the documented gamma rule; a 99-percent endpoint disables it. Symmetric three-stop, four-stop, alpha and red-blue controls permit independent pixel checks.",
+      "transition": "none",
+      "hidden": false
+    },
+    {
+      "id": "44bed08a-3b1e-4dc2-9af2-62ad5b25edb1",
+      "name": "Slide 3",
+      "background": "#ffffff",
+      "elements": [
+        {
+          "id": "89409615-0381-429d-ad53-845d1fa0821e",
+          "name": "Heading 3",
+          "x": 53.333333333333336,
+          "y": 26.666666666666668,
+          "width": 1173.3333333333333,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Native center gradients on four preset shapes",
+          "fontSize": 26,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": true,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Native center gradients on four preset shapes",
+                  "fontSize": 26,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": true,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "2c6709bc-04a6-47d3-a5a3-2a273d907d66",
+          "name": "Label center Rectangle",
+          "x": 53.333333333333336,
+          "y": 126.66666666666667,
+          "width": 280,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Rectangle",
+          "fontSize": 15,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Rectangle",
+                  "fontSize": 15,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "0a0b6db9-9c8c-41bb-8e36-8aff7e552211",
+          "name": "Center Rectangle",
+          "x": 53.333333333333336,
+          "y": 186.66666666666666,
+          "width": 253.33333333333334,
+          "height": 400,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#ff0000",
+          "stroke": "transparent",
+          "strokeWidth": 0,
+          "fillGradient": {
+            "kind": "path",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#ff0000",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#0000ff",
+                "opacity": 1
+              },
+              {
+                "position": 0.5,
+                "color": "#00ff00",
+                "opacity": 1
+              }
+            ],
+            "rotateWithShape": true,
+            "path": "rect",
+            "flip": "none",
+            "fillToRect": {
+              "left": 0.5,
+              "top": 0.5,
+              "right": 0.5,
+              "bottom": 0.5
+            },
+            "tileRect": {}
+          }
+        },
+        {
+          "id": "2dba251d-5414-4414-a0bc-507520ed29b3",
+          "name": "Label center Ellipse",
+          "x": 360,
+          "y": 126.66666666666667,
+          "width": 280,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Ellipse",
+          "fontSize": 15,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Ellipse",
+                  "fontSize": 15,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "5637a454-8c98-45ed-af33-8d394ada62cc",
+          "name": "Center Ellipse",
+          "x": 360,
+          "y": 186.66666666666666,
+          "width": 253.33333333333334,
+          "height": 400,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "ellipse",
+          "fill": "#ff0000",
+          "stroke": "transparent",
+          "strokeWidth": 0,
+          "fillGradient": {
+            "kind": "path",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#ff0000",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#0000ff",
+                "opacity": 1
+              },
+              {
+                "position": 0.5,
+                "color": "#00ff00",
+                "opacity": 1
+              }
+            ],
+            "rotateWithShape": true,
+            "path": "rect",
+            "flip": "none",
+            "fillToRect": {
+              "left": 0.5,
+              "top": 0.5,
+              "right": 0.5,
+              "bottom": 0.5
+            },
+            "tileRect": {}
+          }
+        },
+        {
+          "id": "94788b59-7dbf-410d-9812-788bb134df9c",
+          "name": "Label center Triangle",
+          "x": 666.6666666666666,
+          "y": 126.66666666666667,
+          "width": 280,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Triangle",
+          "fontSize": 15,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Triangle",
+                  "fontSize": 15,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "c6e34266-36a5-4a21-af0d-7e84dc07fce6",
+          "name": "Center Triangle",
+          "x": 666.6666666666666,
+          "y": 186.66666666666666,
+          "width": 253.33333333333334,
+          "height": 400,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "triangle",
+          "fill": "#ff0000",
+          "stroke": "transparent",
+          "strokeWidth": 0,
+          "fillGradient": {
+            "kind": "path",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#ff0000",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#0000ff",
+                "opacity": 1
+              },
+              {
+                "position": 0.5,
+                "color": "#00ff00",
+                "opacity": 1
+              }
+            ],
+            "rotateWithShape": true,
+            "path": "rect",
+            "flip": "none",
+            "fillToRect": {
+              "left": 0.5,
+              "top": 0.5,
+              "right": 0.5,
+              "bottom": 0.5
+            },
+            "tileRect": {}
+          }
+        },
+        {
+          "id": "26a8c98f-361b-413f-9176-4e5bd0d3e2a2",
+          "name": "Label center Round rectangle",
+          "x": 973.3333333333334,
+          "y": 126.66666666666667,
+          "width": 280,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Round rectangle",
+          "fontSize": 15,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Round rectangle",
+                  "fontSize": 15,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "d31d27ef-eeb7-416e-814d-997a5a7f04ea",
+          "name": "Center Round rectangle",
+          "x": 973.3333333333334,
+          "y": 186.66666666666666,
+          "width": 253.33333333333334,
+          "height": 400,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "roundRect",
+          "fill": "#ff0000",
+          "stroke": "transparent",
+          "strokeWidth": 0,
+          "fillGradient": {
+            "kind": "path",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#ff0000",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#0000ff",
+                "opacity": 1
+              },
+              {
+                "position": 0.5,
+                "color": "#00ff00",
+                "opacity": 1
+              }
+            ],
+            "rotateWithShape": true,
+            "path": "rect",
+            "flip": "none",
+            "fillToRect": {
+              "left": 0.5,
+              "top": 0.5,
+              "right": 0.5,
+              "bottom": 0.5
+            },
+            "tileRect": {}
+          }
+        }
+      ],
+      "notes": "COM msoGradientFromCenter variant1 on rectangle, ellipse, triangle and rounded rectangle. Native XML determines the path type and focus rectangle; it is not inferred from the API label.",
+      "transition": "none",
+      "hidden": false
+    },
+    {
+      "id": "03c6030c-f5e6-44f9-9365-a205c97c5ff4",
+      "name": "Slide 4",
+      "background": "#ffffff",
+      "elements": [
+        {
+          "id": "1550cd90-f195-44a6-b6a1-4e868a97e8f3",
+          "name": "Heading 4",
+          "x": 53.333333333333336,
+          "y": 26.666666666666668,
+          "width": 1173.3333333333333,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Native corner focus and wide center gradients",
+          "fontSize": 26,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": true,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Native corner focus and wide center gradients",
+                  "fontSize": 26,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": true,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "febd5b52-a486-431b-a730-9055e62587a8",
+          "name": "Label corner 1",
+          "x": 53.333333333333336,
+          "y": 113.33333333333333,
+          "width": 560,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Corner variant 1",
+          "fontSize": 14,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Corner variant 1",
+                  "fontSize": 14,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "f4f314ff-f121-4385-b6f0-fac8fbbb3429",
+          "name": "Corner variant 1",
+          "x": 53.333333333333336,
+          "y": 146.66666666666666,
+          "width": 546.6666666666666,
+          "height": 133.33333333333334,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#ff0000",
+          "stroke": "transparent",
+          "strokeWidth": 0,
+          "fillGradient": {
+            "kind": "path",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#ff0000",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#0000ff",
+                "opacity": 1
+              },
+              {
+                "position": 0.5,
+                "color": "#00ff00",
+                "opacity": 1
+              }
+            ],
+            "rotateWithShape": true,
+            "path": "rect",
+            "flip": "none",
+            "fillToRect": {
+              "right": 1,
+              "bottom": 1
+            },
+            "tileRect": {
+              "left": -1,
+              "top": -1
+            }
+          }
+        },
+        {
+          "id": "f0f2dcdb-9829-4af1-a483-f56b1a7a4e20",
+          "name": "Label corner 2",
+          "x": 680,
+          "y": 113.33333333333333,
+          "width": 560,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Corner variant 2",
+          "fontSize": 14,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Corner variant 2",
+                  "fontSize": 14,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "968a7000-80cf-40fc-a16f-8beb20deb3fe",
+          "name": "Corner variant 2",
+          "x": 680,
+          "y": 146.66666666666666,
+          "width": 546.6666666666666,
+          "height": 133.33333333333334,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#ff0000",
+          "stroke": "transparent",
+          "strokeWidth": 0,
+          "fillGradient": {
+            "kind": "path",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#ff0000",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#0000ff",
+                "opacity": 1
+              },
+              {
+                "position": 0.5,
+                "color": "#00ff00",
+                "opacity": 1
+              }
+            ],
+            "rotateWithShape": true,
+            "path": "rect",
+            "flip": "none",
+            "fillToRect": {
+              "left": 1,
+              "bottom": 1
+            },
+            "tileRect": {
+              "top": -1,
+              "right": -1
+            }
+          }
+        },
+        {
+          "id": "971c1237-873b-42cf-926b-1f841941005b",
+          "name": "Label corner 3",
+          "x": 53.333333333333336,
+          "y": 306.6666666666667,
+          "width": 560,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Corner variant 3",
+          "fontSize": 14,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Corner variant 3",
+                  "fontSize": 14,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "b19c723e-b037-444a-b1f6-2ae0ce586d6c",
+          "name": "Corner variant 3",
+          "x": 53.333333333333336,
+          "y": 340,
+          "width": 546.6666666666666,
+          "height": 133.33333333333334,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#ff0000",
+          "stroke": "transparent",
+          "strokeWidth": 0,
+          "fillGradient": {
+            "kind": "path",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#ff0000",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#0000ff",
+                "opacity": 1
+              },
+              {
+                "position": 0.5,
+                "color": "#00ff00",
+                "opacity": 1
+              }
+            ],
+            "rotateWithShape": true,
+            "path": "rect",
+            "flip": "none",
+            "fillToRect": {
+              "top": 1,
+              "right": 1
+            },
+            "tileRect": {
+              "left": -1,
+              "bottom": -1
+            }
+          }
+        },
+        {
+          "id": "0fc42680-8f72-40f1-bd6f-21b1b57b370a",
+          "name": "Label corner 4",
+          "x": 680,
+          "y": 306.6666666666667,
+          "width": 560,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Corner variant 4",
+          "fontSize": 14,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Corner variant 4",
+                  "fontSize": 14,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "93dd6953-3b71-4f7c-902f-5baeffc2d2d1",
+          "name": "Corner variant 4",
+          "x": 680,
+          "y": 340,
+          "width": 546.6666666666666,
+          "height": 133.33333333333334,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#ff0000",
+          "stroke": "transparent",
+          "strokeWidth": 0,
+          "fillGradient": {
+            "kind": "path",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#ff0000",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#0000ff",
+                "opacity": 1
+              },
+              {
+                "position": 0.5,
+                "color": "#00ff00",
+                "opacity": 1
+              }
+            ],
+            "rotateWithShape": true,
+            "path": "rect",
+            "flip": "none",
+            "fillToRect": {
+              "left": 1,
+              "top": 1
+            },
+            "tileRect": {
+              "right": -1,
+              "bottom": -1
+            }
+          }
+        },
+        {
+          "id": "e94eca06-1d2a-4517-87cc-697ccb9324f6",
+          "name": "Wide center rectangle variant2",
+          "x": 53.333333333333336,
+          "y": 560,
+          "width": 546.6666666666666,
+          "height": 106.66666666666667,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#ff0000",
+          "stroke": "transparent",
+          "strokeWidth": 0,
+          "fillGradient": {
+            "kind": "path",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#ff0000",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#0000ff",
+                "opacity": 1
+              },
+              {
+                "position": 0.5,
+                "color": "#00ff00",
+                "opacity": 1
+              }
+            ],
+            "rotateWithShape": true,
+            "path": "rect",
+            "flip": "none",
+            "fillToRect": {
+              "left": 0.5,
+              "top": 0.5,
+              "right": 0.5,
+              "bottom": 0.5
+            },
+            "tileRect": {}
+          }
+        },
+        {
+          "id": "0d68887b-12ab-4f5a-a385-06bb50444068",
+          "name": "Wide center ellipse variant2",
+          "x": 680,
+          "y": 560,
+          "width": 546.6666666666666,
+          "height": 106.66666666666667,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "ellipse",
+          "fill": "#ff0000",
+          "stroke": "transparent",
+          "strokeWidth": 0,
+          "fillGradient": {
+            "kind": "path",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#ff0000",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#0000ff",
+                "opacity": 1
+              },
+              {
+                "position": 0.5,
+                "color": "#00ff00",
+                "opacity": 1
+              }
+            ],
+            "rotateWithShape": true,
+            "path": "rect",
+            "flip": "none",
+            "fillToRect": {
+              "left": 0.5,
+              "top": 0.5,
+              "right": 0.5,
+              "bottom": 0.5
+            },
+            "tileRect": {}
+          }
+        }
+      ],
+      "notes": "COM from-corner variants1 through4 use non-square rectangles. Two wide center variant2 controls use rectangle and ellipse. This installed PowerPoint rejected TwoColorGradient style6 from-title; it is not fabricated in this original fixture.",
+      "transition": "none",
+      "hidden": false
+    },
+    {
+      "id": "3ba09337-6b80-4545-a593-abcea2e8a803",
+      "name": "Slide 5",
+      "background": "#ffffff",
+      "elements": [
+        {
+          "id": "809ec99d-8034-44ca-97a9-3c127dff3708",
+          "name": "Heading 5",
+          "x": 53.333333333333336,
+          "y": 26.666666666666668,
+          "width": 1173.3333333333333,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Rotation with and without the object",
+          "fontSize": 26,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": true,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Rotation with and without the object",
+                  "fontSize": 26,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": true,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "79e4044b-356f-424c-afec-61c80569c0dc",
+          "name": "Label rotation 0",
+          "x": 60,
+          "y": 113.33333333333333,
+          "width": 360,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Rotation 0 / follow True",
+          "fontSize": 14,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Rotation 0 / follow True",
+                  "fontSize": 14,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "bb2d73ff-3c9e-4554-b698-641aea38405c",
+          "name": "Rotated 0 follow True",
+          "x": 100,
+          "y": 193.33333333333334,
+          "width": 266.6666666666667,
+          "height": 140,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#ff0000",
+          "stroke": "transparent",
+          "strokeWidth": 0,
+          "fillGradient": {
+            "kind": "linear",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#ff0000",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#0000ff",
+                "opacity": 1
+              },
+              {
+                "position": 0.5,
+                "color": "#00ff00",
+                "opacity": 1
+              }
+            ],
+            "angle": 45,
+            "scaled": true,
+            "rotateWithShape": true,
+            "flip": "none",
+            "tileRect": {}
+          }
+        },
+        {
+          "id": "4d2a962d-13be-4602-8530-3084bfdd8baa",
+          "name": "Label rotation 1",
+          "x": 466.6666666666667,
+          "y": 113.33333333333333,
+          "width": 360,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Rotation 30 / follow True",
+          "fontSize": 14,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Rotation 30 / follow True",
+                  "fontSize": 14,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "f0be0b1a-36b5-400a-b576-085aec81ec75",
+          "name": "Rotated 30 follow True",
+          "x": 506.6666666666667,
+          "y": 193.33333333333334,
+          "width": 266.6666666666667,
+          "height": 140,
+          "rotation": 30,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#ff0000",
+          "stroke": "transparent",
+          "strokeWidth": 0,
+          "fillGradient": {
+            "kind": "linear",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#ff0000",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#0000ff",
+                "opacity": 1
+              },
+              {
+                "position": 0.5,
+                "color": "#00ff00",
+                "opacity": 1
+              }
+            ],
+            "angle": 45,
+            "scaled": true,
+            "rotateWithShape": true,
+            "flip": "none",
+            "tileRect": {}
+          }
+        },
+        {
+          "id": "71836ff9-9594-48fb-ba0f-b1046a2eb5ac",
+          "name": "Label rotation 2",
+          "x": 873.3333333333334,
+          "y": 113.33333333333333,
+          "width": 360,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Rotation 90 / follow True",
+          "fontSize": 14,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Rotation 90 / follow True",
+                  "fontSize": 14,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "30e35653-9681-4a95-a3e0-fee7ba0d3c9c",
+          "name": "Rotated 90 follow True",
+          "x": 913.3333333333334,
+          "y": 193.33333333333334,
+          "width": 266.6666666666667,
+          "height": 140,
+          "rotation": 90,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#ff0000",
+          "stroke": "transparent",
+          "strokeWidth": 0,
+          "fillGradient": {
+            "kind": "linear",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#ff0000",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#0000ff",
+                "opacity": 1
+              },
+              {
+                "position": 0.5,
+                "color": "#00ff00",
+                "opacity": 1
+              }
+            ],
+            "angle": 45,
+            "scaled": true,
+            "rotateWithShape": true,
+            "flip": "none",
+            "tileRect": {}
+          }
+        },
+        {
+          "id": "a6d28748-dece-482c-8039-cfa944868da3",
+          "name": "Label rotation 3",
+          "x": 60,
+          "y": 420,
+          "width": 360,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Rotation 0 / follow False",
+          "fontSize": 14,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Rotation 0 / follow False",
+                  "fontSize": 14,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "5e5b886b-ff85-4d16-9375-47d02509f389",
+          "name": "Rotated 0 follow False",
+          "x": 100,
+          "y": 500,
+          "width": 266.6666666666667,
+          "height": 140,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#ff0000",
+          "stroke": "transparent",
+          "strokeWidth": 0,
+          "fillGradient": {
+            "kind": "linear",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#ff0000",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#0000ff",
+                "opacity": 1
+              },
+              {
+                "position": 0.5,
+                "color": "#00ff00",
+                "opacity": 1
+              }
+            ],
+            "angle": 45,
+            "scaled": true,
+            "rotateWithShape": false,
+            "flip": "none",
+            "tileRect": {}
+          }
+        },
+        {
+          "id": "b8bc5383-0cfb-4265-8ce1-1067690517a1",
+          "name": "Label rotation 4",
+          "x": 466.6666666666667,
+          "y": 420,
+          "width": 360,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Rotation 30 / follow False",
+          "fontSize": 14,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Rotation 30 / follow False",
+                  "fontSize": 14,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "af30f373-c2a0-4813-8b83-717ea3c8d06e",
+          "name": "Rotated 30 follow False",
+          "x": 506.6666666666667,
+          "y": 500,
+          "width": 266.6666666666667,
+          "height": 140,
+          "rotation": 30,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#ff0000",
+          "stroke": "transparent",
+          "strokeWidth": 0,
+          "fillGradient": {
+            "kind": "linear",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#ff0000",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#0000ff",
+                "opacity": 1
+              },
+              {
+                "position": 0.5,
+                "color": "#00ff00",
+                "opacity": 1
+              }
+            ],
+            "angle": 45,
+            "scaled": true,
+            "rotateWithShape": false,
+            "flip": "none",
+            "tileRect": {}
+          }
+        },
+        {
+          "id": "fff0c211-5cce-42c6-a19f-ff5c51c7c57f",
+          "name": "Label rotation 5",
+          "x": 873.3333333333334,
+          "y": 420,
+          "width": 360,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Rotation 90 / follow False",
+          "fontSize": 14,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Rotation 90 / follow False",
+                  "fontSize": 14,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "b3a89e80-66d4-4317-aa32-94793d7a1183",
+          "name": "Rotated 90 follow False",
+          "x": 913.3333333333334,
+          "y": 500,
+          "width": 266.6666666666667,
+          "height": 140,
+          "rotation": 90,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#ff0000",
+          "stroke": "transparent",
+          "strokeWidth": 0,
+          "fillGradient": {
+            "kind": "linear",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#ff0000",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#0000ff",
+                "opacity": 1
+              },
+              {
+                "position": 0.5,
+                "color": "#00ff00",
+                "opacity": 1
+              }
+            ],
+            "angle": 45,
+            "scaled": true,
+            "rotateWithShape": false,
+            "flip": "none",
+            "tileRect": {}
+          }
+        }
+      ],
+      "notes": "Original COM RotateWithObject true and false at0,30,90degrees. Linear45degrees uses three stops; no shadow, outline or text changes the sampled fill.",
+      "transition": "none",
+      "hidden": false
+    },
+    {
+      "id": "dda47daa-ac5f-4970-b7cf-204f0ed599ce",
+      "name": "Slide 6",
+      "background": "#e7f2e6",
+      "backgroundGradient": {
+        "kind": "linear",
+        "stops": [
+          {
+            "position": 0,
+            "color": "#e7f2e6",
+            "opacity": 1
+          },
+          {
+            "position": 1,
+            "color": "#9cb8d8",
+            "opacity": 1
+          },
+          {
+            "position": 0.4,
+            "color": "#ffffff",
+            "opacity": 1
+          }
+        ],
+        "angle": 30,
+        "scaled": true,
+        "rotateWithShape": true,
+        "flip": "none",
+        "tileRect": {}
+      },
+      "elements": [
+        {
+          "id": "2010e386-2a96-4e4b-9a6a-d222dc88e159",
+          "name": "Heading 6",
+          "x": 53.333333333333336,
+          "y": 26.666666666666668,
+          "width": 1173.3333333333333,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Slide background and attached text gradient",
+          "fontSize": 26,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": true,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Slide background and attached text gradient",
+                  "fontSize": 26,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": true,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "2b83c18d-dc78-42b0-ae9a-41e43d23d59c",
+          "name": "Attached text gradient",
+          "x": 160,
+          "y": 220,
+          "width": 960,
+          "height": 266.6666666666667,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Editable text over an attached gradient",
+          "fontSize": 28,
+          "fontFamily": "Arial",
+          "color": "#000000",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Editable text over an attached gradient",
+                  "fontSize": 28,
+                  "fontFamily": "Arial",
+                  "color": "#000000",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 32,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 32
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": {
+              "color": "#ff0000",
+              "opacity": 1,
+              "gradient": {
+                "kind": "linear",
+                "stops": [
+                  {
+                    "position": 0,
+                    "color": "#ff0000",
+                    "opacity": 1
+                  },
+                  {
+                    "position": 1,
+                    "color": "#0000ff",
+                    "opacity": 1
+                  },
+                  {
+                    "position": 0.5,
+                    "color": "#00ff00",
+                    "opacity": 1
+                  }
+                ],
+                "angle": 0,
+                "scaled": true,
+                "rotateWithShape": true,
+                "flip": "none",
+                "tileRect": {}
+              }
+            },
+            "line": null
+          }
+        }
+      ],
+      "notes": "Original slide background gradient and a filled text box. The slide background has independent gradient stops. Plain shapes remain separate editable objects.",
+      "transition": "none",
+      "hidden": false
+    },
+    {
+      "id": "3f553d3a-b217-4aea-82a2-c83d6bab99ff",
+      "name": "Slide 7",
+      "background": "#ffffff",
+      "elements": [
+        {
+          "id": "07200842-0127-4691-ad1e-7f111545064f",
+          "name": "Heading 7",
+          "x": 53.333333333333336,
+          "y": 26.666666666666668,
+          "width": 1173.3333333333333,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Theme-referenced gradient styles",
+          "fontSize": 26,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": true,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Theme-referenced gradient styles",
+                  "fontSize": 26,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": true,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "e302a0c7-088f-45c9-aed2-748a14090224",
+          "name": "Theme gradient style 22",
+          "x": 60,
+          "y": 180,
+          "width": 533.3333333333334,
+          "height": 200,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#9b9b9b",
+          "stroke": "#000000",
+          "strokeWidth": 1.3333333333333333,
+          "fillGradient": {
+            "kind": "linear",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#9b9b9b",
+                "opacity": 1
+              },
+              {
+                "position": 0.5,
+                "color": "#8e8e8e",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#797979",
+                "opacity": 1
+              }
+            ],
+            "angle": 90,
+            "scaled": false,
+            "rotateWithShape": true
+          }
+        },
+        {
+          "id": "e9cd2c7f-1ca4-464d-88c5-6e485b2730c7",
+          "name": "Label theme 22",
+          "x": 60,
+          "y": 140,
+          "width": 533.3333333333334,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "ShapeStyle 22",
+          "fontSize": 16,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "ShapeStyle 22",
+                  "fontSize": 16,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "3089ca85-3adb-4bbb-b695-4e764d5b6310",
+          "name": "Theme gradient style 23",
+          "x": 686.6666666666666,
+          "y": 180,
+          "width": 533.3333333333334,
+          "height": 200,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#9cafbf",
+          "stroke": "#156082",
+          "strokeWidth": 1.3333333333333333,
+          "fillGradient": {
+            "kind": "linear",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#9cafbf",
+                "opacity": 1
+              },
+              {
+                "position": 0.5,
+                "color": "#8fa3b4",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#7a95ab",
+                "opacity": 1
+              }
+            ],
+            "angle": 90,
+            "scaled": false,
+            "rotateWithShape": true
+          }
+        },
+        {
+          "id": "9331fadc-3657-43af-abae-5885bbcd859b",
+          "name": "Label theme 23",
+          "x": 686.6666666666666,
+          "y": 140,
+          "width": 533.3333333333334,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "ShapeStyle 23",
+          "fontSize": 16,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "ShapeStyle 23",
+                  "fontSize": 16,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "f5c8b16e-4c88-4976-806b-20addd31d724",
+          "name": "Theme gradient style 24",
+          "x": 60,
+          "y": 460,
+          "width": 533.3333333333334,
+          "height": 200,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#f5b8a4",
+          "stroke": "#e97132",
+          "strokeWidth": 1.3333333333333333,
+          "fillGradient": {
+            "kind": "linear",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#f5b8a4",
+                "opacity": 1
+              },
+              {
+                "position": 0.5,
+                "color": "#f2ab96",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#f59e81",
+                "opacity": 1
+              }
+            ],
+            "angle": 90,
+            "scaled": false,
+            "rotateWithShape": true
+          }
+        },
+        {
+          "id": "a77d54e8-6c08-4157-becf-113189f769c1",
+          "name": "Label theme 24",
+          "x": 60,
+          "y": 420,
+          "width": 533.3333333333334,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "ShapeStyle 24",
+          "fontSize": 16,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "ShapeStyle 24",
+                  "fontSize": 16,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "4e955bd0-1042-4c5f-a8a5-34e298948746",
+          "name": "Theme gradient style 25",
+          "x": 686.6666666666666,
+          "y": 460,
+          "width": 533.3333333333334,
+          "height": 200,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "#9db49e",
+          "stroke": "#196b24",
+          "strokeWidth": 1.3333333333333333,
+          "fillGradient": {
+            "kind": "linear",
+            "stops": [
+              {
+                "position": 0,
+                "color": "#9db49e",
+                "opacity": 1
+              },
+              {
+                "position": 0.5,
+                "color": "#90a891",
+                "opacity": 1
+              },
+              {
+                "position": 1,
+                "color": "#7b9c7d",
+                "opacity": 1
+              }
+            ],
+            "angle": 90,
+            "scaled": false,
+            "rotateWithShape": true
+          }
+        },
+        {
+          "id": "3de3bdb0-c0cf-4962-a86d-a751bcf8f4fd",
+          "name": "Label theme 25",
+          "x": 686.6666666666666,
+          "y": 420,
+          "width": 533.3333333333334,
+          "height": 53.333333333333336,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "ShapeStyle 25",
+          "fontSize": 16,
+          "fontFamily": "Arial",
+          "color": "#172e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "ShapeStyle 25",
+                  "fontSize": 16,
+                  "fontFamily": "Arial",
+                  "color": "#172e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "none"
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        }
+      ],
+      "notes": "The first four native ShapeStyle presets whose effective fill is a gradient refer to the document theme. Actual fill-reference indexes and theme gradients are verified from XML, not assumed from API style numbers.",
+      "transition": "none",
+      "hidden": false
+    },
+    {
+      "id": "80d59af0-2801-425a-8459-8c7db5befe0d",
+      "name": "Slide 8",
+      "background": "#ffffff",
+      "elements": [
+        {
+          "id": "09145117-e652-48e6-a36d-c3efe6d5574f",
+          "name": "Layout inherited gradient",
+          "x": 88,
+          "y": 38.333333333333336,
+          "width": 1104,
+          "height": 139.16671916010498,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Gradient inherited from the layout",
+          "fontSize": 44,
+          "fontFamily": "Aptos Display",
+          "color": "#000000",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "middle",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Gradient inherited from the layout",
+                  "fontSize": 44,
+                  "fontFamily": "Aptos Display",
+                  "color": "#000000",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 0.9,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "shrink",
+            "fontScale": 1,
+            "lineSpacingReduction": 0
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": {
+              "color": "#ff0000",
+              "opacity": 1,
+              "gradient": {
+                "kind": "linear",
+                "stops": [
+                  {
+                    "position": 0,
+                    "color": "#ff0000",
+                    "opacity": 1
+                  },
+                  {
+                    "position": 1,
+                    "color": "#0000ff",
+                    "opacity": 1
+                  },
+                  {
+                    "position": 0.5,
+                    "color": "#00ff00",
+                    "opacity": 1
+                  }
+                ],
+                "angle": 30,
+                "scaled": true,
+                "rotateWithShape": true,
+                "flip": "none",
+                "tileRect": {}
+              }
+            },
+            "line": null
+          }
+        },
+        {
+          "id": "f5e0defd-c206-4470-bc93-593aa9b772a1",
+          "name": "Local override gradient",
+          "x": 88,
+          "y": 191.66666666666666,
+          "width": 1104,
+          "height": 456.83338582677163,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Local gradient overrides the layout gradient.",
+          "fontSize": 28,
+          "fontFamily": "Aptos",
+          "color": "#000000",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Local gradient overrides the layout gradient.",
+                  "fontSize": 28,
+                  "fontFamily": "Aptos",
+                  "color": "#000000",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 0.9,
+              "spaceBefore": 10,
+              "spaceAfter": 0,
+              "bullet": {
+                "kind": "bullet",
+                "level": 0,
+                "character": "•"
+              }
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "shrink",
+            "fontScale": 1,
+            "lineSpacingReduction": 0
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": {
+              "color": "#e7f2e6",
+              "opacity": 1,
+              "gradient": {
+                "kind": "linear",
+                "stops": [
+                  {
+                    "position": 0,
+                    "color": "#e7f2e6",
+                    "opacity": 1
+                  },
+                  {
+                    "position": 1,
+                    "color": "#9cb8d8",
+                    "opacity": 1
+                  },
+                  {
+                    "position": 0.4,
+                    "color": "#ffffff",
+                    "opacity": 1
+                  }
+                ],
+                "angle": 90,
+                "scaled": true,
+                "rotateWithShape": true,
+                "flip": "none",
+                "tileRect": {}
+              }
+            },
+            "line": null
+          }
+        }
+      ],
+      "notes": "Layout title keeps genuine inherited gradient; body has a different local gradient override. Inspect direct versus inherited source XML.",
+      "transition": "none",
+      "hidden": false
+    },
+    {
+      "id": "a1c88431-692a-4ee7-8484-112b05cc447c",
+      "name": "Slide 9",
+      "background": "#e7f2e6",
+      "backgroundGradient": {
+        "kind": "linear",
+        "stops": [
+          {
+            "position": 0,
+            "color": "#e7f2e6",
+            "opacity": 1
+          },
+          {
+            "position": 1,
+            "color": "#9cb8d8",
+            "opacity": 1
+          },
+          {
+            "position": 0.4,
+            "color": "#ffffff",
+            "opacity": 1
+          }
+        ],
+        "angle": 0,
+        "scaled": true,
+        "rotateWithShape": true,
+        "flip": "none",
+        "tileRect": {}
+      },
+      "elements": [
+        {
+          "id": "7385854f-610a-4f49-b01e-5d2fc147cbba",
+          "name": "Master gradient placeholder 1",
+          "x": 88,
+          "y": 38.333333333333336,
+          "width": 1104,
+          "height": 139.16671916010498,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Master fill and background inheritance",
+          "fontSize": 44,
+          "fontFamily": "Aptos Display",
+          "color": "#000000",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "middle",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Master fill and background inheritance",
+                  "fontSize": 44,
+                  "fontFamily": "Aptos Display",
+                  "color": "#000000",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 0.9,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "shrink",
+            "fontScale": 1,
+            "lineSpacingReduction": 0
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": null,
+            "line": null
+          }
+        },
+        {
+          "id": "e3f9e456-fa39-4141-9009-49141b95816f",
+          "name": "Master gradient placeholder 2",
+          "x": 88,
+          "y": 191.66666666666666,
+          "width": 544,
+          "height": 456.83338582677163,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Inherited gradient 2",
+          "fontSize": 28,
+          "fontFamily": "Aptos",
+          "color": "#000000",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Inherited gradient 2",
+                  "fontSize": 28,
+                  "fontFamily": "Aptos",
+                  "color": "#000000",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 0.9,
+              "spaceBefore": 10,
+              "spaceAfter": 0,
+              "bullet": {
+                "kind": "bullet",
+                "level": 0,
+                "character": "•"
+              }
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "shrink",
+            "fontScale": 1,
+            "lineSpacingReduction": 0
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": {
+              "color": "#ff0000",
+              "opacity": 1,
+              "gradient": {
+                "kind": "linear",
+                "stops": [
+                  {
+                    "position": 0,
+                    "color": "#ff0000",
+                    "opacity": 1
+                  },
+                  {
+                    "position": 1,
+                    "color": "#0000ff",
+                    "opacity": 1
+                  },
+                  {
+                    "position": 0.5,
+                    "color": "#00ff00",
+                    "opacity": 1
+                  }
+                ],
+                "angle": 90,
+                "scaled": true,
+                "rotateWithShape": true,
+                "flip": "none",
+                "tileRect": {}
+              }
+            },
+            "line": null
+          }
+        },
+        {
+          "id": "77360b74-e40d-46b5-b137-4bfd61acfff5",
+          "name": "Master gradient placeholder 3",
+          "x": 648,
+          "y": 191.66666666666666,
+          "width": 544,
+          "height": 456.83338582677163,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Inherited gradient 3",
+          "fontSize": 28,
+          "fontFamily": "Aptos",
+          "color": "#000000",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Inherited gradient 3",
+                  "fontSize": 28,
+                  "fontFamily": "Aptos",
+                  "color": "#000000",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 0.9,
+              "spaceBefore": 10,
+              "spaceAfter": 0,
+              "bullet": {
+                "kind": "bullet",
+                "level": 0,
+                "character": "•"
+              }
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow",
+            "paragraphSpacingAtEdges": false
+          },
+          "autoFit": {
+            "mode": "shrink",
+            "fontScale": 1,
+            "lineSpacingReduction": 0
+          },
+          "decoration": {
+            "shape": "rect",
+            "fill": {
+              "color": "#ff0000",
+              "opacity": 1,
+              "gradient": {
+                "kind": "linear",
+                "stops": [
+                  {
+                    "position": 0,
+                    "color": "#ff0000",
+                    "opacity": 1
+                  },
+                  {
+                    "position": 1,
+                    "color": "#0000ff",
+                    "opacity": 1
+                  },
+                  {
+                    "position": 0.5,
+                    "color": "#00ff00",
+                    "opacity": 1
+                  }
+                ],
+                "angle": 90,
+                "scaled": true,
+                "rotateWithShape": true,
+                "flip": "none",
+                "tileRect": {}
+              }
+            },
+            "line": null
+          }
+        }
+      ],
+      "notes": "Two content placeholders inherit the master body gradient through a built-in layout; the slide inherits the master background gradient. Inheritance is confirmed from omitted local XML.",
+      "transition": "none",
+      "hidden": false
+    }
+  ],
+  "updatedAt": "2026-11-06T07:54:30.618Z"
+}

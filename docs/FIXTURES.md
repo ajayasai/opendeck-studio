@@ -153,6 +153,42 @@ The generator writes both supported-model derivatives. The verifier opens the tw
 
 To intentionally rebuild the fixture inputs, run `create-powerpoint-text-decoration-fixture.ps1` followed by `node scripts/prepare-text-decoration-probe.mjs`, then repeat import and native acceptance. Review the content, sanitized metadata and new hashes before replacing a committed input. Regular CI uses the frozen files without Office. Generated metadata, provenance, native saved copies, research downloads and renders remain under ignored `test-results/text-decoration-powerpoint/`. The published repository does not include the downloaded specification archive. [TESTING.md](TESTING.md) records the 18 inspected export renders, measured geometry and remaining limits.
 
+## Original gradient fixture and separate XML controls (alpha.6)
+
+`tests/fixtures/powerpoint-gradients.pptx` contains nine original slides authored through the installed Microsoft PowerPoint COM object model. The project text, layouts and objects are distributed under this repository's [MIT license](../LICENSE); no customer document or external template was used. Authoring and native verification used PowerPoint `16.0`, executable product version `16.0.20527.20150`. The final recorded native verification was at `2026-11-06T07:54:53.6517399Z`.
+
+`scripts/create-powerpoint-gradient-fixture.ps1` creates its own presentation without a visible window, then closes that presentation. It authors six linear angles on wide rectangles; two-, three- and four-stop interpolation controls; stop transparency; native center/corner presets; rotation with and without the object; an attached text fill; slide gradients; theme gradient styles; and genuine layout/master fill and background inheritance with a local override. The native center presets serialize as rectangle paths even on ellipses and triangles. The shared sanitizer replaces Office profile attribution and organization fields with project metadata. A rejected COM `FromTitle` gradient request is recorded as an authoring limitation, not represented as a successfully authored case.
+
+`scripts/prepare-gradient-probe.mjs` copies the sanitized original and records 49 explicit alterations. The resulting eleven-slide `powerpoint-gradient-probe.pptx` is **XML-derived, not directly PowerPoint-authored**. It exercises scaled true/false/absent, repeated hard-stop positions, alpha, omitted stop lists, rectangle/circle/shape paths, absent versus empty focus rectangles, offset focus areas, signed tiles, flip, rotation, gradient outlines and a theme background-style reference. Two extra slides isolate path/focus/tile behavior. Some original labels remain as control locations; the XML shape names and generated provenance identify each alteration. PowerPoint subsequently opened, rendered and saved this probe.
+
+Explicit empty and one-stop lists were rejected by PowerPoint in separate ignored experiments. Neither malformed case is bundled in the frozen probe. The probe instead includes an omitted list and a same-color two-stop ramp. In-memory application tests cover native zero/one-stop data and its warned normalization to valid two-stop PPTX output.
+
+Frozen input and final tested export SHA-256 values:
+
+| File                                                           | SHA-256                                                            |
+| -------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `tests/fixtures/powerpoint-gradients.pptx`                     | `fd48a81b32bc105974622f06e72cbd796ccb8dfd1ed41e41491636aac7d5adc4` |
+| `tests/fixtures/powerpoint-gradient-probe.pptx`                | `2812b8c20149be8aa72aa66dd639aee2174992f7557bd082e27ef1da7f1638af` |
+| `examples/gradients.pptx`                                      | `27acf6c557b8e2eb6d91d7394c17f9cac6a511143588906b580a63fdd3fe3531` |
+| Ignored `test-results/gradient-powerpoint/probe-exported.pptx` | `b8c0f867954d23ab9d92d367b4476b30e97303bc2625bbbb7113d9ed6ae8884f` |
+
+The public `examples/gradients.opendeck` and `.pptx` come **directly from importing the original COM-authored nine-slide fixture**. The eleven-slide XML-derived probe has a separate ignored export.
+
+Reproduce the native gate from the committed inputs:
+
+```powershell
+node scripts/generate-gradient-example.mjs
+powershell -File scripts/verify-gradients-with-powerpoint.ps1
+node scripts/check-gradient-office-roundtrip.mjs
+python scripts/analyze-gradient-native.py
+```
+
+The last command requires Pillow and reads native PNGs without editing them. The generator writes both derivatives; the verifier opens the two inputs and two exports, records native gradient properties, renders PNGs and saves separate copies. The checker compares independent COM stop values and re-imports the exported saved copies, verifying that the native gate used the current exact export bytes. The native pixel script records and checks selected scaling, focal-circle and rotation measurements. [TESTING.md](TESTING.md) records the twenty inspected export renders and the limits of these checks.
+
+`scripts/prepare-gradient-color-probe.mjs` additionally creates an explicitly XML-derived, ignored six-control tint/shade experiment from the project original. Run `powershell -File scripts/verify-gradients-with-powerpoint.ps1 -OnlyColorProbe` to measure those colors independently. It changes neither frozen input. Its result exposed and verified a correction to linear-light tint/shade resolution; it is separate from gradient interpolation.
+
+To intentionally recreate inputs, run `create-powerpoint-gradient-fixture.ps1` and then `node scripts/prepare-gradient-probe.mjs`. Recreating packages changes timestamps, identifiers and potentially Office defaults. Review content, sanitized metadata, hashes and native evidence before replacing frozen inputs. Regular CI uses the committed files without Office. Metadata, provenance, saved copies, experimental packages, PNGs and browser comparison/calibration files remain under ignored `test-results/gradient-powerpoint/`. Older published fixtures and examples were retained unchanged.
+
 ## Synthetic OOXML and generated round trips
 
 `src/pptx.test.ts` also creates small OOXML packages in memory to isolate relationship ordering, malformed input, theme/layout inheritance, groups, and warning behavior. These synthetic packages deliberately focus on importer cases; they are not all complete, independently validated PowerPoint presentations.

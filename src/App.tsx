@@ -44,7 +44,16 @@ import {
   Github,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import type { Deck, Slide, SlideElement, TextElement, Theme } from './types';
+import type {
+  Deck,
+  Slide,
+  SlideElement,
+  TextElement,
+  Theme,
+  GradientFill,
+  TextDecorationPaint,
+} from './types';
+import { slideBackgroundColor } from './gradient';
 import {
   createDeck,
   createElement,
@@ -505,27 +514,49 @@ export default function App() {
   function applyTheme(theme: Theme) {
     const previous = deck.theme;
     const map = (color: string) =>
-      color === previous.background
+      color.toLowerCase() === previous.background.toLowerCase()
         ? theme.background
-        : color === previous.foreground
+        : color.toLowerCase() === previous.foreground.toLowerCase()
           ? theme.foreground
-          : color === previous.accent
+          : color.toLowerCase() === previous.accent.toLowerCase()
             ? theme.accent
-            : color === previous.muted
+            : color.toLowerCase() === previous.muted.toLowerCase()
               ? theme.muted
               : color;
+    const mapGradient = (gradient: GradientFill): GradientFill => ({
+      ...gradient,
+      stops: gradient.stops.map((stop) => ({ ...stop, color: map(stop.color) })),
+    });
+    const mapPaint = <T extends TextDecorationPaint>(paint: T | null): T | null =>
+      paint
+        ? {
+            ...paint,
+            color: map(paint.color),
+            ...(paint.gradient ? { gradient: mapGradient(paint.gradient) } : {}),
+          }
+        : null;
     commit((d) => ({
       ...d,
       theme,
       slides: d.slides.map((s) => ({
         ...s,
         background: map(s.background),
+        ...(s.backgroundGradient ? { backgroundGradient: mapGradient(s.backgroundGradient) } : {}),
         elements: s.elements.map((e) =>
           e.type === 'text'
             ? {
                 ...e,
                 color: map(e.color),
                 fontFamily: theme.fontFamily,
+                ...(e.decoration
+                  ? {
+                      decoration: {
+                        ...e.decoration,
+                        fill: mapPaint(e.decoration.fill),
+                        line: mapPaint(e.decoration.line),
+                      },
+                    }
+                  : {}),
                 ...(e.paragraphs
                   ? {
                       paragraphs: e.paragraphs.map((p) => ({
@@ -542,7 +573,13 @@ export default function App() {
                   : {}),
               }
             : e.type === 'shape'
-              ? { ...e, fill: map(e.fill), stroke: map(e.stroke) }
+              ? {
+                  ...e,
+                  fill: map(e.fill),
+                  stroke: map(e.stroke),
+                  ...(e.fillGradient ? { fillGradient: mapGradient(e.fillGradient) } : {}),
+                  ...(e.strokeGradient ? { strokeGradient: mapGradient(e.strokeGradient) } : {}),
+                }
               : e.type === 'chart'
                 ? { ...e, color: map(e.color) }
                 : e.type === 'table'
@@ -1541,7 +1578,7 @@ export default function App() {
       {richText && (
         <RichTextEditor
           element={richText}
-          background={slide.background}
+          background={slideBackgroundColor(slide)}
           onClose={() => setRichText(null)}
           onSave={(element) => {
             replaceElements(slide.elements.map((e) => (e.id === element.id ? element : e)));
