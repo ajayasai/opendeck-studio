@@ -1,6 +1,6 @@
 import type { Deck, TextAutoFit, TextElement, TextRun } from './types';
 import { getParagraphs } from './richText';
-import { resolveTextFrame } from './textFrame';
+import { effectiveParagraphSpacing, resolveTextFrame, textContentRect } from './textFrame';
 
 /** Reconstruct the optional native fitting extension without retaining unknown fields. */
 export function validateAutoFit(input: unknown): TextAutoFit {
@@ -45,7 +45,9 @@ function metricInput(element: TextElement): string {
       run?.italic ?? element.italic,
     ] as const;
   let counters: number[] = [];
-  const paragraphs = getParagraphs(element).map((paragraph) => {
+  const sourceParagraphs = getParagraphs(element);
+  const paragraphs = sourceParagraphs.map((paragraph, index) => {
+    const spacing = effectiveParagraphSpacing(paragraph, frame, index, sourceParagraphs.length);
     const runs: { text: string; style: ReturnType<typeof style> }[] = [];
     for (const run of paragraph.runs) {
       if (!run.text) continue;
@@ -76,8 +78,8 @@ function metricInput(element: TextElement): string {
       paragraph.lineSpacingPoints !== undefined
         ? ['points', paragraph.lineSpacingPoints]
         : ['relative', paragraph.lineSpacing ?? 1.16],
-      paragraph.spaceBefore ?? 0,
-      paragraph.spaceAfter ?? 0,
+      spacing.before,
+      spacing.after,
       firstStyle,
       list,
       runs,
@@ -88,6 +90,7 @@ function metricInput(element: TextElement): string {
     element.height,
     [frame.insets.top, frame.insets.right, frame.insets.bottom, frame.insets.left],
     frame.wrap,
+    textContentRect(element),
     paragraphs,
   ]);
 }

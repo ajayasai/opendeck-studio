@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import type { TextElement, TextParagraph, TextRun } from './types';
 import { resolveAutoFit } from './textFit';
-import { resolveTextFrame, textContentRect } from './textFrame';
+import { effectiveParagraphSpacing, resolveTextFrame, textContentRect } from './textFrame';
 
 /** Each explicit start resets numbering; nested lists retain their parent counter. */
 export function paragraphMarkers(paragraphs: TextParagraph[]): string[] {
@@ -61,6 +61,7 @@ export function textContentStyle(element: TextElement): CSSProperties {
     fontSize: `${element.fontSize * textScale(element)}pt`,
     fontFamily: element.fontFamily,
     color: element.color,
+    opacity: element.textOpacity ?? 1,
     justifyContent:
       element.verticalAlign === 'middle'
         ? 'center'
@@ -70,14 +71,20 @@ export function textContentStyle(element: TextElement): CSSProperties {
   };
 }
 
-export function textParagraphStyle(paragraph: TextParagraph, element: TextElement): CSSProperties {
+export function textParagraphStyle(
+  paragraph: TextParagraph,
+  element: TextElement,
+  index = 0,
+  count = 1,
+): CSSProperties {
+  const spacing = effectiveParagraphSpacing(paragraph, element.textFrame, index, count);
   return {
     display: 'flex',
     width: '100%',
     flexShrink: 0,
     lineHeight: paragraphLineHeight(paragraph, element),
-    marginTop: `${paragraph.spaceBefore ?? 0}pt`,
-    marginBottom: `${paragraph.spaceAfter ?? 0}pt`,
+    marginTop: `${spacing.before}pt`,
+    marginBottom: `${spacing.after}pt`,
     paddingLeft: paragraph.bullet
       ? `${paragraph.bullet.level * 1.4 * (paragraph.runs[0]?.fontSize ?? element.fontSize)}pt`
       : undefined,

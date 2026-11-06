@@ -3,6 +3,7 @@ import type { TextElement } from './types';
 import { getParagraphs } from './richText';
 import { resolveAutoFit } from './textFit';
 import { resolveTextFrame, textContentRect } from './textFrame';
+import { DEFAULT_TEXT_CORNER_RADIUS, resolveTextDecoration } from './textDecoration';
 import {
   paragraphMarkers,
   textContentStyle,
@@ -79,7 +80,7 @@ function createTextMeasurer(
     });
     outer.append(inner);
     content.append(outer);
-    return { paragraph, outer, inner, marker, runs };
+    return { paragraph, index, outer, inner, marker, runs };
   });
   document.body.append(host);
   return {
@@ -93,8 +94,8 @@ function createTextMeasurer(
         height: 'auto',
         justifyContent: 'flex-start',
       });
-      for (const { paragraph, outer, inner, marker, runs } of nodes) {
-        style(outer, textParagraphStyle(paragraph, element));
+      for (const { paragraph, index, outer, inner, marker, runs } of nodes) {
+        style(outer, textParagraphStyle(paragraph, element, index, paragraphs.length));
         outer.style.width = intrinsicWidth ? 'max-content' : '100%';
         style(inner, paragraphContentStyle(paragraph, element));
         if (marker) style(marker, paragraphMarkerStyle(paragraph, element));
@@ -126,6 +127,67 @@ export function solveShrinkScale(fits: (scale: number) => boolean): number {
   return lower / 100000;
 }
 
+const boundedDimension = (value: number) =>
+  Math.max(0.01, Math.min(100000, Math.ceil(value * 100) / 100));
+
+/** Invert the preset text rectangle, retaining signed body insets independently. */
+function resizeToContent(element: TextElement, read: MeasureText): TextMeasurement | undefined {
+  const frame = resolveTextFrame(element),
+    decoration = resolveTextDecoration(element),
+    intrinsic = frame.wrap === 'none',
+    insetWidth = frame.insets.left + frame.insets.right,
+    insetHeight = frame.insets.top + frame.insets.bottom;
+  const cornerInset = 2 * (decoration.cornerRadius ?? DEFAULT_TEXT_CORNER_RADIUS) * 0.29289;
+  const outerHeight = (content: number) => {
+    const required = Math.max(0, content + insetHeight);
+    if (decoration.shape === 'ellipse') return required / Math.SQRT1_2;
+    if (decoration.shape === 'triangle') return required * 2;
+    if (decoration.shape === 'roundRect') {
+      const small = required / (1 - cornerInset);
+      return small <= element.width ? small : required + cornerInset * element.width;
+    }
+    return required;
+  };
+
+  if (!intrinsic && decoration.shape === 'roundRect' && cornerInset > 0) {
+    // A taller rounded box can narrow its text area until height reaches width.
+    // Start at the minimum and grow monotonically through the resulting wraps.
+    let height = 0.01;
+    for (let step = 0; step < 32; step++) {
+      const measured = read({ ...element, height }, false);
+      if (!validMeasurement(measured)) return undefined;
+      const next = boundedDimension(outerHeight(measured.height));
+      if (next <= height) return { width: element.width, height: next };
+      height = next;
+    }
+    // The narrowest possible text width gives a fitting upper bound if repeated
+    // line-break discontinuities prevent convergence within the normal budget.
+    const measured = read({ ...element, height: Math.max(height, element.width) }, false);
+    return validMeasurement(measured)
+      ? { width: element.width, height: boundedDimension(outerHeight(measured.height)) }
+      : undefined;
+  }
+
+  const measured = read(element, intrinsic);
+  if (!validMeasurement(measured)) return undefined;
+  if (!intrinsic)
+    return { width: element.width, height: boundedDimension(outerHeight(measured.height)) };
+  let width = Math.max(0, measured.width + insetWidth),
+    height = Math.max(0, measured.height + insetHeight);
+  if (decoration.shape === 'ellipse') {
+    width /= Math.SQRT1_2;
+    height /= Math.SQRT1_2;
+  } else if (decoration.shape === 'triangle') {
+    width *= 2;
+    height *= 2;
+  } else if (decoration.shape === 'roundRect') {
+    const extra = (cornerInset * Math.min(width, height)) / (1 - cornerInset);
+    width += extra;
+    height += extra;
+  }
+  return { width: boundedDimension(width), height: boundedDimension(height) };
+}
+
 /** Runs before a document command is recorded; rendering/export never remeasure. */
 export function fitTextElement(element: TextElement, measure?: MeasureText): TextElement {
   const fit = resolveAutoFit(element);
@@ -149,16 +211,9 @@ export function fitTextElement(element: TextElement, measure?: MeasureText): Tex
         ? element
         : { ...element, autoFit: { ...fit, fontScale } };
     }
-    const frame = resolveTextFrame(element),
-      intrinsic = frame.wrap === 'none';
-    const measured = read(element, intrinsic);
-    if (!validMeasurement(measured)) return element;
-    const bounded = (value: number) =>
-      Math.max(0.01, Math.min(100000, Math.ceil(value * 100) / 100));
-    const width = intrinsic
-      ? bounded(measured.width + frame.insets.left + frame.insets.right)
-      : element.width;
-    const height = bounded(measured.height + frame.insets.top + frame.insets.bottom);
+    const dimensions = resizeToContent(element, read);
+    if (!dimensions) return element;
+    const { width, height } = dimensions;
     if (width === element.width && height === element.height) return element;
     // PowerPoint's native resize probes preserve the center for any stored
     // nonzero rotation (including 360); unrotated boxes use their text anchors.

@@ -21,6 +21,11 @@ import { THEMES } from './model';
 import { replacePlainText } from './richText';
 import { resolveTextFrame, textContentRect } from './textFrame';
 import { resolveAutoFit } from './textFit';
+import {
+  DEFAULT_TEXT_CORNER_RADIUS,
+  resolveTextDecoration,
+  TEXT_LINE_DASHES,
+} from './textDecoration';
 import type {
   ChartElement,
   Deck,
@@ -30,6 +35,8 @@ import type {
   TextElement,
   TextFrame,
   TextAutoFit,
+  TextDecoration,
+  TextDecorationLine,
   Theme,
 } from './types';
 
@@ -154,6 +161,16 @@ function TextFrameControls({
         />
         Wrap text
       </label>
+      <label className="checkbox-field">
+        <input
+          type="checkbox"
+          checked={frame.paragraphSpacingAtEdges ?? true}
+          onChange={(event) =>
+            onChange({ ...frame, paragraphSpacingAtEdges: event.target.checked })
+          }
+        />
+        Include spacing at text box edges
+      </label>
       {(['horizontalOverflow', 'verticalOverflow'] as const).map((axis) => (
         <label className="field" key={axis}>
           <span>{axis === 'horizontalOverflow' ? 'Text beyond width' : 'Text beyond height'}</span>
@@ -168,6 +185,204 @@ function TextFrameControls({
           </select>
         </label>
       ))}
+    </section>
+  );
+}
+
+function TextDecorationControls({
+  element,
+  onChange,
+}: {
+  element: TextElement;
+  onChange: (decoration: TextDecoration) => void;
+}) {
+  const decoration = resolveTextDecoration(element);
+  const dashLabels: Record<TextDecorationLine['dash'], string> = {
+    solid: 'Solid',
+    dash: 'Dash',
+    dot: 'Dot',
+    dashDot: 'Dash-dot',
+    longDash: 'Long dash',
+    longDashDot: 'Long dash-dot',
+    longDashDotDot: 'Long dash-dot-dot',
+    sysDash: 'Compact dash',
+    sysDot: 'Compact dot',
+    sysDashDot: 'Compact dash-dot',
+    sysDashDotDot: 'Compact dash-dot-dot',
+  };
+  return (
+    <section className="panel-section">
+      <h3>Text box appearance</h3>
+      <label className="field">
+        <span>Text box shape</span>
+        <select
+          value={decoration.shape}
+          onChange={(event) =>
+            onChange({ ...decoration, shape: event.target.value as TextDecoration['shape'] })
+          }
+        >
+          <option value="rect">Rectangle</option>
+          <option value="roundRect">Rounded rectangle</option>
+          <option value="ellipse">Ellipse</option>
+          <option value="triangle">Triangle</option>
+        </select>
+      </label>
+      {decoration.shape === 'roundRect' && (
+        <NumberField
+          label="Corner roundness (%)"
+          value={(decoration.cornerRadius ?? DEFAULT_TEXT_CORNER_RADIUS) * 100}
+          min={0}
+          max={50}
+          step={0.1}
+          onChange={(value) => onChange({ ...decoration, cornerRadius: value / 100 })}
+        />
+      )}
+      <label className="checkbox-field">
+        <input
+          type="checkbox"
+          checked={decoration.fill !== null}
+          onChange={(event) =>
+            onChange({
+              ...decoration,
+              fill: event.target.checked ? { color: '#ffffff', opacity: 1 } : null,
+            })
+          }
+        />
+        Text box fill
+      </label>
+      {decoration.fill && (
+        <>
+          <ColorField
+            label="Text box fill color"
+            value={decoration.fill.color}
+            onChange={(color) => onChange({ ...decoration, fill: { ...decoration.fill!, color } })}
+          />
+          <NumberField
+            label="Fill opacity (%)"
+            value={decoration.fill.opacity * 100}
+            min={0}
+            max={100}
+            onChange={(value) =>
+              onChange({ ...decoration, fill: { ...decoration.fill!, opacity: value / 100 } })
+            }
+          />
+        </>
+      )}
+      <label className="checkbox-field">
+        <input
+          type="checkbox"
+          checked={decoration.line !== null}
+          onChange={(event) =>
+            onChange({
+              ...decoration,
+              line: event.target.checked
+                ? { color: element.color, opacity: 1, width: 1, dash: 'solid' }
+                : null,
+            })
+          }
+        />
+        Text box outline
+      </label>
+      {decoration.line && (
+        <>
+          <ColorField
+            label="Text box outline color"
+            value={decoration.line.color}
+            onChange={(color) => onChange({ ...decoration, line: { ...decoration.line!, color } })}
+          />
+          <NumberField
+            label="Outline opacity (%)"
+            value={decoration.line.opacity * 100}
+            min={0}
+            max={100}
+            onChange={(value) =>
+              onChange({ ...decoration, line: { ...decoration.line!, opacity: value / 100 } })
+            }
+          />
+          <NumberField
+            label="Outline width (px)"
+            value={decoration.line.width}
+            min={0}
+            max={100}
+            step={0.25}
+            onChange={(width) => onChange({ ...decoration, line: { ...decoration.line!, width } })}
+          />
+          <label className="field">
+            <span>Outline dash</span>
+            <select
+              value={decoration.line.dash}
+              onChange={(event) =>
+                onChange({
+                  ...decoration,
+                  line: {
+                    ...decoration.line!,
+                    dash: event.target.value as TextDecorationLine['dash'],
+                  },
+                })
+              }
+            >
+              {TEXT_LINE_DASHES.map((dash) => (
+                <option value={dash} key={dash}>
+                  {dashLabels[dash]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>Outline cap</span>
+            <select
+              value={decoration.line.cap ?? 'flat'}
+              onChange={(event) =>
+                onChange({
+                  ...decoration,
+                  line: {
+                    ...decoration.line!,
+                    cap: event.target.value as TextDecorationLine['cap'],
+                  },
+                })
+              }
+            >
+              <option value="flat">Flat</option>
+              <option value="round">Round</option>
+              <option value="square">Square</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>Outline join</span>
+            <select
+              value={decoration.line.join ?? 'round'}
+              onChange={(event) =>
+                onChange({
+                  ...decoration,
+                  line: {
+                    ...decoration.line!,
+                    join: event.target.value as TextDecorationLine['join'],
+                  },
+                })
+              }
+            >
+              <option value="round">Round</option>
+              <option value="bevel">Bevel</option>
+              <option value="miter">Miter</option>
+            </select>
+          </label>
+          {decoration.line.join === 'miter' && (
+            <NumberField
+              label="Miter limit"
+              value={decoration.line.miterLimit ?? 8}
+              min={0}
+              max={21474.83647}
+              step={0.1}
+              onChange={(miterLimit) =>
+                onChange({ ...decoration, line: { ...decoration.line!, miterLimit } })
+              }
+            />
+          )}
+          {decoration.line.width === 0 && (
+            <p className="inspector-hint">Hairline outline: shown as one pixel on screen.</p>
+          )}
+        </>
+      )}
     </section>
   );
 }
@@ -844,10 +1059,21 @@ export function Inspector({
                         value={element.color}
                         onChange={(color) => onElementPatch({ color })}
                       />
+                      <NumberField
+                        label="Text opacity %"
+                        value={(element.textOpacity ?? 1) * 100}
+                        min={0}
+                        max={100}
+                        onChange={(value) => onElementPatch({ textOpacity: value / 100 })}
+                      />
                     </section>
                     <TextFrameControls
                       element={element}
                       onChange={(textFrame) => onElementPatch({ textFrame })}
+                    />
+                    <TextDecorationControls
+                      element={element}
+                      onChange={(decoration) => onElementPatch({ decoration })}
                     />
                     <AutoFitControls
                       element={element}

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import JSZip from 'jszip';
 import { exportPptx, importPptx, pptxExportWarnings } from './pptx';
-import type { Deck, ElementBase, Theme, TextElement, TextAutoFit } from './types';
+import type { Deck, ElementBase, Theme, TextElement, TextAutoFit, TextDecoration } from './types';
+import { TEXT_LINE_DASHES } from './textDecoration';
 import { plainText } from './richText';
 import { validateDeck } from './model';
 import { resolveTextFrame } from './textFrame';
@@ -270,7 +271,8 @@ describe('editable PPTX interoperability', () => {
       underline: true,
       align: 'center',
     });
-    expect(text?.opacity).toBeCloseTo(0.65);
+    expect(text?.opacity).toBe(1);
+    expect(text?.textOpacity).toBeCloseTo(0.65);
     expect(objects.find((e) => e.type === 'shape')).toMatchObject({
       shape: 'ellipse',
       x: 500,
@@ -470,6 +472,7 @@ describe('editable PPTX interoperability', () => {
       wrap: 'square',
       horizontalOverflow: 'overflow',
       verticalOverflow: 'overflow',
+      paragraphSpacingAtEdges: false,
     });
     expect(text.verticalAlign).toBe('top');
     expect(result.warnings.join(' ')).not.toMatch(/margins are not retained|autofit|fit-text/i);
@@ -497,7 +500,10 @@ describe('editable PPTX interoperability', () => {
     const reimported = await importPptx(bytes);
     expect(reimported.warnings.join(' ')).not.toContain('Text-box fill or border');
     const again = reimported.deck.slides[0].elements[0] as TextElement;
-    expect(again.textFrame).toEqual(resolveTextFrame(deck.slides[0].elements[0] as TextElement));
+    expect(again.textFrame).toEqual({
+      ...resolveTextFrame(deck.slides[0].elements[0] as TextElement),
+      paragraphSpacingAtEdges: true,
+    });
   });
 
   it.each(['t', 'ctr', 'b'] as const)(
@@ -523,6 +529,7 @@ describe('editable PPTX interoperability', () => {
         wrap: 'none',
         horizontalOverflow: 'overflow',
         verticalOverflow: 'clip',
+        paragraphSpacingAtEdges: false,
       });
       expect(text.verticalAlign).toBe(
         anchor === 'ctr' ? 'middle' : anchor === 'b' ? 'bottom' : 'top',
@@ -633,18 +640,27 @@ describe('editable PPTX interoperability', () => {
   });
 
   it.each([
-    ['<a:solidFill><a:srgbClr val="AABBCC"/></a:solidFill>', true],
-    ['<a:ln w="12700"><a:solidFill><a:srgbClr val="AABBCC"/></a:solidFill></a:ln>', true],
-    ['<a:ln><a:solidFill><a:srgbClr val="AABBCC"/></a:solidFill></a:ln>', true],
-    ['<a:noFill/><a:ln/>', false],
-    ['<a:noFill/><a:ln><a:noFill/></a:ln>', false],
+    [
+      '<a:solidFill><a:srgbClr val="AABBCC"/></a:solidFill>',
+      { fill: { color: '#aabbcc', opacity: 1 }, line: null },
+    ],
+    [
+      '<a:ln w="12700"><a:solidFill><a:srgbClr val="AABBCC"/></a:solidFill></a:ln>',
+      { fill: null, line: { color: '#aabbcc', opacity: 1, width: 4 / 3, dash: 'solid' } },
+    ],
+    [
+      '<a:ln><a:solidFill><a:srgbClr val="AABBCC"/></a:solidFill></a:ln>',
+      { fill: null, line: { color: '#aabbcc', opacity: 1, width: 0, dash: 'solid' } },
+    ],
+    ['<a:noFill/><a:ln/>', { fill: null, line: null }],
+    ['<a:noFill/><a:ln><a:noFill/></a:ln>', { fill: null, line: null }],
     [
       '<a:solidFill><a:srgbClr val="AABBCC"><a:alpha val="0"/></a:srgbClr></a:solidFill><a:ln w="0"/>',
-      false,
+      { fill: { color: '#aabbcc', opacity: 0 }, line: null },
     ],
   ])(
-    'warns only for visible explicit text-box fill or border loss: %s',
-    async (decoration, warning) => {
+    'retains explicit text-box paints and distinguishes empty lines: %s',
+    async (decoration, expected) => {
       const result = await importPptx(
         await fixture((zip) => {
           zip.file(
@@ -657,12 +673,650 @@ describe('editable PPTX interoperability', () => {
       expect(result.deck.slides[0].elements[0]).toMatchObject({
         type: 'text',
         text: 'Decorated text',
+        decoration: { shape: 'rect', ...expected },
       });
-      expect(result.warnings.some((message) => message.includes('Text-box fill or border'))).toBe(
-        warning,
-      );
+      expect(result.warnings.join(' ')).not.toContain('Text-box fill or border');
     },
   );
+
+  it.each([
+    ['flat', 'flat'],
+    ['rnd', 'round'],
+    ['sq', 'square'],
+  ] as const)(
+    'preserves inherited line cap %s and explicitly writes it on export',
+    async (native, expected) => {
+      const result = await importPptx(
+        await fixture((zip) => {
+          zip.file(
+            'ppt/slides/slide12.xml',
+            slide(placeholderText('idx="1"', '<a:bodyPr/>', '<p:spPr><a:ln w="28575"/></p:spPr>')),
+          );
+          zip.file(
+            'ppt/slideLayouts/slideLayout1.xml',
+            `<p:sldLayout ${ns}><p:cSld><p:spTree>${placeholderText('idx="1"', '<a:bodyPr/>', `<p:spPr><a:ln cap="${native}" w="12700"><a:solidFill><a:srgbClr val="224466"/></a:solidFill><a:prstDash val="dot"/></a:ln></p:spPr>`)}</p:spTree></p:cSld></p:sldLayout>`,
+          );
+        }),
+      );
+      expect(result.deck.slides[0].elements[0]).toMatchObject({
+        decoration: { line: { width: 3, cap: expected, dash: 'dot' } },
+      });
+      const bytes = await buffer(await exportPptx(result.deck));
+      const zip = await JSZip.loadAsync(bytes);
+      expect(await zip.file('ppt/slides/slide1.xml')!.async('string')).toContain(`cap="${native}"`);
+      expect((await importPptx(bytes)).deck.slides[0].elements[0]).toMatchObject({
+        decoration: { line: { cap: expected } },
+      });
+      expect(result.warnings.join(' ')).not.toContain('border cap');
+    },
+  );
+
+  it.each([
+    ['<a:round/>', { join: 'round' }],
+    ['<a:bevel/>', { join: 'bevel' }],
+    ['<a:miter/>', { join: 'miter' }],
+    ['<a:miter lim="800%"/>', { join: 'miter', miterLimit: 8 }],
+    ['<a:miter lim="0"/>', { join: 'miter', miterLimit: 0 }],
+    ['<a:miter lim="50%"/>', { join: 'miter', miterLimit: 0.5 }],
+    ['<a:miter lim="2147483647"/>', { join: 'miter', miterLimit: 21474.83647 }],
+  ] as const)('preserves inherited border join and miter settings %s', async (join, expected) => {
+    const result = await importPptx(
+      await fixture((zip) => {
+        zip.file(
+          'ppt/slides/slide12.xml',
+          slide(placeholderText('idx="1"', '<a:bodyPr/>', '<p:spPr><a:ln w="28575"/></p:spPr>')),
+        );
+        zip.file(
+          'ppt/slideLayouts/slideLayout1.xml',
+          `<p:sldLayout ${ns}><p:cSld><p:spTree>${placeholderText('idx="1"', '<a:bodyPr/>', `<p:spPr><a:ln w="12700"><a:solidFill><a:srgbClr val="224466"/></a:solidFill>${join}</a:ln></p:spPr>`)}</p:spTree></p:cSld></p:sldLayout>`,
+        );
+      }),
+    );
+    expect(result.deck.slides[0].elements[0]).toMatchObject({
+      decoration: { line: { width: 3, ...expected } },
+    });
+    const bytes = await buffer(await exportPptx(result.deck));
+    expect((await importPptx(bytes)).deck.slides[0].elements[0]).toMatchObject({
+      decoration: { line: expected },
+    });
+    expect(result.warnings.some((warning) => warning.includes('minimum limit of 1'))).toBe(
+      'miterLimit' in expected && expected.miterLimit < 1,
+    );
+    expect(
+      pptxExportWarnings(result.deck).some((warning) => warning.includes('minimum limit of 1')),
+    ).toBe('miterLimit' in expected && expected.miterLimit < 1);
+    expect(() => validateDeck(result.deck)).not.toThrow();
+  });
+
+  it.each([0, 1000, 1001])(
+    'resolves fillRef %s against the correct style list or no-fill sentinel',
+    async (index) => {
+      const result = await importPptx(
+        await fixture((zip) => {
+          zip.file(
+            'ppt/slides/slide12.xml',
+            slide(
+              textShape('Theme').replace(
+                '<p:txBody>',
+                `<p:style><a:fillRef idx="${index}"><a:srgbClr val="336699"/></a:fillRef><a:lnRef idx="0"/></p:style><p:txBody>`,
+              ),
+            ),
+          );
+          zip.file(
+            'ppt/theme/theme1.xml',
+            `<a:theme ${ns}><a:themeElements><a:fmtScheme name="Paint"><a:fillStyleLst><a:solidFill><a:srgbClr val="FF0000"/></a:solidFill></a:fillStyleLst><a:bgFillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:bgFillStyleLst></a:fmtScheme></a:themeElements></a:theme>`,
+          );
+        }),
+      );
+      expect((result.deck.slides[0].elements[0] as TextElement).decoration).toEqual({
+        shape: 'rect',
+        fill: index === 1001 ? { color: '#336699', opacity: 1 } : null,
+        line: null,
+      });
+      expect(result.warnings.join(' ')).not.toContain('unresolved');
+    },
+  );
+
+  it('limits a legal large percent-form miter limit to the application bound with a warning', async () => {
+    const result = await importPptx(
+      await fixture((zip) =>
+        zip.file(
+          'ppt/slides/slide12.xml',
+          slide(
+            textShape('Large miter').replace(
+              '</p:spPr>',
+              '<a:ln w="12700"><a:solidFill><a:srgbClr val="000000"/></a:solidFill><a:miter lim="10000000%"/></a:ln></p:spPr>',
+            ),
+          ),
+        ),
+      ),
+    );
+    expect((result.deck.slides[0].elements[0] as TextElement).decoration?.line?.miterLimit).toBe(
+      21474.83647,
+    );
+    expect(result.warnings.join(' ')).toContain('miter limits outside the supported range');
+  });
+
+  it('keeps connector text separate and reports the approximation', async () => {
+    const result = await importPptx(
+      await fixture((zip) =>
+        zip.file(
+          'ppt/slides/slide12.xml',
+          slide(
+            textShape('Arrow label')
+              .replace(' txBox="1"', '')
+              .replace(
+                '</p:spPr>',
+                '<a:prstGeom prst="rightArrow"><a:avLst/></a:prstGeom></p:spPr>',
+              ),
+          ),
+        ),
+      ),
+    );
+    expect(result.deck.slides[0].elements.map((e) => e.type)).toEqual(['shape', 'text']);
+    expect(result.warnings.join(' ')).toContain('separate shape and text objects');
+  });
+
+  it('inherits glyph alpha independently from decoration alpha and warns when later runs differ', async () => {
+    const result = await importPptx(
+      await fixture((zip) => {
+        zip.file(
+          'ppt/slides/slide12.xml',
+          slide(
+            placeholderText(
+              'idx="1"',
+              '<a:bodyPr/>',
+              '<p:spPr><a:solidFill><a:srgbClr val="AABBCC"><a:alpha val="20000"/></a:srgbClr></a:solidFill></p:spPr>',
+            ).replace(
+              '</a:p>',
+              '<a:r><a:rPr><a:solidFill><a:srgbClr val="112233"><a:alpha val="80000"/></a:srgbClr></a:solidFill></a:rPr><a:t> second</a:t></a:r></a:p>',
+            ),
+          ),
+        );
+        zip.file(
+          'ppt/slideLayouts/slideLayout1.xml',
+          `<p:sldLayout ${ns}><p:cSld><p:spTree>${placeholderText('idx="1"', '<a:bodyPr/>').replace('<a:p>', '<a:p><a:pPr><a:defRPr><a:solidFill><a:srgbClr val="445566"><a:alpha val="40000"/></a:srgbClr></a:solidFill></a:defRPr></a:pPr>')}</p:spTree></p:cSld></p:sldLayout>`,
+        );
+      }),
+    );
+    expect(result.deck.slides[0].elements[0]).toMatchObject({
+      opacity: 1,
+      textOpacity: 0.4,
+      decoration: { fill: { opacity: 0.2 } },
+    });
+    expect(result.warnings.join(' ')).toContain('Mixed per-run text opacity');
+  });
+
+  it.each(['<a:ln/>', '<a:ln><a:solidFill/></a:ln>'])(
+    'inherits empty same-type fill and border paint without substituting black: %s',
+    async (localLine) => {
+      const result = await importPptx(
+        await fixture((zip) => {
+          zip.file(
+            'ppt/slides/slide12.xml',
+            slide(
+              placeholderText(
+                'idx="1"',
+                '<a:bodyPr/>',
+                `<p:spPr><a:solidFill/>${localLine}</p:spPr>`,
+              ),
+            ),
+          );
+          zip.file(
+            'ppt/slideLayouts/slideLayout1.xml',
+            `<p:sldLayout ${ns}><p:cSld><p:spTree>${placeholderText('idx="1"', '<a:bodyPr/>', '<p:spPr><a:solidFill><a:schemeClr val="accent1"><a:alpha val="60000"/></a:schemeClr></a:solidFill><a:ln w="38100"><a:solidFill><a:srgbClr val="123456"><a:alpha val="70000"/></a:srgbClr></a:solidFill><a:prstDash val="dot"/></a:ln></p:spPr>')}</p:spTree></p:cSld></p:sldLayout>`,
+          );
+        }),
+      );
+      expect((result.deck.slides[0].elements[0] as TextElement).decoration).toEqual({
+        shape: 'rect',
+        fill: { color: '#9a4b13', opacity: 0.6 },
+        line: { color: '#123456', opacity: 0.7, width: 4, dash: 'dot' },
+      });
+      expect(result.warnings.join(' ')).not.toMatch(/incomplete|replaced with black/);
+    },
+  );
+
+  it('inherits an empty solid border color from its theme style while preserving local width', async () => {
+    const result = await importPptx(
+      await fixture((zip) => {
+        zip.file(
+          'ppt/slides/slide12.xml',
+          slide(
+            textShape('Theme merge')
+              .replace('</p:spPr>', '<a:ln w="19050"><a:solidFill/></a:ln></p:spPr>')
+              .replace(
+                '<p:txBody>',
+                '<p:style><a:lnRef idx="1"><a:srgbClr val="CC8844"/></a:lnRef></p:style><p:txBody>',
+              ),
+          ),
+        );
+        zip.file(
+          'ppt/theme/theme1.xml',
+          `<a:theme ${ns}><a:themeElements><a:fmtScheme name="Paint"><a:lnStyleLst><a:ln w="95250"><a:solidFill><a:schemeClr val="phClr"><a:alpha val="50000"/></a:schemeClr></a:solidFill></a:ln></a:lnStyleLst></a:fmtScheme></a:themeElements></a:theme>`,
+        );
+      }),
+    );
+    expect((result.deck.slides[0].elements[0] as TextElement).decoration?.line).toMatchObject({
+      color: '#cc8844',
+      opacity: 0.5,
+      width: 2,
+    });
+    expect(result.warnings.join(' ')).not.toContain('incomplete');
+  });
+
+  it.each(['<a:noFill/>', '<a:gradFill/>', ''])(
+    'warns when an empty solid fill has no supported same-type inherited color: %s',
+    async (inheritedPaint) => {
+      const result = await importPptx(
+        await fixture((zip) => {
+          zip.file(
+            'ppt/slides/slide12.xml',
+            slide(placeholderText('idx="1"', '<a:bodyPr/>', '<p:spPr><a:solidFill/></p:spPr>')),
+          );
+          zip.file(
+            'ppt/slideLayouts/slideLayout1.xml',
+            `<p:sldLayout ${ns}><p:cSld><p:spTree>${placeholderText('idx="1"', '<a:bodyPr/>', `<p:spPr>${inheritedPaint}</p:spPr>`)}</p:spTree></p:cSld></p:sldLayout>`,
+          );
+        }),
+      );
+      expect((result.deck.slides[0].elements[0] as TextElement).decoration?.fill).toEqual({
+        color: '#FFFFFF',
+        opacity: 1,
+      });
+      expect(result.warnings.join(' ')).toContain('incomplete solid color');
+    },
+  );
+
+  it.each(['rect', 'roundRect', 'ellipse', 'triangle'] as const)(
+    'imports a %s text shape as one editable object with independent paint opacity',
+    async (preset) => {
+      const result = await importPptx(
+        await fixture((zip) =>
+          zip.file(
+            'ppt/slides/slide12.xml',
+            slide(
+              textShape('Attached paint')
+                .replace(' txBox="1"', '')
+                .replace(
+                  '</p:spPr>',
+                  `<a:prstGeom prst="${preset}"><a:avLst>${preset === 'roundRect' ? '<a:gd name="adj" fmla="val 25000"/>' : ''}</a:avLst></a:prstGeom><a:solidFill><a:srgbClr val="AABBCC"><a:alpha val="40000"/></a:srgbClr></a:solidFill><a:ln w="28575"><a:solidFill><a:srgbClr val="112233"><a:alpha val="75000"/></a:srgbClr></a:solidFill><a:prstDash val="dashDot"/></a:ln></p:spPr>`,
+                )
+                .replace(
+                  '<a:schemeClr val="accent1"/>',
+                  '<a:schemeClr val="accent1"><a:alpha val="65000"/></a:schemeClr>',
+                ),
+            ),
+          ),
+        ),
+      );
+      expect(result.deck.slides[0].elements).toHaveLength(1);
+      const text = result.deck.slides[0].elements[0] as TextElement;
+      expect(text).toMatchObject({
+        type: 'text',
+        opacity: 1,
+        textOpacity: 0.65,
+        decoration: {
+          shape: preset,
+          fill: { color: '#aabbcc', opacity: 0.4 },
+          line: { color: '#112233', opacity: 0.75, width: 3, dash: 'dashDot' },
+        },
+      });
+      if (preset === 'roundRect') expect(text.decoration?.cornerRadius).toBe(0.25);
+      expect(result.warnings.join(' ')).not.toMatch(
+        /text region|decorations are not|unsupported shape/i,
+      );
+      const again = await importPptx(await buffer(await exportPptx(result.deck)));
+      expect(again.deck.slides[0].elements).toHaveLength(1);
+      expect(again.deck.slides[0].elements[0]).toMatchObject({
+        opacity: 1,
+        textOpacity: 0.65,
+        decoration: text.decoration,
+      });
+      expect(() => validateDeck(again.deck)).not.toThrow();
+    },
+  );
+
+  it('exports exact preset geometry, every supported dash and independent effective alpha without mutating the source', async () => {
+    const deck = sample();
+    const original = deck.slides[0].elements[0] as TextElement;
+    deck.slides[0].elements = TEXT_LINE_DASHES.map((dash, index) => ({
+      ...structuredClone(original),
+      id: `dash-${index}`,
+      opacity: 0.5,
+      textOpacity: 0.6,
+      decoration: {
+        shape: 'roundRect',
+        cornerRadius: 0.35,
+        fill: { color: '#DDEEFF', opacity: 0.4 },
+        line: { color: '#224466', opacity: 0.8, width: 2.5, dash },
+      },
+    }));
+    const before = structuredClone(deck);
+    const bytes = await buffer(await exportPptx(deck));
+    expect(deck).toEqual(before);
+    const zip = await JSZip.loadAsync(bytes);
+    const doc = new DOMParser().parseFromString(
+      await zip.file('ppt/slides/slide1.xml')!.async('string'),
+      'application/xml',
+    );
+    const shapes = Array.from(doc.getElementsByTagNameNS('*', 'sp'));
+    expect(shapes).toHaveLength(TEXT_LINE_DASHES.length);
+    shapes.forEach((shape, index) => {
+      const props = shape.getElementsByTagNameNS('*', 'spPr')[0];
+      expect(props.getElementsByTagNameNS('*', 'prstGeom')[0].getAttribute('prst')).toBe(
+        'roundRect',
+      );
+      expect(props.getElementsByTagNameNS('*', 'gd')[0].getAttribute('fmla')).toBe('val 35000');
+      expect(props.getElementsByTagNameNS('*', 'ln')[0].getAttribute('w')).toBe('23813');
+      expect(props.getElementsByTagNameNS('*', 'prstDash')[0].getAttribute('val')).toBe(
+        TEXT_LINE_DASHES[index].replace(/^longDash/, 'lgDash'),
+      );
+      expect(
+        Array.from(props.getElementsByTagNameNS('*', 'alpha')).map((alpha) =>
+          alpha.getAttribute('val'),
+        ),
+      ).toEqual(['20000', '40000']);
+    });
+    const again = await importPptx(bytes);
+    again.deck.slides[0].elements.forEach((text, index) => {
+      expect(text).toMatchObject({
+        opacity: 1,
+        textOpacity: 0.3,
+        decoration: {
+          fill: { opacity: 0.2 },
+          line: { opacity: 0.4, dash: TEXT_LINE_DASHES[index] },
+        },
+      });
+    });
+  });
+
+  it('retains native PowerPoint attached outlines from the original COM-authored probe', async () => {
+    const bytes = await readFile(
+      'tests/fixtures/powerpoint-text-frame-attached-outline-probe.pptx',
+    );
+    const result = await importPptx(
+      bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+    );
+    const texts = result.deck.slides.flatMap((s) => s.elements).filter((e) => e.type === 'text');
+    const outlined = texts.filter((e) => e.decoration?.line?.color === '#4f6a72');
+    expect(outlined).toHaveLength(11);
+    expect(outlined.find((e) => e.name === 'Asymmetric insets')).toMatchObject({
+      decoration: { line: { opacity: 1, width: 4 / 3, dash: 'solid' } },
+    });
+    expect(result.warnings.join(' ')).not.toContain('decorations are not imported');
+  });
+
+  it('imports the original nine-slide PowerPoint decoration fixture with native caps, joins, long dashes and placeholder inheritance', async () => {
+    const bytes = await readFile('tests/fixtures/powerpoint-text-decoration.pptx');
+    const result = await importPptx(
+      bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+    );
+    expect(result.deck.slides).toHaveLength(9);
+    const texts = result.deck.slides.flatMap((s) => s.elements).filter((e) => e.type === 'text');
+    const find = (name: string) => {
+      const element = texts.find((e) => e.name === name);
+      expect(element, name).toBeDefined();
+      return element!;
+    };
+    expect(find('Partial alpha')).toMatchObject({
+      opacity: 1,
+      decoration: {
+        fill: { opacity: 0.5 },
+        line: { opacity: 0.75, width: 8, cap: 'flat', join: 'round' },
+      },
+    });
+    expect(find('Zero fill alpha').decoration?.fill?.opacity).toBe(0);
+    expect(find('Zero line alpha').decoration?.line?.opacity).toBe(0);
+    expect(find('Native dash Square dot').decoration?.line).toMatchObject({
+      dash: 'dot',
+      cap: 'square',
+    });
+    expect(find('Native dash Round dot').decoration?.line).toMatchObject({
+      dash: 'dot',
+      cap: 'round',
+    });
+    expect(find('Native dash Long dash').decoration?.line?.dash).toBe('longDash');
+    expect(find('Native dash Long dash dot').decoration?.line?.dash).toBe('longDashDot');
+    expect(find('Round default').decoration).toMatchObject({
+      shape: 'roundRect',
+      cornerRadius: 0.16667,
+      line: { join: 'miter', miterLimit: 8 },
+    });
+    expect(find('Round forty percent').decoration?.cornerRadius).toBe(0.4);
+    expect(find('Ellipse text region').decoration?.shape).toBe('ellipse');
+    expect(find('Triangle text region').decoration?.shape).toBe('triangle');
+    expect(find('Layout fill with local line override').decoration).toMatchObject({
+      fill: { color: '#efece9' },
+      line: { color: '#0000ff', width: 8 },
+    });
+    for (const index of [2, 3])
+      expect(find(`Master decoration placeholder ${index}`).decoration).toMatchObject({
+        fill: { color: '#e7f2e6' },
+        line: { color: '#174f99', width: 20 / 3 },
+      });
+    expect(result.warnings.join(' ')).not.toContain('unsupported text-box border dashes');
+    expect(() => validateDeck(result.deck)).not.toThrow();
+  });
+
+  it('retains the independently rendered XML decoration probe through export, including all dash tokens and edge overrides', async () => {
+    const bytes = await readFile('tests/fixtures/powerpoint-text-decoration-probe.pptx');
+    const result = await importPptx(
+      bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+    );
+    const texts = result.deck.slides.flatMap((s) => s.elements).filter((e) => e.type === 'text');
+    const find = (name: string) => {
+      const element = texts.find((e) => e.name === name);
+      expect(element, name).toBeDefined();
+      return element!;
+    };
+    for (const dash of TEXT_LINE_DASHES)
+      expect(
+        find(`XML dash ${dash.replace(/^longDash/, 'lgDash')}`).decoration?.line,
+      ).toMatchObject({ dash, cap: 'flat' });
+    expect(find('Centered thick rectangle').decoration?.line?.join).toBe('bevel');
+    expect(find('Triangle text region').decoration?.line).toMatchObject({
+      join: 'miter',
+      miterLimit: 2,
+      width: 16,
+    });
+    expect(find('Theme style 1').decoration).toEqual({ shape: 'rect', fill: null, line: null });
+    expect(find('Theme style 2').decoration?.fill).toEqual({ color: '#ffffff', opacity: 1 });
+    expect(find('Layout inherited title decoration').textFrame?.paragraphSpacingAtEdges).toBe(true);
+    expect(find('Layout fill with local line override').textFrame?.paragraphSpacingAtEdges).toBe(
+      false,
+    );
+    expect(find('Master decoration placeholder 2').textFrame?.paragraphSpacingAtEdges).toBe(true);
+    expect(find('Master decoration placeholder 3').textFrame?.paragraphSpacingAtEdges).toBe(false);
+    for (const fit of ['none', 'shrink', 'resize'])
+      for (const flag of ['default', 'false', 'true'])
+        expect(find(`Edge ${fit} ${flag}`).textFrame?.paragraphSpacingAtEdges).toBe(
+          flag === 'true',
+        );
+    const again = await importPptx(await buffer(await exportPptx(result.deck)));
+    const actual = again.deck.slides.flatMap((s) => s.elements).filter((e) => e.type === 'text');
+    expect(actual).toHaveLength(texts.length);
+    texts.forEach((text, index) =>
+      expect(actual[index], text.name).toMatchObject({
+        text: text.text,
+        decoration: text.decoration,
+        textFrame: text.textFrame,
+      }),
+    );
+    expect(result.warnings.join(' ')).not.toMatch(
+      /unsupported text-box border dashes|Special spacing|decorations are not imported/,
+    );
+  });
+
+  it.each([
+    ['<a:lumMod val="50000"/>', '#800000'],
+    ['<a:lumMod val="50000"/><a:lumOff val="50000"/>', '#ff8080'],
+    ['<a:satMod val="0"/>', '#808080'],
+    ['<a:tint val="25000"/>', '#ffbfbf'],
+    ['<a:shade val="25000"/>', '#400000'],
+  ])(
+    'resolves decoration color transforms %s in the specified color model',
+    async (transform, expected) => {
+      const result = await importPptx(
+        await fixture((zip) =>
+          zip.file(
+            'ppt/slides/slide12.xml',
+            slide(
+              textShape('Color').replace(
+                '</p:spPr>',
+                `<a:solidFill><a:srgbClr val="FF0000">${transform}<a:alpha val="80%"/><a:alphaMod val="50000"/><a:alphaOff val="10%"/></a:srgbClr></a:solidFill></p:spPr>`,
+              ),
+            ),
+          ),
+        ),
+      );
+      expect((result.deck.slides[0].elements[0] as TextElement).decoration?.fill).toEqual({
+        color: expected,
+        opacity: 0.5,
+      });
+    },
+  );
+
+  it('materializes theme style paint and partial line inheritance from slide, layout, and master', async () => {
+    const result = await importPptx(
+      await fixture((zip) => {
+        const target = placeholderText(
+          'idx="1"',
+          '<a:bodyPr/>',
+          '<p:spPr><a:ln w="19050"/></p:spPr>',
+        );
+        const layout = placeholderText(
+          'idx="1" type="body"',
+          '<a:bodyPr/>',
+          '<p:spPr><a:ln><a:prstDash val="longDashDot"/></a:ln></p:spPr>',
+        );
+        const master = placeholderText(
+          'idx="7" type="body"',
+          '<a:bodyPr/>',
+          '<p:spPr><a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val 30000"/></a:avLst></a:prstGeom></p:spPr>',
+        ).replace(
+          '<p:txBody>',
+          '<p:style><a:fillRef idx="1"><a:schemeClr val="accent1"><a:lumMod val="50000"/></a:schemeClr></a:fillRef><a:lnRef idx="1"><a:srgbClr val="2468AC"/></a:lnRef></p:style><p:txBody>',
+        );
+        zip.file('ppt/slides/slide12.xml', slide(target));
+        zip.file(
+          'ppt/slideLayouts/slideLayout1.xml',
+          `<p:sldLayout ${ns}><p:cSld><p:spTree>${layout}</p:spTree></p:cSld></p:sldLayout>`,
+        );
+        zip.file(
+          'ppt/slideMasters/slideMaster1.xml',
+          `<p:sldMaster ${ns}><p:cSld><p:spTree>${master}</p:spTree></p:cSld></p:sldMaster>`,
+        );
+        zip.file(
+          'ppt/theme/theme1.xml',
+          `<a:theme ${ns}><a:themeElements><a:clrScheme name="Paint"><a:accent1><a:srgbClr val="FF0000"/></a:accent1></a:clrScheme><a:fmtScheme name="Paint"><a:fillStyleLst><a:solidFill><a:schemeClr val="phClr"><a:alpha val="70000"/></a:schemeClr></a:solidFill></a:fillStyleLst><a:lnStyleLst><a:ln w="57150"><a:solidFill><a:schemeClr val="phClr"><a:alpha val="60000"/></a:schemeClr></a:solidFill><a:prstDash val="dot"/></a:ln></a:lnStyleLst></a:fmtScheme></a:themeElements></a:theme>`,
+        );
+      }),
+    );
+    const text = result.deck.slides[0].elements[0] as TextElement;
+    expect(text.decoration).toEqual({
+      shape: 'roundRect',
+      cornerRadius: 0.3,
+      fill: { color: '#800000', opacity: 0.7 },
+      line: { color: '#2468ac', opacity: 0.6, width: 2, dash: 'longDashDot' },
+    });
+    expect(
+      (await importPptx(await buffer(await exportPptx(result.deck)))).deck.slides[0].elements[0],
+    ).toMatchObject({ decoration: text.decoration });
+  });
+
+  it.each([
+    '<a:noFill/><a:ln><a:noFill/></a:ln>',
+    '<a:noFill/><a:ln w="0"><a:solidFill><a:srgbClr val="000000"/></a:solidFill></a:ln>',
+  ])(
+    'treats local noFill and zero widths as explicit inherited overrides: %s',
+    async (properties) => {
+      const result = await importPptx(
+        await fixture((zip) => {
+          zip.file(
+            'ppt/slides/slide12.xml',
+            slide(placeholderText('idx="1"', '<a:bodyPr/>', `<p:spPr>${properties}</p:spPr>`)),
+          );
+          zip.file(
+            'ppt/slideLayouts/slideLayout1.xml',
+            `<p:sldLayout ${ns}><p:cSld><p:spTree>${placeholderText('idx="1"', '<a:bodyPr/>', '<p:spPr><a:solidFill><a:srgbClr val="AABBCC"/></a:solidFill><a:ln w="95250"><a:solidFill><a:srgbClr val="FF0000"/></a:solidFill></a:ln></p:spPr>')}</p:spTree></p:cSld></p:sldLayout>`,
+          );
+        }),
+      );
+      const decoration = (result.deck.slides[0].elements[0] as TextElement).decoration!;
+      expect(decoration.fill).toBeNull();
+      if (properties.includes('w="0"')) {
+        expect(decoration.line).toMatchObject({ color: '#000000', width: 0 });
+        expect(result.warnings.join(' ')).toContain('hairlines');
+      } else expect(decoration.line).toBeNull();
+    },
+  );
+
+  it.each([
+    ['', 'spcFirstLastPara="1"', '', true],
+    ['spcFirstLastPara="0"', 'spcFirstLastPara="1"', '', false],
+    ['', '', 'spcFirstLastPara="true"', true],
+    ['', 'spcFirstLastPara="false"', 'spcFirstLastPara="1"', false],
+  ] as const)(
+    'inherits paragraph edge spacing independently, preserving explicit false (%s, %s, %s)',
+    async (local, layout, master, expected) => {
+      const result = await importPptx(
+        await fixture((zip) => {
+          zip.file(
+            'ppt/slides/slide12.xml',
+            slide(placeholderText('idx="1"', `<a:bodyPr ${local}/>`)),
+          );
+          zip.file(
+            'ppt/slideLayouts/slideLayout1.xml',
+            `<p:sldLayout ${ns}><p:cSld><p:spTree>${placeholderText('idx="1" type="body"', `<a:bodyPr ${layout}/>`)}</p:spTree></p:cSld></p:sldLayout>`,
+          );
+          zip.file(
+            'ppt/slideMasters/slideMaster1.xml',
+            `<p:sldMaster ${ns}><p:cSld><p:spTree>${placeholderText('idx="7" type="body"', `<a:bodyPr ${master}/>`)}</p:spTree></p:cSld></p:sldMaster>`,
+          );
+        }),
+      );
+      expect(
+        (result.deck.slides[0].elements[0] as TextElement).textFrame?.paragraphSpacingAtEdges,
+      ).toBe(expected);
+      const bytes = await buffer(await exportPptx(result.deck));
+      const zip = await JSZip.loadAsync(bytes);
+      const xml = await zip.file('ppt/slides/slide1.xml')!.async('string');
+      expect(xml).toContain(`spcFirstLastPara="${expected ? 1 : 0}"`);
+      expect(result.warnings.join(' ')).not.toContain('Special spacing');
+      expect((await importPptx(bytes)).deck.slides[0].elements[0]).toMatchObject({
+        textFrame: { paragraphSpacingAtEdges: expected },
+      });
+    },
+  );
+
+  it.each([
+    ['<a:gradFill/>', 'paints are not retained'],
+    ['<a:pattFill prst="pct50"/>', 'paints are not retained'],
+    [
+      '<a:ln w="12700" cmpd="dbl"><a:solidFill><a:srgbClr val="000000"/></a:solidFill></a:ln>',
+      'border compound styles',
+    ],
+    [
+      '<a:ln w="12700"><a:solidFill><a:srgbClr val="000000"/></a:solidFill><a:custDash/></a:ln>',
+      'unsupported text-box border dashes',
+    ],
+    [
+      '<a:prstGeom prst="triangle"><a:avLst><a:gd name="adj" fmla="val 25000"/></a:avLst></a:prstGeom>',
+      'geometry adjustments',
+    ],
+  ])('warns about actual unsupported attached decoration: %s', async (properties, warning) => {
+    const result = await importPptx(
+      await fixture((zip) =>
+        zip.file(
+          'ppt/slides/slide12.xml',
+          slide(textShape('Warning').replace('</p:spPr>', `${properties}</p:spPr>`)),
+        ),
+      ),
+    );
+    expect(result.warnings.join(' ')).toContain(warning);
+    expect(() => validateDeck(result.deck)).not.toThrow();
+  });
 
   it.each([
     ['<a:normAutofit/>', { mode: 'shrink', fontScale: 1, lineSpacingReduction: 0 }],
@@ -1065,6 +1719,7 @@ describe('editable PPTX interoperability', () => {
       wrap: 'square',
       horizontalOverflow: 'overflow',
       verticalOverflow: 'overflow',
+      paragraphSpacingAtEdges: false,
     });
     expect(find('Explicit zero insets').textFrame?.insets).toEqual({
       left: 0,

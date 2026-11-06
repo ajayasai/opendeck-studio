@@ -5,6 +5,7 @@ import { ElementContent, elementStyle } from './SlideView';
 import { replacePlainText } from './richText';
 import { resolveTextFrame, textContentRect } from './textFrame';
 import { textScale } from './textLayout';
+import TextDecorationView from './TextDecorationView';
 
 interface Props {
   ref?: Ref<CanvasHandle>;
@@ -288,48 +289,51 @@ export default function Canvas({
             }}
           >
             {editing === e.id && e.type === 'text' ? (
-              <textarea
-                autoFocus
-                ref={textInput}
-                maxLength={100000}
-                aria-label="Edit text on slide"
-                aria-invalid={Boolean(textError)}
-                aria-describedby={textError ? errorId : undefined}
-                className="canvas-text-editor"
-                wrap={resolveTextFrame(e).wrap === 'none' ? 'off' : 'soft'}
-                value={text}
-                onChange={(ev) => {
-                  setText(ev.target.value);
-                  textValue.current = ev.target.value;
-                  setTextError('');
-                }}
-                onBlur={finishText}
-                onPointerDown={(ev) => ev.stopPropagation()}
-                onKeyDown={(ev) => {
-                  if (!((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 's'))
-                    ev.stopPropagation();
-                  if (ev.key === 'Escape') {
-                    setEditing(null);
-                    editingId.current = null;
+              <>
+                <TextDecorationView element={e} />
+                <textarea
+                  autoFocus
+                  ref={textInput}
+                  maxLength={100000}
+                  aria-label="Edit text on slide"
+                  aria-invalid={Boolean(textError)}
+                  aria-describedby={textError ? errorId : undefined}
+                  className="canvas-text-editor"
+                  wrap={resolveTextFrame(e).wrap === 'none' ? 'off' : 'soft'}
+                  value={text}
+                  onChange={(ev) => {
+                    setText(ev.target.value);
+                    textValue.current = ev.target.value;
                     setTextError('');
-                  }
-                  if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) {
-                    finishText();
-                  }
-                }}
-                style={{
-                  position: 'absolute',
-                  ...textContentRect(e),
-                  whiteSpace: resolveTextFrame(e).wrap === 'none' ? 'pre' : 'pre-wrap',
-                  overflowWrap: resolveTextFrame(e).wrap === 'none' ? 'normal' : 'break-word',
-                  fontSize: `${e.fontSize * textScale(e)}pt`,
-                  fontFamily: e.fontFamily,
-                  color: e.color,
-                  fontWeight: e.bold ? 700 : 400,
-                  fontStyle: e.italic ? 'italic' : 'normal',
-                  textAlign: e.align,
-                }}
-              />
+                  }}
+                  onBlur={finishText}
+                  onPointerDown={(ev) => ev.stopPropagation()}
+                  onKeyDown={(ev) => {
+                    if (!((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 's'))
+                      ev.stopPropagation();
+                    if (ev.key === 'Escape') {
+                      setEditing(null);
+                      editingId.current = null;
+                      setTextError('');
+                    }
+                    if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) {
+                      finishText();
+                    }
+                  }}
+                  style={{
+                    position: 'absolute',
+                    ...textContentRect(e),
+                    whiteSpace: resolveTextFrame(e).wrap === 'none' ? 'pre' : 'pre-wrap',
+                    overflowWrap: resolveTextFrame(e).wrap === 'none' ? 'normal' : 'break-word',
+                    fontSize: `${e.fontSize * textScale(e)}pt`,
+                    fontFamily: e.fontFamily,
+                    color: e.color,
+                    fontWeight: e.bold ? 700 : 400,
+                    fontStyle: e.italic ? 'italic' : 'normal',
+                    textAlign: e.align,
+                  }}
+                />
+              </>
             ) : (
               <ElementContent element={e} />
             )}

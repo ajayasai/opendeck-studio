@@ -29,6 +29,7 @@ import {
 } from './richTextEditorAdapter';
 import type { TextElement } from './types';
 import { useDialog } from './useDialog';
+import { textPreviewBackground } from './textDecoration';
 
 export interface RichTextEditorProps {
   element: TextElement;
@@ -110,12 +111,7 @@ export default function RichTextEditor({
     }
   }, [element]);
   const blocked = element.locked || Boolean(initial.problem);
-  const colorHex = hexColor(element.color) ?? '#000000';
-  const brightness =
-    [1, 3, 5]
-      .map((start) => parseInt(colorHex.slice(start, start + 2), 16))
-      .reduce((sum, channel) => sum + channel, 0) / 3;
-  const previewBackground = background ?? (brightness > 165 ? '#1e3029' : '#ffffff');
+  const previewBackground = textPreviewBackground(element, background);
   const editor = useEditor(
     {
       extensions,

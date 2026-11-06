@@ -17,6 +17,39 @@ export interface TextFrame {
   wrap: 'square' | 'none';
   horizontalOverflow: 'overflow' | 'clip';
   verticalOverflow: 'overflow' | 'clip';
+  /** Absent in legacy native files: include before/after spacing at the outer paragraphs. */
+  paragraphSpacingAtEdges?: boolean;
+}
+export interface TextDecorationPaint {
+  color: string;
+  opacity: number;
+}
+export interface TextDecorationLine extends TextDecorationPaint {
+  width: number;
+  /** Absent native metadata resolves to flat line endings. */
+  cap?: 'flat' | 'round' | 'square';
+  /** Absent metadata resolves to rounded joins and a miter ratio of eight. */
+  join?: 'round' | 'bevel' | 'miter';
+  miterLimit?: number;
+  dash:
+    | 'solid'
+    | 'dash'
+    | 'dot'
+    | 'dashDot'
+    | 'longDash'
+    | 'longDashDot'
+    | 'longDashDotDot'
+    | 'sysDash'
+    | 'sysDot'
+    | 'sysDashDot'
+    | 'sysDashDotDot';
+}
+export interface TextDecoration {
+  shape: 'rect' | 'roundRect' | 'ellipse' | 'triangle';
+  fill: TextDecorationPaint | null;
+  line: TextDecorationLine | null;
+  /** Rounded-rectangle radius as a fraction of the smaller box dimension. */
+  cornerRadius?: number;
 }
 export type TextAutoFit =
   | { mode: 'none' }
@@ -39,6 +72,10 @@ export interface TextElement extends ElementBase {
   textFrame?: TextFrame;
   /** Saved fitting result; base run sizes remain unchanged. Absence means no fitting. */
   autoFit?: TextAutoFit;
+  /** Absent in legacy native files: transparent rectangular text without an outline. */
+  decoration?: TextDecoration;
+  /** Text-only alpha, multiplied by whole-object opacity. Absence resolves to fully opaque. */
+  textOpacity?: number;
 }
 export interface TextRun {
   text: string;

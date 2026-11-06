@@ -37,7 +37,11 @@ export default function RichTextView({
         style={textContentStyle(element)}
       >
         {paragraphs.map((paragraph, i) => (
-          <div key={i} className="text-paragraph" style={textParagraphStyle(paragraph, element)}>
+          <div
+            key={i}
+            className="text-paragraph"
+            style={textParagraphStyle(paragraph, element, i, paragraphs.length)}
+          >
             {paragraph.bullet && (
               <span className="paragraph-marker" style={paragraphMarkerStyle(paragraph, element)}>
                 {markers[i]}

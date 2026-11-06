@@ -2,6 +2,7 @@ import type { Deck, Slide, SlideElement, Theme, TextElement, ShapeElement } from
 import { validateParagraphs } from './richText';
 import { validateTextFrame } from './textFrame';
 import { validateAutoFit } from './textFit';
+import { validateTextDecoration } from './textDecoration';
 
 export const uid = (): string =>
   globalThis.crypto?.randomUUID?.() ??
@@ -587,6 +588,12 @@ export function validateDeck(input: unknown): Deck {
               : {}),
             ...(e.textFrame !== undefined ? { textFrame: validateTextFrame(e.textFrame) } : {}),
             ...(e.autoFit !== undefined ? { autoFit: validateAutoFit(e.autoFit) } : {}),
+            ...(e.decoration !== undefined
+              ? { decoration: validateTextDecoration(e.decoration) }
+              : {}),
+            ...(e.textOpacity !== undefined
+              ? { textOpacity: number(e.textOpacity, 'text opacity', 0, 1) }
+              : {}),
           };
         case 'shape':
           return {

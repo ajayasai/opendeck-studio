@@ -120,6 +120,39 @@ To intentionally recreate the input fixtures instead, run `create-powerpoint-aut
 
 Supplemental scripts `probe-autofit-resize.ps1`, `probe-paragraph-spacing.ps1`, and `probe-font-line-metrics.ps1` generate only ignored experiments. The font-metrics script uses `prepare-font-line-metrics.mjs` to make an explicitly XML-derived 80% scale comparison. Their local PPTX files are not redistributed fixtures and have not received the committed-fixture sanitation step. Their measured scope and limitations are recorded in [TESTING.md](TESTING.md).
 
+## Original text-decoration fixture and endpoint-spacing probe (alpha.5)
+
+`tests/fixtures/powerpoint-text-decoration.pptx` contains nine original slides and 50 text frames authored through Microsoft PowerPoint COM. Its project text, layouts and objects are distributed under the repository's [MIT license](../LICENSE); no customer presentation or external template was used. The authoring and native verification used PowerPoint `16.0`, executable product version `16.0.20527.20150`. The final recorded native gate was at `2026-11-06T06:53:15.8765568Z`.
+
+`scripts/create-powerpoint-text-decoration-fixture.ps1` creates its own presentation without a visible window and closes only that presentation. It authors attached text-box fills and outlines, zero/partial paint opacity, eight COM dash controls, rounded rectangles with default/zero/custom radius, ellipse and triangle text regions, centered thick strokes, rotation, native theme styles, genuine layout/master decoration inheritance with a local line override, and an intentionally unsupported gradient. Three rows of paragraph controls use no, normal, and shape AutoFit. Shared sanitation removes Office profile attribution and organization metadata before redistribution.
+
+All original endpoint controls use PowerPoint's default paragraph-edge policy. Their names reserve `default`, `false` and `true` cases for the separate probe; the names do not imply that the original COM authoring set an endpoint flag. Bare normal AutoFit in the original also does not establish a computed shrink factor.
+
+`scripts/prepare-text-decoration-probe.mjs` copies the sanitized original and records 29 explicit alterations. The resulting `powerpoint-text-decoration-probe.pptx` has nine slides and 53 text frames. It adds all eleven DrawingML preset dash tokens, bevel and limited-miter joins, style-reference indexes 0 and 1001, local/default/inherited `spcFirstLastPara` values, known 80% shrink factors, and three-paragraph inheritance comparisons. It is **XML-derived, not directly PowerPoint-authored**. PowerPoint subsequently opened and rendered it. No published older fixture was modified.
+
+Frozen and tested SHA-256 values:
+
+| File                                                                  | SHA-256                                                            |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `tests/fixtures/powerpoint-text-decoration.pptx`                      | `1c8db93b95bb3f0e75a94cdd1cee9e98dbda3b96caeb56f444d8a65b57e246ce` |
+| `tests/fixtures/powerpoint-text-decoration-probe.pptx`                | `9600597635b6508ceb1c863f259b78cf92cea966f38ed5c422eeeb0b0f92a46f` |
+| `examples/text-decoration.pptx`                                       | `707459f571d7ed8c364e1bc27ebede8083348ae2def712a9ccef26581f7fb0ed` |
+| Ignored `test-results/text-decoration-powerpoint/probe-exported.pptx` | `5c6186a50284b727c38dfbb1f0fc205b67089434b378aa663b169bd3dd5bf10b` |
+
+The public `examples/text-decoration.opendeck` and `.pptx` come **directly from importing the original COM-authored fixture**. The XML-derived probe has a separate ignored export; it is not the source of the public example.
+
+Reproduce the native gate from the committed inputs:
+
+```powershell
+node scripts/generate-text-decoration-example.mjs
+powershell -File scripts/verify-text-decoration-with-powerpoint.ps1
+node scripts/check-text-decoration-office-roundtrip.mjs
+```
+
+The generator writes both supported-model derivatives. The verifier opens the two inputs and two exports, records native paint/frame/text bounds, renders PNGs, and saves separate copies. It also runs an explicitly separate resize recomputation experiment after loading the probe's XML-authored endpoint flags. It never saves over either frozen input. The last script compares native properties and re-imports the two exported saved copies.
+
+To intentionally rebuild the fixture inputs, run `create-powerpoint-text-decoration-fixture.ps1` followed by `node scripts/prepare-text-decoration-probe.mjs`, then repeat import and native acceptance. Review the content, sanitized metadata and new hashes before replacing a committed input. Regular CI uses the frozen files without Office. Generated metadata, provenance, native saved copies, research downloads and renders remain under ignored `test-results/text-decoration-powerpoint/`. The published repository does not include the downloaded specification archive. [TESTING.md](TESTING.md) records the 18 inspected export renders, measured geometry and remaining limits.
+
 ## Synthetic OOXML and generated round trips
 
 `src/pptx.test.ts` also creates small OOXML packages in memory to isolate relationship ordering, malformed input, theme/layout inheritance, groups, and warning behavior. These synthetic packages deliberately focus on importer cases; they are not all complete, independently validated PowerPoint presentations.

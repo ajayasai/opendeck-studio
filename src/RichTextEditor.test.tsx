@@ -221,6 +221,56 @@ describe('rich text modal', () => {
     expect((content.querySelector('span') as HTMLElement).style.color).toBe('rgb(255, 255, 255)');
   });
 
+  it('keeps white text readable on an opaque dark text-box fill over a white slide and preserves the paints on Save', async () => {
+    const element = {
+      ...createElement('text', THEMES[0]),
+      color: '#ffffff',
+      textOpacity: 0.6,
+      decoration: {
+        shape: 'roundRect' as const,
+        cornerRadius: 0.25,
+        fill: { color: '#123456', opacity: 1 },
+        line: { color: '#ffcc00', opacity: 0.5, width: 4, dash: 'dot' as const },
+      },
+    };
+    const original = structuredClone(element),
+      onSave = vi.fn();
+    render(
+      <RichTextEditor element={element} background="#ffffff" onSave={onSave} onClose={vi.fn()} />,
+    );
+    const content = await screen.findByRole('textbox', { name: 'Rich text content' });
+    expect((content.closest('.rich-editor-area') as HTMLElement).style.backgroundColor).toBe(
+      'rgb(18, 52, 86)',
+    );
+    expect((content.querySelector('span') as HTMLElement).style.color).toBe('rgb(255, 255, 255)');
+    fireEvent.click(screen.getByRole('button', { name: 'Save text' }));
+    expect(onSave).toHaveBeenCalledOnce();
+    expect(onSave.mock.calls[0][0]).toMatchObject({
+      decoration: original.decoration,
+      opacity: original.opacity,
+      textOpacity: 0.6,
+      text: original.text,
+    });
+    expect(element).toEqual(original);
+  });
+
+  it('previews partially transparent decoration over the actual slide background', async () => {
+    const element = {
+      ...createElement('text', THEMES[0]),
+      opacity: 0.5,
+      decoration: { shape: 'rect' as const, fill: { color: '#000000', opacity: 0.5 }, line: null },
+    };
+    render(
+      <RichTextEditor element={element} background="#ffffff" onSave={vi.fn()} onClose={vi.fn()} />,
+    );
+    const content = await screen.findByRole('textbox', { name: 'Rich text content' });
+    expect((content.closest('.rich-editor-area') as HTMLElement).style.backgroundColor).toBe(
+      'rgb(191, 191, 191)',
+    );
+    expect(element.decoration.fill.opacity).toBe(0.5);
+    expect(element.opacity).toBe(0.5);
+  });
+
   it('reports legacy text exceeding the rich paragraph capacity without crashing or changing it', async () => {
     const element = { ...createElement('text', THEMES[0]), text: '\n'.repeat(5000) };
     const onSave = vi.fn();

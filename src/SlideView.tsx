@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import type { ChartElement, Deck, Slide, SlideElement } from './types';
 import { contrastText } from './model';
 import RichTextView from './RichTextView';
+import TextDecorationView from './TextDecorationView';
 
 export function ChartView({ element: e }: { element: ChartElement }) {
   const w = 600,
@@ -123,7 +124,12 @@ export function ElementContent({
 }) {
   switch (e.type) {
     case 'text':
-      return <RichTextView element={e} interactiveLinks={interactiveLinks} />;
+      return (
+        <>
+          <TextDecorationView element={e} />
+          <RichTextView element={e} interactiveLinks={interactiveLinks} />
+        </>
+      );
     case 'shape':
       return (
         <svg

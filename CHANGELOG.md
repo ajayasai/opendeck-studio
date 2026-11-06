@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.0-alpha.5 — 2026-11-06
+
+Attached text decoration and preset geometry milestone. Full PowerPoint parity remains unfinished.
+
+- Keep text and its supported solid fill/outline in one editable object through native backups and PPTX interchange.
+- Separate text-only, fill, outline, and whole-object opacity, including explicit zero values.
+- Add rectangle, rounded rectangle, ellipse, and triangle text shapes; preserve roundness, line width, eleven dash styles, caps, joins, and supported miter limits.
+- Resolve supported theme and placeholder paints, including partial line inheritance; retain explicit no-fill overrides and warn about unsupported paint or geometry.
+- Apply the documented preset text rectangles to rendering, inline editing, shrink fitting, and box resizing. Rounded wrapped boxes use bounded iterative fitting.
+- Preserve first/last paragraph spacing policy through slide/layout/master inheritance and expose it in the inspector. Legacy native files retain their prior edge behavior.
+- Keep attached decoration visible during inline editing and composite solid fills into the styled editor's authoring background.
+- Add original nine-slide PowerPoint and separately XML-derived fixtures, native render/resave/reimport checks, and focused geometry, fitting, opacity, validation, and editor regressions.
+
+PowerPoint 16.0.20527.20150 opened, rendered, saved, and re-imported both nine-slide paths. Supported decorations and native preset text-region bounds survived those checks. All 18 exported renders were inspected. Unsupported paints, custom geometry, normalized bullet indents, browser font metrics, and native recalculation remain limitations. See [testing evidence](docs/TESTING.md) and [compatibility notes](docs/COMPATIBILITY.md).
+
 ## 0.1.0-alpha.4 — 2026-11-06
 
 Text fitting and exact paragraph spacing milestone. Full PowerPoint parity remains unfinished.

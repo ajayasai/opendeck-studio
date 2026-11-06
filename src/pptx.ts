@@ -4,6 +4,11 @@ import { contrastText, validateDeck } from './model';
 import { getParagraphs, plainText, safeHyperlink } from './richText';
 import { resolveTextFrame } from './textFrame';
 import { resolveAutoFit } from './textFit';
+import {
+  DEFAULT_TEXT_CORNER_RADIUS,
+  resolveTextDecoration,
+  TEXT_LINE_DASHES,
+} from './textDecoration';
 import type {
   Deck,
   ElementBase,
@@ -16,6 +21,7 @@ import type {
   TextParagraph,
   TextRun,
   TextAutoFit,
+  TextDecoration,
 } from './types';
 
 // ECMA-376: Open Packaging Conventions and PresentationML. Import deliberately
@@ -33,6 +39,8 @@ const verticalClipWarning =
   'PowerPoint can omit whole lines that cross the inset content bottom when vertical overflow is clipped; browser clipping may show partial or additional lines.';
 const autoFitWarning =
   'Automatic text fitting can reflow differently in other applications because font metrics and line layout differ.';
+const nativeDash = (dash: string) => dash.replace(/^longDash/, 'lgDash');
+const modelDash = (dash: string) => dash.replace(/^lgDash/, 'longDash');
 const identifier = () => crypto.randomUUID();
 const hex = (color: string, fallback = 'FFFFFF') =>
   /^#[\da-f]{6}$/i.test(color) ? color.slice(1) : fallback;
@@ -106,6 +114,47 @@ function writeTextBody(
       }),
     );
     if (!transform.parentNode) properties.prepend(transform);
+    const decoration = resolveTextDecoration(source);
+    const preset = drawingNode(doc, 'prstGeom', { prst: decoration.shape });
+    const adjustments = drawingNode(doc, 'avLst');
+    if (decoration.shape === 'roundRect')
+      adjustments.appendChild(
+        drawingNode(doc, 'gd', {
+          name: 'adj',
+          fmla: `val ${Math.round((decoration.cornerRadius ?? DEFAULT_TEXT_CORNER_RADIUS) * 100000)}`,
+        }),
+      );
+    preset.appendChild(adjustments);
+    const paint = (value: TextDecoration['fill']): Element => {
+      if (!value) return drawingNode(doc, 'noFill');
+      const fill = drawingNode(doc, 'solidFill');
+      const rgb = drawingNode(doc, 'srgbClr', { val: hex(value.color) });
+      rgb.appendChild(
+        drawingNode(doc, 'alpha', { val: fitPercentage(value.opacity * source.opacity) }),
+      );
+      fill.appendChild(rgb);
+      return fill;
+    };
+    const line = drawingNode(doc, 'ln', { w: Math.round((decoration.line?.width ?? 0) * EMU) });
+    if (decoration.line?.cap)
+      line.setAttribute(
+        'cap',
+        decoration.line.cap === 'round' ? 'rnd' : decoration.line.cap === 'square' ? 'sq' : 'flat',
+      );
+    line.appendChild(paint(decoration.line));
+    if (decoration.line)
+      line.appendChild(drawingNode(doc, 'prstDash', { val: nativeDash(decoration.line.dash) }));
+    if (decoration.line?.join)
+      line.appendChild(
+        drawingNode(
+          doc,
+          decoration.line.join,
+          decoration.line.join === 'miter' && decoration.line.miterLimit !== undefined
+            ? { lim: fitPercentage(decoration.line.miterLimit) }
+            : {},
+        ),
+      );
+    properties.replaceChildren(transform, preset, paint(decoration.fill), line);
   }
   const frame = resolveTextFrame(source);
   const bodyPr = drawingNode(doc, 'bodyPr', {
@@ -116,6 +165,7 @@ function writeTextBody(
     wrap: frame.wrap,
     horzOverflow: frame.horizontalOverflow,
     vertOverflow: frame.verticalOverflow,
+    spcFirstLastPara: frame.paragraphSpacingAtEdges === false ? '0' : '1',
   });
   bodyPr.setAttribute(
     'anchor',
@@ -169,8 +219,9 @@ function writeTextBody(
     });
     const fill = drawingNode(doc, 'solidFill');
     const rgb = drawingNode(doc, 'srgbClr', { val: hex(run.color ?? source.color, '172E29') });
-    if (source.opacity < 1)
-      rgb.appendChild(drawingNode(doc, 'alpha', { val: Math.round(source.opacity * 100000) }));
+    const textAlpha = source.opacity * (source.textOpacity ?? 1);
+    if (textAlpha < 1)
+      rgb.appendChild(drawingNode(doc, 'alpha', { val: fitPercentage(textAlpha) }));
     fill.appendChild(rgb);
     props.appendChild(fill);
     props.appendChild(drawingNode(doc, 'latin', { typeface: run.fontFamily ?? source.fontFamily }));
@@ -320,6 +371,10 @@ export function pptxExportWarnings(deck: Deck): string[] {
   for (const text of deck.slides
     .flatMap((slide) => slide.elements)
     .filter((element) => element.type === 'text')) {
+    if (text.decoration?.line?.join === 'miter' && (text.decoration.line.miterLimit ?? 8) < 1)
+      warnings.push(
+        'Miter limits below 1 are retained in PPTX, but browser outlines use a minimum limit of 1.',
+      );
     if (textRotationUnits(text.rotation) !== Math.round(text.rotation * 60000))
       warnings.push(
         'Text rotations beyond the DrawingML angle range use an equivalent angle in PPTX; a full turn remains nonzero.',
@@ -661,6 +716,320 @@ function color(node: Element | undefined | null, colors: Colors, fallback: strin
     .join('')}`;
 }
 
+type Paint = NonNullable<TextDecoration['fill']>;
+const paintNames = ['noFill', 'solidFill', 'gradFill', 'pattFill', 'blipFill', 'grpFill'];
+const paintChild = (node: Element | undefined) =>
+  node && Array.from(node.children).find((entry) => paintNames.includes(entry.localName));
+
+function percentage(value: string | null, fallback = 0): number {
+  if (value?.trim().endsWith('%')) return number(value.trim().slice(0, -1), fallback * 100) / 100;
+  return number(value, fallback * 100000) / 100000;
+}
+
+/** Materialize solid DrawingML paint; luminance/saturation operate in HSL, not RGB. */
+function decorationColor(
+  node: Element | undefined,
+  colors: Colors,
+  warn: Warn,
+  placeholder?: Paint,
+): Paint {
+  const c = node?.localName.endsWith('Clr')
+    ? node
+    : node && Array.from(node.children).find((n) => n.localName.endsWith('Clr'));
+  if (!c) {
+    if (placeholder) return placeholder;
+    warn(
+      'An incomplete solid color had no supported inherited value; the theme background color was used.',
+    );
+    return { color: `#${colors.bg1 ?? colors.lt1 ?? 'FFFFFF'}`, opacity: 1 };
+  }
+  const aliases: Record<string, string> = { tx1: 'dk1', tx2: 'dk2', bg1: 'lt1', bg2: 'lt2' };
+  const value = attr(c, 'val') ?? '';
+  const preset: Record<string, string> = {
+    black: '000000',
+    white: 'FFFFFF',
+    red: 'FF0000',
+    green: '008000',
+    blue: '0000FF',
+    yellow: 'FFFF00',
+    cyan: '00FFFF',
+    magenta: 'FF00FF',
+  };
+  let rgb =
+    c.localName === 'schemeClr'
+      ? value === 'phClr'
+        ? placeholder?.color.slice(1)
+        : (colors[value] ?? colors[aliases[value]])
+      : c.localName === 'sysClr'
+        ? attr(c, 'lastClr')
+        : c.localName === 'prstClr'
+          ? preset[value]
+          : value;
+  let opacity = c.localName === 'schemeClr' && value === 'phClr' ? (placeholder?.opacity ?? 1) : 1;
+  let channels: number[];
+  const fromHsl = (hue: number, saturation: number, luminance: number): number[] => {
+    const h = ((hue % 1) + 1) % 1;
+    const s = clamp(saturation, 0, 1),
+      l = clamp(luminance, 0, 1);
+    const a = s * Math.min(l, 1 - l);
+    return [0, 8, 4].map((offset) => {
+      const k = (offset + h * 12) % 12;
+      return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+    });
+  };
+  const toHsl = (): number[] => {
+    const [r, g, b] = channels;
+    const hi = Math.max(...channels),
+      lo = Math.min(...channels),
+      delta = hi - lo;
+    const l = (hi + lo) / 2;
+    const h =
+      delta === 0
+        ? 0
+        : hi === r
+          ? ((g - b) / delta + 6) % 6
+          : hi === g
+            ? (b - r) / delta + 2
+            : (r - g) / delta + 4;
+    return [h / 6, delta === 0 ? 0 : delta / (1 - Math.abs(2 * l - 1)), l];
+  };
+  if (c.localName === 'hslClr')
+    channels = fromHsl(
+      number(attr(c, 'hue')) / 21600000,
+      percentage(attr(c, 'sat')),
+      percentage(attr(c, 'lum')),
+    );
+  else if (c.localName === 'scrgbClr') {
+    const srgb = (v: number) => (v <= 0.0031308 ? v * 12.92 : 1.055 * v ** (1 / 2.4) - 0.055);
+    channels = ['r', 'g', 'b'].map((key) => srgb(clamp(percentage(attr(c, key)), 0, 1)));
+  } else {
+    if (!rgb || !/^[\da-f]{6}$/i.test(rgb)) {
+      warn('An unsupported or unresolved decoration color was replaced with black.');
+      rgb = '000000';
+    }
+    channels = [0, 2, 4].map((start) => parseInt(rgb!.slice(start, start + 2), 16) / 255);
+  }
+  for (const modifier of Array.from(c.children)) {
+    const kind = modifier.localName,
+      fraction = percentage(attr(modifier, 'val'));
+    if (kind === 'alpha') opacity = fraction;
+    else if (kind === 'alphaMod') opacity *= fraction;
+    else if (kind === 'alphaOff') opacity += fraction;
+    else if (kind === 'tint') channels = channels.map((v) => v * fraction + 1 - fraction);
+    else if (kind === 'shade') channels = channels.map((v) => v * fraction);
+    else if (/^(lum|sat|hue)(Mod|Off)?$/.test(kind)) {
+      const hsl = toHsl(),
+        index = kind.startsWith('hue') ? 0 : kind.startsWith('sat') ? 1 : 2;
+      const amount =
+        index === 0 && !kind.endsWith('Mod') ? number(attr(modifier, 'val')) / 21600000 : fraction;
+      hsl[index] = kind.endsWith('Mod')
+        ? hsl[index] * amount
+        : kind.endsWith('Off')
+          ? hsl[index] + amount
+          : amount;
+      channels = fromHsl(hsl[0], hsl[1], hsl[2]);
+    } else if (/^(red|green|blue)(Mod|Off)?$/.test(kind)) {
+      const index = kind.startsWith('red') ? 0 : kind.startsWith('green') ? 1 : 2;
+      channels[index] = kind.endsWith('Mod')
+        ? channels[index] * fraction
+        : kind.endsWith('Off')
+          ? channels[index] + fraction
+          : fraction;
+    } else if (kind === 'inv') channels = channels.map((v) => 1 - v);
+    else if (kind === 'comp') {
+      const hsl = toHsl();
+      channels = fromHsl(hsl[0] + 0.5, hsl[1], hsl[2]);
+    } else warn(`Decoration color transform “${kind}” is not retained.`);
+    channels = channels.map((v) => clamp(v, 0, 1));
+    opacity = clamp(opacity, 0, 1);
+  }
+  return {
+    color: `#${channels
+      .map((v) =>
+        Math.round(v * 255)
+          .toString(16)
+          .padStart(2, '0'),
+      )
+      .join('')}`,
+    opacity,
+  };
+}
+
+/** Resolve each supported property independently; explicit noFill is a stopping value. */
+function readDecoration(
+  nodes: Array<Element | undefined>,
+  colors: Colors,
+  themeDoc: Document | undefined,
+  warn: Warn,
+): TextDecoration {
+  type Candidate = { node?: Element; reference?: Element; none?: boolean; unresolved?: boolean };
+  const matrix = descendant(themeDoc, 'fmtScheme');
+  const reference = (node: Element | undefined, kind: 'fill' | 'ln'): Candidate | undefined => {
+    const ref = child(child(node, 'style'), `${kind}Ref`);
+    if (!ref) return undefined;
+    const idx = number(attr(ref, 'idx'), -1);
+    if (idx === 0 || (kind === 'fill' && idx === 1000)) return { none: true };
+    const list = child(
+      matrix,
+      kind === 'ln' ? 'lnStyleLst' : idx > 1000 ? 'bgFillStyleLst' : 'fillStyleLst',
+    );
+    const style = list?.children[idx - (idx > 1000 && kind === 'fill' ? 1001 : 1)];
+    if (!style) {
+      return { none: true, unresolved: true };
+    }
+    return { node: style, reference: ref };
+  };
+  const fillCandidates: Candidate[] = [],
+    lineCandidates: Candidate[] = [];
+  for (const node of nodes) {
+    const props = child(node, 'spPr');
+    const fill = paintChild(props),
+      line = child(props, 'ln');
+    if (fill) fillCandidates.push({ node: fill });
+    const fillRef = reference(node, 'fill');
+    if (fillRef) fillCandidates.push(fillRef);
+    if (line) lineCandidates.push({ node: line });
+    const lineRef = reference(node, 'ln');
+    if (lineRef) lineCandidates.push(lineRef);
+  }
+  const readPaint = (candidates: Candidate[]): Paint | null => {
+    const candidate = candidates[0];
+    if (candidate?.unresolved)
+      warn('An unresolved theme decoration reference was imported without its paint.');
+    if (!candidate || candidate.none || candidate.node?.localName === 'noFill') return null;
+    if (candidate.node?.localName !== 'solidFill') {
+      warn('Gradient, pattern, picture, and group text-box paints are not retained.');
+      return null;
+    }
+    // An empty same-type fill inherits its missing color. A different paint
+    // choice (including explicit noFill) ends this supported merge chain.
+    for (const source of candidates) {
+      if (source.none || source.node?.localName !== 'solidFill') break;
+      if (Array.from(source.node.children).some((entry) => entry.localName.endsWith('Clr')))
+        return decorationColor(
+          source.node,
+          colors,
+          warn,
+          source.reference ? decorationColor(source.reference, colors, warn) : undefined,
+        );
+    }
+    return decorationColor(candidate.node, colors, warn);
+  };
+  const fill = readPaint(fillCandidates);
+  const linePaint = lineCandidates
+    .map((candidate) =>
+      candidate.none ? candidate : { ...candidate, node: paintChild(candidate.node) },
+    )
+    .filter((candidate) => candidate.none || candidate.node);
+  const paint = readPaint(linePaint);
+  const lineAttr = (name: string) =>
+    lineCandidates.map((c) => attr(c.node, name)).find((v) => v !== null);
+  const lineChoice = (names: string[]) =>
+    lineCandidates.flatMap((c) =>
+      c.node ? Array.from(c.node.children).filter((entry) => names.includes(entry.localName)) : [],
+    )[0];
+  let line: TextDecoration['line'] = null;
+  if (paint) {
+    const width = number(lineAttr('w')) / EMU;
+    if (width < 0 || width > 100)
+      warn('Text-box border widths outside the supported range were limited to 0–100 pixels.');
+    if (width === 0)
+      warn(
+        'Zero-width or unspecified painted borders are device-dependent hairlines; their appearance can differ.',
+      );
+    const dash = lineChoice(['prstDash', 'custDash']);
+    const dashName = modelDash(attr(dash, 'val') ?? 'solid');
+    if (
+      dash?.localName === 'custDash' ||
+      !TEXT_LINE_DASHES.includes(dashName as NonNullable<TextDecoration['line']>['dash'])
+    )
+      warn('Custom or unsupported text-box border dashes are imported as solid lines.');
+    line = {
+      ...paint,
+      width: clamp(width, 0, 100),
+      dash: TEXT_LINE_DASHES.includes(dashName as NonNullable<TextDecoration['line']>['dash'])
+        ? (dashName as NonNullable<TextDecoration['line']>['dash'])
+        : 'solid',
+    };
+    const cap = lineAttr('cap');
+    if (cap !== undefined) {
+      if (['flat', 'rnd', 'sq'].includes(cap))
+        line.cap = cap === 'rnd' ? 'round' : cap === 'sq' ? 'square' : 'flat';
+      else warn('An unsupported text-box border cap was imported as flat.');
+    }
+    const join = lineChoice(['miter', 'bevel', 'round']);
+    if (join) {
+      line.join = join.localName as NonNullable<TextDecoration['line']>['join'];
+      if (join.localName === 'miter' && attr(join, 'lim') !== null) {
+        const limit = percentage(attr(join, 'lim'), 8);
+        if (limit < 0 || limit > 21474.83647)
+          warn('Text-box miter limits outside the supported range were limited.');
+        line.miterLimit = clamp(limit, 0, 21474.83647);
+        if (line.miterLimit < 1)
+          warn(
+            'Miter limits below 1 are retained in PPTX, but browser outlines use a minimum limit of 1.',
+          );
+      }
+    }
+    if (
+      (lineAttr('cmpd') ?? 'sng') !== 'sng' ||
+      (lineAttr('algn') ?? 'ctr') !== 'ctr' ||
+      ['headEnd', 'tailEnd'].some((name) => {
+        const end = lineChoice([name]);
+        return end && (attr(end, 'type') ?? 'none') !== 'none';
+      })
+    )
+      warn('Text-box border compound styles, alignment, and arrowheads are simplified.');
+  }
+  const geometry = nodes
+    .map((node) => child(node, 'spPr'))
+    .map(
+      (props) =>
+        props &&
+        Array.from(props.children).find((entry) =>
+          ['prstGeom', 'custGeom'].includes(entry.localName),
+        ),
+    )
+    .find(Boolean);
+  const preset = attr(geometry, 'prst') ?? 'rect';
+  const supported =
+    ['rect', 'roundRect', 'ellipse', 'triangle'].includes(preset) &&
+    geometry?.localName !== 'custGeom';
+  if (!supported)
+    warn(`Unsupported text-container geometry “${preset}” uses a rectangular text frame.`);
+  const decoration: TextDecoration = {
+    shape: supported ? (preset as TextDecoration['shape']) : 'rect',
+    fill,
+    line,
+  };
+  if (decoration.shape === 'roundRect') {
+    const adjustment = children(child(geometry, 'avLst'), 'gd').find(
+      (entry) => attr(entry, 'name') === 'adj',
+    );
+    const formula = attr(adjustment, 'fmla');
+    const match = formula?.match(/^val\s+([+-]?\d+)$/);
+    if (formula && !match)
+      warn('A formula-based rounded-corner adjustment was replaced with the default radius.');
+    const radius = match ? Number(match[1]) / 100000 : DEFAULT_TEXT_CORNER_RADIUS;
+    if (radius < 0 || radius > 0.5)
+      warn('Rounded-corner adjustments outside the supported range were limited.');
+    decoration.cornerRadius = clamp(radius, 0, 0.5);
+    if (children(child(geometry, 'avLst'), 'gd').some((entry) => attr(entry, 'name') !== 'adj'))
+      warn('Additional shape geometry adjustments are not retained.');
+  } else if (
+    children(child(geometry, 'avLst'), 'gd').some(
+      (entry) =>
+        !(
+          decoration.shape === 'triangle' &&
+          attr(entry, 'name') === 'adj' &&
+          /^val\s+50000$/.test(attr(entry, 'fmla') ?? '')
+        ),
+    )
+  )
+    warn('Non-default shape geometry adjustments are not retained.');
+  return decoration;
+}
+
 function shapeGeometry(
   node: Element,
   fallback: Element | undefined,
@@ -806,8 +1175,6 @@ function readTextBodyProperties(
     warn(
       'Multi-column text is imported as a single column; column spacing and direction are not retained.',
     );
-  if (enabled('spcFirstLastPara'))
-    warn('Special spacing around the first and last text paragraphs is not retained.');
   if (enabled('compatLnSpc')) warn('Legacy compatible text line spacing may differ.');
   if (enabled('upright')) warn('Keeping text upright inside a rotated shape is not retained.');
   const warp = cascade.map((node) => child(node, 'prstTxWarp')).find(Boolean);
@@ -864,6 +1231,7 @@ function readTextBodyProperties(
       wrap: wrap === 'none' ? 'none' : 'square',
       horizontalOverflow: overflow('horzOverflow'),
       verticalOverflow,
+      paragraphSpacingAtEdges: enabled('spcFirstLastPara'),
     },
     verticalAlign: anchor === 'ctr' ? 'middle' : anchor === 'b' ? 'bottom' : 'top',
   };
@@ -880,6 +1248,7 @@ function readParagraphs(
   majorFont: string,
   relations: Relations,
   warn: Warn,
+  textAlphas?: number[],
 ): TextParagraph[] {
   const firstDefinedAttribute = (nodes: Array<Element | undefined>, name: string) =>
     nodes.map((node) => attr(node, name)).find((value) => value !== null) ?? null;
@@ -921,6 +1290,14 @@ function readParagraphs(
       const bold = firstDefinedAttribute(styles, 'b');
       const italic = firstDefinedAttribute(styles, 'i');
       const underline = firstDefinedAttribute(styles, 'u');
+      const runPaint = styles.map((style) => paintChild(style)).find(Boolean);
+      textAlphas?.push(
+        runPaint?.localName === 'noFill'
+          ? 0
+          : runPaint?.localName === 'solidFill'
+            ? decorationColor(runPaint, colors, warn).opacity
+            : 1,
+      );
       const run: TextRun = {
         text,
         fontSize: clamp(number(firstDefinedAttribute(styles, 'sz'), 2400) / 100, 1, 1000),
@@ -1381,9 +1758,19 @@ export async function importPptx(
       if (node.localName === 'sp' || node.localName === 'cxnSp') {
         const body = child(node, 'txBody');
         const text = textContent(body);
+        const shapeCascade = [node, layoutPlaceholder, masterPlaceholder];
+        const inheritedPreset = shapeCascade
+          .map((shape) => child(shape, 'spPr'))
+          .map(
+            (props) =>
+              props &&
+              Array.from(props.children).find((entry) =>
+                ['prstGeom', 'custGeom'].includes(entry.localName),
+              ),
+          )
+          .find(Boolean);
         const preset =
-          attr(child(properties, 'prstGeom'), 'prst') ??
-          (node.localName === 'cxnSp' ? 'line' : 'rect');
+          attr(inheritedPreset, 'prst') ?? (node.localName === 'cxnSp' ? 'line' : 'rect');
         const shapeMap: Record<string, ShapeElement['shape']> = {
           rect: 'rect',
           roundRect: 'roundRect',
@@ -1396,31 +1783,12 @@ export async function importPptx(
         const solidFill = child(properties, 'solidFill');
         const line = child(properties, 'ln');
         const isTextBox = ['1', 'true'].includes(attr(descendant(node, 'cNvSpPr'), 'txBox') ?? '');
-        const explicitFill = ['solidFill', 'gradFill', 'pattFill', 'blipFill']
-          .map((name) => child(properties, name))
-          .find(Boolean);
-        // An empty a:ln is emitted for unpainted text boxes, including our own
-        // export. Its presence alone does not establish a visible border.
-        const explicitLineFill = ['solidFill', 'gradFill', 'pattFill']
-          .map((name) => child(line, name))
-          .find(Boolean);
-        const transparent = (node: Element | undefined) => {
-          const fill = node?.localName === 'solidFill' ? node : child(node, 'solidFill');
-          return !!fill && number(attr(descendant(fill, 'alpha'), 'val'), 100000) === 0;
-        };
-        if (
-          isTextBox &&
-          ((explicitFill && !transparent(explicitFill)) ||
-            (explicitLineFill &&
-              !child(line, 'noFill') &&
-              number(attr(line, 'w'), 1) > 0 &&
-              !transparent(explicitLineFill)))
-        )
-          warn(
-            'Text-box fill or border decorations are not imported; only the editable text is retained.',
-          );
+        const unifiedText =
+          (text || isTextBox) &&
+          ['rect', 'roundRect', 'ellipse', 'triangle'].includes(preset) &&
+          inheritedPreset?.localName !== 'custGeom';
         if (!text && descendant(node, 'ph') && !solidFill && !line) return;
-        if (!isTextBox && (!text || solidFill || line)) {
+        if (!unifiedText && !isTextBox) {
           if (!shapeMap[preset])
             warn(`Unsupported shape geometry “${preset}” was approximated by a rectangle.`);
           let kind = shapeMap[preset] ?? 'rect';
@@ -1458,6 +1826,14 @@ export async function importPptx(
           });
         }
         if (text || isTextBox) {
+          const decoration = readDecoration(shapeCascade, colors, themeDoc, warn);
+          if (!unifiedText && !isTextBox) {
+            decoration.fill = null;
+            decoration.line = null;
+            warn(
+              'Unsupported text-container shapes remain separate shape and text objects; their text region is approximated.',
+            );
+          }
           const placeholderType =
             attr(descendant(node, 'ph'), 'type') ??
             attr(descendant(layoutPlaceholder, 'ph'), 'type') ??
@@ -1468,6 +1844,7 @@ export async function importPptx(
               : placeholderType
                 ? 'bodyStyle'
                 : 'otherStyle';
+          const textAlphas: number[] = [];
           const paragraphs = readParagraphs(
             body,
             [child(layoutPlaceholder, 'txBody'), child(masterPlaceholder, 'txBody')],
@@ -1478,16 +1855,15 @@ export async function importPptx(
             majorFont,
             slideRels,
             warn,
+            textAlphas,
           );
           const first = paragraphs[0]?.runs[0];
           const bodyProperties = readTextBodyProperties(
             [body, child(layoutPlaceholder, 'txBody'), child(masterPlaceholder, 'txBody')],
             warn,
           );
-          const rPr = descendant(body, 'rPr') ?? descendant(body, 'defRPr');
-          const alpha = descendant(child(rPr, 'solidFill'), 'alpha');
-          const alphas = descendants(body, 'alpha').map((node) => attr(node, 'val'));
-          if (new Set(alphas).size > 1)
+          const textAlpha = textAlphas[0] ?? 1;
+          if (new Set(textAlphas).size > 1)
             warn('Mixed per-run text opacity is flattened to the first text opacity.');
           slide.elements.push({
             ...geometry,
@@ -1503,9 +1879,9 @@ export async function importPptx(
             underline: first?.underline ?? false,
             align: paragraphs[0]?.align ?? 'left',
             ...bodyProperties,
-            opacity: alpha
-              ? clamp(number(attr(alpha, 'val'), 100000) / 100000, 0, 1)
-              : geometry.opacity,
+            decoration,
+            opacity: 1,
+            ...(textAlpha < 1 ? { textOpacity: textAlpha } : {}),
           });
         }
       } else if (node.localName === 'pic') {
