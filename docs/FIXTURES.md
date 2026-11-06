@@ -88,6 +88,38 @@ The generator writes `examples/text-frame.opendeck` and its PPTX export, plus an
 
 The semantic and visual findings are recorded in [TESTING.md](TESTING.md). The original and XML-derived paths establish different kinds of evidence; neither establishes full text-layout equivalence.
 
+## Original AutoFit fixture and saved-scale probe (alpha.4)
+
+`tests/fixtures/powerpoint-autofit.pptx` contains seven original slides and 29 text frames authored through the installed Microsoft PowerPoint COM object model. It is project content distributed under the repository's [MIT license](../LICENSE), with no customer document or external template. The native run reported PowerPoint `16.0`, executable product version `16.0.20527.20150`. The package application metadata reports `Microsoft Office PowerPoint` and `AppVersion` `16.0000`; the executable version is separate run evidence.
+
+`scripts/create-powerpoint-autofit-fixture.ps1` creates a new presentation without a visible window, authors plain and mixed-font text, lists, paragraph spacing, fixed-point line spacing, normal/no/shape AutoFit choices, wrapping, anchors, and rotated resize controls, then closes only that presentation. Separate rectangle markers show the shape bounds. The shared sanitizer replaces Office profile attribution with project metadata before redistribution.
+
+In this windowless COM workflow, setting normal AutoFit **did not calculate saved shrink factors**: PowerPoint wrote bare `a:normAutofit` elements, and the oversized control text remained full-size. The original is evidence for the authored choices and default factors, not an independently calculated shrink algorithm. Shape AutoFit did resize its container immediately.
+
+`scripts/prepare-autofit-probe.mjs` creates the separately attributed `powerpoint-autofit-saved-scale-probe.pptx` by changing AutoFit choices and attributes in a copy of that sanitized original. It supplies known font scales and line-spacing reductions, integer and percentage-string encodings, and genuine inherited normal AutoFit with a neighboring explicit no-AutoFit override. Nominal run sizes, paragraph spacing, text, lists, and saved shape geometry remain unchanged. This is an **XML-derived probe, not a directly PowerPoint-authored saved-scale fixture**. PowerPoint subsequently opened, rendered, and saved it. The script records its exact changes in ignored provenance JSON.
+
+Frozen SHA-256 values:
+
+| File                                                       | SHA-256                                                            |
+| ---------------------------------------------------------- | ------------------------------------------------------------------ |
+| `tests/fixtures/powerpoint-autofit.pptx`                   | `25a7e92c1003af1f3f0ff9a01d7a1a94feb18ae7fd45cebec42a8e9bf175df17` |
+| `tests/fixtures/powerpoint-autofit-saved-scale-probe.pptx` | `e2bed4427a4dd064fffe02d9e5a03794a035ce83586edea94040d7fdaa1172eb` |
+| `examples/autofit.pptx`                                    | `3a2663395e8705b1d556e5d551baf0b4432edef3fb32c2e8529e67f885d119ad` |
+
+The public `examples/autofit.opendeck` and `.pptx` are OpenDeck derivatives of the **XML-derived saved-scale probe** so the example includes visible shrinking. The original COM baseline takes a separate export path under ignored `test-results/autofit-powerpoint/original-exported.*`; its tested PPTX hash is recorded in [TESTING.md](TESTING.md).
+
+To reproduce export and native acceptance using the committed inputs:
+
+```powershell
+node scripts/generate-autofit-example.mjs
+powershell -File scripts/verify-autofit-with-powerpoint.ps1
+node scripts/check-autofit-office-roundtrip.mjs
+```
+
+To intentionally recreate the input fixtures instead, run `create-powerpoint-autofit-fixture.ps1` followed by `node scripts/prepare-autofit-probe.mjs`, then repeat the import tests and native acceptance. Regeneration changes package bytes and may depend on Office defaults. Review content, sanitized metadata, and new hashes before replacing either committed fixture. Normal CI reads the frozen inputs without Office.
+
+Supplemental scripts `probe-autofit-resize.ps1`, `probe-paragraph-spacing.ps1`, and `probe-font-line-metrics.ps1` generate only ignored experiments. The font-metrics script uses `prepare-font-line-metrics.mjs` to make an explicitly XML-derived 80% scale comparison. Their local PPTX files are not redistributed fixtures and have not received the committed-fixture sanitation step. Their measured scope and limitations are recorded in [TESTING.md](TESTING.md).
+
 ## Synthetic OOXML and generated round trips
 
 `src/pptx.test.ts` also creates small OOXML packages in memory to isolate relationship ordering, malformed input, theme/layout inheritance, groups, and warning behavior. These synthetic packages deliberately focus on importer cases; they are not all complete, independently validated PowerPoint presentations.

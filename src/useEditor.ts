@@ -1,16 +1,29 @@
 import { useCallback, useRef, useState } from 'react';
 import type { Deck } from './types';
 
+export interface CommitOptions {
+  /** Loading a saved document preserves its recorded fitting results, even for the same ID. */
+  preserveLayout?: boolean;
+}
+export type PrepareDocument = (before: Deck, next: Deck) => Deck;
+
 /** History stores immutable document snapshots; a complete drag is one command. */
-export function useEditor(initial: () => Deck) {
+export function useEditor(initial: () => Deck, prepare?: PrepareDocument) {
   const [deck, setDeck] = useState(initial),
     current = useRef(deck),
     past = useRef<Deck[]>([]),
     future = useRef<Deck[]>([]);
   const [, tick] = useState(0);
-  const commit = useCallback((update: Deck | ((d: Deck) => Deck)) => {
+  const prepareRef = useRef(prepare);
+  prepareRef.current = prepare;
+  const commit = useCallback((update: Deck | ((d: Deck) => Deck), options?: CommitOptions) => {
     const before = current.current,
-      next = typeof update === 'function' ? update(before) : update;
+      proposed = typeof update === 'function' ? update(before) : update;
+    if (proposed === before) return;
+    // Prepare before changing history/current so an unsuccessful fit cannot publish half an edit.
+    const next = options?.preserveLayout
+      ? proposed
+      : (prepareRef.current?.(before, proposed) ?? proposed);
     if (next === before) return;
     past.current = [...past.current.slice(-79), before];
     future.current = [];

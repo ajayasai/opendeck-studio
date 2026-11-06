@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.0-alpha.4 — 2026-11-06
+
+Text fitting and exact paragraph spacing milestone. Full PowerPoint parity remains unfinished.
+
+- Add no-fit, shrink-to-fit, and resize-box modes, with explicit recalculation using the browser's available fonts.
+- Preserve nominal character sizes separately from saved shrink factors and line-spacing reduction; import fitting choices through slide, layout, and master inheritance.
+- Preserve exact point-based line spacing alongside relative spacing, and expose both modes in the rich text editor.
+- Share text metrics between the canvas, presenter, and fitting measurement. Relative spacing reduction is subtractive; exact spacing and absolute paragraph/list spacing remain unscaled.
+- Apply fitting before recording a document command, keeping text edits and resulting scale or geometry in one undo step. Imports, backups, copies, history navigation, and metric-equivalent rich-editor saves retain saved fitting results.
+- Resize around text anchors for unrotated boxes and around the center for stored nonzero rotation, with valid native document bounds.
+- Preserve tiny/large text geometry and stored full-turn rotations through PPTX interchange; warn when a native angle exceeds DrawingML's representable range.
+- Flush pending Inspector edits before canvas gestures and merge only gesture geometry into the latest document, preserving concurrent edits and inserted objects.
+- Keep numeric rich-editor drafts focused until Save can flush them, preventing a blur-triggered scroll from interrupting the click.
+- Add an original seven-slide PowerPoint AutoFit fixture, a separately attributed XML saved-factor probe, native export/resave/reimport checks, and fitting/history/editor regressions.
+
+PowerPoint 16.0.20527.20150 opened, rendered, saved, and re-imported both seven-slide paths. Windowless native authoring did not calculate shrink factors for the original baseline; the known-factor probe is explicitly XML-derived. Saved factors and supported semantic properties survive the native round trip, while browser font metrics, paragraph edge spacing, and recalculation can still differ. See [testing evidence](docs/TESTING.md) and [compatibility notes](docs/COMPATIBILITY.md).
+
 ## 0.1.0-alpha.3 — 2026-11-06
 
 Text-frame geometry and PowerPoint inheritance milestone. Full PowerPoint parity remains unfinished.

@@ -20,6 +20,7 @@ import {
 import { THEMES } from './model';
 import { replacePlainText } from './richText';
 import { resolveTextFrame, textContentRect } from './textFrame';
+import { resolveAutoFit } from './textFit';
 import type {
   ChartElement,
   Deck,
@@ -28,6 +29,7 @@ import type {
   TableElement,
   TextElement,
   TextFrame,
+  TextAutoFit,
   Theme,
 } from './types';
 
@@ -41,6 +43,7 @@ export interface InspectorProps {
   onSelect: (id: string) => void;
   onLayer: (direction: 'front' | 'back' | 'forward' | 'backward') => void;
   onEditRichText?: (element: TextElement) => void;
+  onFitText?: (element: TextElement) => void;
 }
 
 function NumberField({
@@ -165,6 +168,76 @@ function TextFrameControls({
           </select>
         </label>
       ))}
+    </section>
+  );
+}
+
+function AutoFitControls({
+  element,
+  onChange,
+  onRecalculate,
+}: {
+  element: TextElement;
+  onChange: (fit: TextAutoFit) => void;
+  onRecalculate?: () => void;
+}) {
+  const fit = resolveAutoFit(element);
+  return (
+    <section className="panel-section">
+      <h3>AutoFit</h3>
+      <label className="field">
+        <span>Text fitting</span>
+        <select
+          value={fit.mode}
+          onChange={(event) =>
+            onChange(
+              event.target.value === 'shrink'
+                ? { mode: 'shrink', fontScale: 1, lineSpacingReduction: 0 }
+                : { mode: event.target.value as 'none' | 'resize' },
+            )
+          }
+        >
+          <option value="none">Do not autofit</option>
+          <option value="shrink">Shrink text to fit</option>
+          <option value="resize">Resize box to fit text</option>
+        </select>
+      </label>
+      {fit.mode === 'shrink' && (
+        <p className="inspector-hint" role="status">
+          Text scale: {Math.round(fit.fontScale * 10000) / 100}%. Authored font sizes are retained.
+          {fit.lineSpacingReduction > 0
+            ? ` Line spacing reduction: ${Math.round(fit.lineSpacingReduction * 10000) / 100} percentage points.`
+            : ''}
+        </p>
+      )}
+      {fit.mode !== 'none' && (
+        <>
+          <p className="inspector-hint">
+            Fitting updates when text, formatting or box size changes. Recalculate uses the fonts
+            available on this device.
+          </p>
+          {fit.mode === 'shrink' && fit.fontScale <= 0.01 && (
+            <p className="field-error" role="alert">
+              Minimum text scale reached. Enlarge the box or shorten the text if it still overflows.
+            </p>
+          )}
+          {fit.mode === 'resize' &&
+            (element.height >= 100000 ||
+              element.width >= 100000 ||
+              Math.abs(element.x) >= 100000 ||
+              Math.abs(element.y) >= 100000) && (
+              <p className="field-error" role="alert">
+                Document geometry limit reached. Move the box or shorten the text if it still
+                overflows.
+              </p>
+            )}
+          {onRecalculate && (
+            <button className="secondary-button" onClick={onRecalculate}>
+              Recalculate fit
+            </button>
+          )}
+        </>
+      )}
     </section>
   );
 }
@@ -438,6 +511,7 @@ export function Inspector({
   onSelect,
   onLayer,
   onEditRichText,
+  onFitText,
 }: InspectorProps) {
   const [tab, setTab] = useState<'format' | 'design' | 'layers'>('format');
   const element = selected.length === 1 ? selected[0] : undefined;
@@ -774,6 +848,11 @@ export function Inspector({
                     <TextFrameControls
                       element={element}
                       onChange={(textFrame) => onElementPatch({ textFrame })}
+                    />
+                    <AutoFitControls
+                      element={element}
+                      onChange={(autoFit) => onElementPatch({ autoFit })}
+                      onRecalculate={onFitText ? () => onFitText(element) : undefined}
                     />
                   </>
                 )}

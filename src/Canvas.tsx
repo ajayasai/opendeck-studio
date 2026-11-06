@@ -4,6 +4,7 @@ import type { Deck, Slide, SlideElement } from './types';
 import { ElementContent, elementStyle } from './SlideView';
 import { replacePlainText } from './richText';
 import { resolveTextFrame, textContentRect } from './textFrame';
+import { textScale } from './textLayout';
 
 interface Props {
   ref?: Ref<CanvasHandle>;
@@ -11,7 +12,8 @@ interface Props {
   slide: Slide;
   selected: string[];
   onSelect: (ids: string[]) => void;
-  onChange: (elements: SlideElement[]) => void;
+  onChange: (elements: SlideElement[]) => SlideElement[] | void;
+  getElements?: () => SlideElement[];
   zoom: number;
   grid: boolean;
 }
@@ -34,6 +36,7 @@ export default function Canvas({
   selected,
   onSelect,
   onChange,
+  getElements,
   zoom,
   grid,
   ref,
@@ -88,9 +91,19 @@ export default function Canvas({
     return () => window.removeEventListener('beforeunload', protectDraft);
   }, [editing, text, slide.elements]);
   const elements = draft ?? slide.elements;
+  const readElements = () => getElements?.() ?? currentElements.current;
   function start(ev: PointerEvent<HTMLElement>, element: SlideElement, kind: 'move' | 'resize') {
     if (ev.button !== 0 || editing === element.id) return;
     ev.stopPropagation();
+    // Pointerdown precedes the browser's default blur. Commit Inspector drafts
+    // first so their typography and resulting fitted geometry enter the snapshot.
+    const active = document.activeElement;
+    if (
+      active instanceof HTMLElement &&
+      active !== textInput.current &&
+      active.matches('input,textarea,select')
+    )
+      active.blur();
     const original = finishText();
     if (!original) {
       ev.preventDefault();
@@ -143,7 +156,35 @@ export default function Canvas({
     setDraft(next);
   }
   function finish() {
-    if (draftRef.current) onChange(draftRef.current);
+    const g = gesture.current,
+      proposed = draftRef.current;
+    if (g && proposed) {
+      const originals = new Map(g.original.map((element) => [element.id, element]));
+      const drafts = new Map(proposed.map((element) => [element.id, element]));
+      const next = readElements().map((element) => {
+        const before = originals.get(element.id),
+          after = drafts.get(element.id);
+        if (!g.ids.includes(element.id) || element.locked || !before || !after) return element;
+        return g.kind === 'move'
+          ? {
+              ...element,
+              x: Math.max(
+                -element.width + 8,
+                Math.min(deck.width - 8, element.x + after.x - before.x),
+              ),
+              y: Math.max(
+                -element.height + 8,
+                Math.min(deck.height - 8, element.y + after.y - before.y),
+              ),
+            }
+          : {
+              ...element,
+              width: Math.max(12, Math.min(10000, element.width + after.width - before.width)),
+              height: Math.max(12, Math.min(10000, element.height + after.height - before.height)),
+            };
+      });
+      currentElements.current = onChange(next) ?? next;
+    }
     gesture.current = null;
     draftRef.current = null;
     setDraft(null);
@@ -154,6 +195,7 @@ export default function Canvas({
     setDraft(null);
   }
   function finishText(): SlideElement[] | null {
+    currentElements.current = readElements();
     if (!editingId.current) return currentElements.current;
     const id = editingId.current;
     let next = currentElements.current;
@@ -172,8 +214,11 @@ export default function Canvas({
     editingId.current = null;
     setTextError('');
     if (next !== currentElements.current) {
+      // The parent can synchronously fit the edit before history publication.
+      // A gesture beginning in the same event must use that accepted geometry.
+      const accepted = onChange(next);
+      if (accepted) next = accepted;
       currentElements.current = next;
-      onChange(next);
     }
     return next;
   }
@@ -277,7 +322,7 @@ export default function Canvas({
                   ...textContentRect(e),
                   whiteSpace: resolveTextFrame(e).wrap === 'none' ? 'pre' : 'pre-wrap',
                   overflowWrap: resolveTextFrame(e).wrap === 'none' ? 'normal' : 'break-word',
-                  fontSize: `${e.fontSize}pt`,
+                  fontSize: `${e.fontSize * textScale(e)}pt`,
                   fontFamily: e.fontFamily,
                   color: e.color,
                   fontWeight: e.bold ? 700 : 400,

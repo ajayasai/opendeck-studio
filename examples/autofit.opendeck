@@ -1,0 +1,3067 @@
+{
+  "schemaVersion": 1,
+  "id": "38cae217-6551-4f43-9c84-3809a4e2624f",
+  "title": "AutoFit modes and saved scales (XML-derived native probe)",
+  "width": 1280,
+  "height": 720,
+  "theme": {
+    "id": "imported",
+    "name": "Imported",
+    "background": "#ffffff",
+    "foreground": "#000000",
+    "accent": "#156082",
+    "muted": "#6b7771",
+    "fontFamily": "Aptos"
+  },
+  "slides": [
+    {
+      "id": "a199cbdc-61ef-4102-9146-ce377d6a1cc1",
+      "name": "Slide 1",
+      "background": "#ffffff",
+      "elements": [
+        {
+          "id": "b78924f8-9b76-43b4-80ae-1172e6119afc",
+          "name": "Bounds: Mixed shrink",
+          "x": 864,
+          "y": 166.66666666666666,
+          "width": 360,
+          "height": 386.6666666666667,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "07b23695-4d71-421d-98dc-56ddd326c6f1",
+          "name": "Bounds: Plain shrink",
+          "x": 460,
+          "y": 166.66666666666666,
+          "width": 360,
+          "height": 386.6666666666667,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "9b1ff8ce-6a99-4541-bb72-c18dcc73622b",
+          "name": "Bounds: No fit baseline",
+          "x": 56,
+          "y": 166.66666666666666,
+          "width": 360,
+          "height": 386.6666666666667,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "84da9420-e146-40dc-bc0f-fbc7df7102f3",
+          "name": "Heading 1",
+          "x": 42.666666666666664,
+          "y": 24,
+          "width": 1193.3333333333333,
+          "height": 80,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Fit text while retaining its original styling",
+          "fontSize": 29,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": true,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Fit text while retaining its original styling",
+                  "fontSize": 29,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": true,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 12,
+              "right": 12,
+              "bottom": 12,
+              "left": 12
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          },
+          "autoFit": {
+            "mode": "none"
+          }
+        },
+        {
+          "id": "76e71b7c-7292-4be8-856c-45f94effc8d9",
+          "name": "No fit baseline",
+          "x": 56,
+          "y": 166.66666666666666,
+          "width": 360,
+          "height": 386.6666666666667,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "First line of the story.\nSecond line adds detail.\nThird line explains why.\nFourth line makes a point.\nFifth line gives evidence.\nSixth line concludes.",
+          "fontSize": 30,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "First line of the story.",
+                  "fontSize": 30,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Second line adds detail.",
+                  "fontSize": 30,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Third line explains why.",
+                  "fontSize": 30,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Fourth line makes a point.",
+                  "fontSize": 30,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Fifth line gives evidence.",
+                  "fontSize": 30,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Sixth line concludes.",
+                  "fontSize": 30,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 12,
+              "right": 12,
+              "bottom": 12,
+              "left": 12
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          },
+          "autoFit": {
+            "mode": "none"
+          }
+        },
+        {
+          "id": "63f02cb7-3aa2-45d8-8f4e-f1af6930d1b5",
+          "name": "Plain shrink",
+          "x": 460,
+          "y": 166.66666666666666,
+          "width": 360,
+          "height": 386.6666666666667,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "First line of the story.\nSecond line adds detail.\nThird line explains why.\nFourth line makes a point.\nFifth line gives evidence.\nSixth line concludes.",
+          "fontSize": 30,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "First line of the story.",
+                  "fontSize": 30,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Second line adds detail.",
+                  "fontSize": 30,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Third line explains why.",
+                  "fontSize": 30,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Fourth line makes a point.",
+                  "fontSize": 30,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Fifth line gives evidence.",
+                  "fontSize": 30,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Sixth line concludes.",
+                  "fontSize": 30,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 12,
+              "right": 12,
+              "bottom": 12,
+              "left": 12
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          },
+          "autoFit": {
+            "mode": "shrink",
+            "fontScale": 0.6,
+            "lineSpacingReduction": 0.2
+          }
+        },
+        {
+          "id": "d2a6c0c7-c336-4e1d-9194-a40e5e47ba80",
+          "name": "Mixed shrink",
+          "x": 864,
+          "y": 166.66666666666666,
+          "width": 360,
+          "height": 386.6666666666667,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "First line of the story.\nSecond line adds detail.\nThird line explains why.\nFourth line makes a point.\nFifth line gives evidence.\nSixth line concludes.",
+          "fontSize": 42,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": true,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "First",
+                  "fontSize": 42,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": true,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": " line of the story.",
+                  "fontSize": 30,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Secon",
+                  "fontSize": 20,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": true,
+                  "underline": false
+                },
+                {
+                  "text": "d line adds detail.",
+                  "fontSize": 30,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Thir",
+                  "fontSize": 30,
+                  "fontFamily": "Georgia",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "d line explains why.",
+                  "fontSize": 30,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Fourth line makes a point.",
+                  "fontSize": 30,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Fifth line gives evidence.",
+                  "fontSize": 30,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Sixth line concludes.",
+                  "fontSize": 30,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 12,
+              "right": 12,
+              "bottom": 12,
+              "left": 12
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          },
+          "autoFit": {
+            "mode": "shrink",
+            "fontScale": 0.6,
+            "lineSpacingReduction": 0.2
+          }
+        }
+      ],
+      "notes": "Original nominal font sizes remain distinct from native saved shrink factors. The baseline can overflow; the other boxes use TextFrame2.AutoSize=2.",
+      "transition": "none",
+      "hidden": false
+    },
+    {
+      "id": "8e96a3d7-c01e-48c9-88ab-d3bb1c1bdba1",
+      "name": "Slide 2",
+      "background": "#ffffff",
+      "elements": [
+        {
+          "id": "0518de9d-f1c9-4dbb-9260-b13cb94e4416",
+          "name": "Bounds: Spaced shrink",
+          "x": 693.3333333333334,
+          "y": 166.66666666666666,
+          "width": 520,
+          "height": 360,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "8caf595f-0f72-4071-8972-80576f008159",
+          "name": "Bounds: Bulleted shrink",
+          "x": 66.66666666666667,
+          "y": 166.66666666666666,
+          "width": 520,
+          "height": 360,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "467ca8f5-b81f-45fc-9ff2-d34188c67b47",
+          "name": "Heading 2",
+          "x": 42.666666666666664,
+          "y": 24,
+          "width": 1193.3333333333333,
+          "height": 80,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Lists and paragraph spacing participate in fitting",
+          "fontSize": 29,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": true,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Lists and paragraph spacing participate in fitting",
+                  "fontSize": 29,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": true,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 12,
+              "right": 12,
+              "bottom": 12,
+              "left": 12
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          },
+          "autoFit": {
+            "mode": "none"
+          }
+        },
+        {
+          "id": "e72a082e-8220-4e51-b266-12e4aec2c6cd",
+          "name": "Bulleted shrink",
+          "x": 66.66666666666667,
+          "y": 166.66666666666666,
+          "width": 520,
+          "height": 360,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "First bullet makes the case\nNested bullet adds detail\nThird bullet gives evidence\nFourth bullet describes impact\nFifth bullet closes the story",
+          "fontSize": 34,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "First bullet makes the case",
+                  "fontSize": 34,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 9,
+              "bullet": {
+                "kind": "bullet",
+                "level": 0,
+                "character": "•"
+              }
+            },
+            {
+              "runs": [
+                {
+                  "text": "Nested bullet adds detail",
+                  "fontSize": 34,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 9,
+              "bullet": {
+                "kind": "bullet",
+                "level": 1,
+                "character": "•"
+              }
+            },
+            {
+              "runs": [
+                {
+                  "text": "Third bullet gives evidence",
+                  "fontSize": 34,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 9,
+              "bullet": {
+                "kind": "bullet",
+                "level": 0,
+                "character": "•"
+              }
+            },
+            {
+              "runs": [
+                {
+                  "text": "Fourth bullet describes impact",
+                  "fontSize": 34,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 9,
+              "bullet": {
+                "kind": "bullet",
+                "level": 0,
+                "character": "•"
+              }
+            },
+            {
+              "runs": [
+                {
+                  "text": "Fifth bullet closes the story",
+                  "fontSize": 34,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 9,
+              "bullet": {
+                "kind": "bullet",
+                "level": 0,
+                "character": "•"
+              }
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 12,
+              "right": 12,
+              "bottom": 12,
+              "left": 12
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          },
+          "autoFit": {
+            "mode": "shrink",
+            "fontScale": 0.6,
+            "lineSpacingReduction": 0.2
+          }
+        },
+        {
+          "id": "5e3344e8-3f23-47b6-a0d2-a72e16dfc1ce",
+          "name": "Spaced shrink",
+          "x": 693.3333333333334,
+          "y": 166.66666666666666,
+          "width": 520,
+          "height": 360,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Paragraph one is intentionally long enough to wrap.\nParagraph two has explicit spacing before and after.\nParagraph three completes the test.",
+          "fontSize": 32,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Paragraph one is intentionally long enough to wrap.",
+                  "fontSize": 32,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1.5,
+              "spaceBefore": 6,
+              "spaceAfter": 12
+            },
+            {
+              "runs": [
+                {
+                  "text": "Paragraph two has explicit spacing before and after.",
+                  "fontSize": 32,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1.5,
+              "spaceBefore": 6,
+              "spaceAfter": 12
+            },
+            {
+              "runs": [
+                {
+                  "text": "Paragraph three completes the test.",
+                  "fontSize": 32,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1.5,
+              "spaceBefore": 6,
+              "spaceAfter": 12
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 12,
+              "right": 12,
+              "bottom": 12,
+              "left": 12
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          },
+          "autoFit": {
+            "mode": "shrink",
+            "fontScale": 0.6,
+            "lineSpacingReduction": 0.2
+          }
+        }
+      ],
+      "notes": "Native shrinking includes mixed paragraphs, before/after spacing and nested list markers. Saved fontScale and lnSpcReduction are read independently from XML.",
+      "transition": "none",
+      "hidden": false
+    },
+    {
+      "id": "b9e0baa1-bdd2-460c-8088-29e24d4003a7",
+      "name": "Slide 3",
+      "background": "#ffffff",
+      "elements": [
+        {
+          "id": "c77a3205-31c7-4f77-9cea-c9412982a4b3",
+          "name": "Bounds: Default-scale normal fit",
+          "x": 720,
+          "y": 166.66666666666666,
+          "width": 426.6666666666667,
+          "height": 200,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "c6d2c671-1f37-4950-89e2-e796e93f50d8",
+          "name": "Bounds: No-wrap shape resize",
+          "x": 66.66666666666667,
+          "y": 533.3333333333334,
+          "width": 475.47842519685037,
+          "height": 69.47191601049869,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "057652cc-e5a3-444b-bc10-137b9a2aa845",
+          "name": "Bounds: Wrapped shape resize",
+          "x": 66.66666666666667,
+          "y": 166.66666666666666,
+          "width": 500,
+          "height": 295.65942257217847,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "0c7e3c30-966e-4dc7-aa69-64fa8856515a",
+          "name": "Heading 3",
+          "x": 42.666666666666664,
+          "y": 24,
+          "width": 1193.3333333333333,
+          "height": 80,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Resize the shape instead of shrinking the words",
+          "fontSize": 29,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": true,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Resize the shape instead of shrinking the words",
+                  "fontSize": 29,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": true,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 12,
+              "right": 12,
+              "bottom": 12,
+              "left": 12
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          },
+          "autoFit": {
+            "mode": "none"
+          }
+        },
+        {
+          "id": "77e47e73-f7f3-425f-9cdf-61319812ac20",
+          "name": "Wrapped shape resize",
+          "x": 66.66666666666667,
+          "y": 166.66666666666666,
+          "width": 500,
+          "height": 295.65942257217847,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "A shape grows around wrapped text.\nThe font remains at its authored size.\nThis final line needs more height.",
+          "fontSize": 28,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "A shape grows around wrapped text.",
+                  "fontSize": 28,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "The font remains at its authored size.",
+                  "fontSize": 28,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "This final line needs more height.",
+                  "fontSize": 28,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 12,
+              "right": 12,
+              "bottom": 12,
+              "left": 12
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          },
+          "autoFit": {
+            "mode": "resize"
+          }
+        },
+        {
+          "id": "4c6a7909-c644-43ff-b93d-3e87adfbf018",
+          "name": "No-wrap shape resize",
+          "x": 66.66666666666667,
+          "y": 533.3333333333334,
+          "width": 475.47842519685037,
+          "height": 69.47191601049869,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "A short shape grows wider.",
+          "fontSize": 28,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "A short shape grows wider.",
+                  "fontSize": 28,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 12,
+              "right": 12,
+              "bottom": 12,
+              "left": 12
+            },
+            "wrap": "none",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          },
+          "autoFit": {
+            "mode": "resize"
+          }
+        },
+        {
+          "id": "c329c96a-16f1-466a-974b-2c5072fd9f9b",
+          "name": "Default-scale normal fit",
+          "x": 720,
+          "y": 166.66666666666666,
+          "width": 426.6666666666667,
+          "height": 200,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Already fits.",
+          "fontSize": 28,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Already fits.",
+                  "fontSize": 28,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 12,
+              "right": 12,
+              "bottom": 12,
+              "left": 12
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          },
+          "autoFit": {
+            "mode": "shrink",
+            "fontScale": 1,
+            "lineSpacingReduction": 0
+          }
+        }
+      ],
+      "notes": "Original shape resize cases record both requested initial geometry and native saved geometry; the third box retains normal fitting at default scale.",
+      "transition": "none",
+      "hidden": false
+    },
+    {
+      "id": "afa52161-4914-4159-8a7c-21a4b0b2a2ba",
+      "name": "Slide 4",
+      "background": "#ffffff",
+      "elements": [
+        {
+          "id": "05b07876-6665-414d-97df-ad6b10ab3b50",
+          "name": "Title 1",
+          "x": 88,
+          "y": 38.333333333333336,
+          "width": 1104,
+          "height": 139.16671916010498,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Inherited fitting and a local override",
+          "fontSize": 28,
+          "fontFamily": "Arial",
+          "color": "#000000",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "middle",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Inherited fitting and a local override",
+                  "fontSize": 28,
+                  "fontFamily": "Arial",
+                  "color": "#000000",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 0.9,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          },
+          "autoFit": {
+            "mode": "shrink",
+            "fontScale": 1,
+            "lineSpacingReduction": 0
+          }
+        },
+        {
+          "id": "d3ffbe09-3fac-4003-b6c0-41f45a153cc9",
+          "name": "Inherited normal default scale",
+          "x": 88,
+          "y": 191.66666666666666,
+          "width": 544,
+          "height": 456.83338582677163,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "This short text inherits normal fitting.",
+          "fontSize": 28,
+          "fontFamily": "Arial",
+          "color": "#000000",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "This short text inherits normal fitting.",
+                  "fontSize": 28,
+                  "fontFamily": "Arial",
+                  "color": "#000000",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 0.9,
+              "spaceBefore": 10,
+              "spaceAfter": 0,
+              "bullet": {
+                "kind": "bullet",
+                "level": 0,
+                "character": "•"
+              }
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          },
+          "autoFit": {
+            "mode": "shrink",
+            "fontScale": 0.8,
+            "lineSpacingReduction": 0.2
+          }
+        },
+        {
+          "id": "0a096c3e-b662-42ad-b719-5288820ea7c7",
+          "name": "Local no-fit overrides inherited normal",
+          "x": 648,
+          "y": 191.66666666666666,
+          "width": 544,
+          "height": 456.83338582677163,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "First line of the story.\nSecond line adds detail.\nThird line explains why.\nFourth line makes a point.\nFifth line gives evidence.\nSixth line concludes.\nAn additional long line ensures the original font overflows.",
+          "fontSize": 36,
+          "fontFamily": "Arial",
+          "color": "#000000",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "First line of the story.",
+                  "fontSize": 36,
+                  "fontFamily": "Arial",
+                  "color": "#000000",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 0.9,
+              "spaceBefore": 10,
+              "spaceAfter": 0,
+              "bullet": {
+                "kind": "bullet",
+                "level": 0,
+                "character": "•"
+              }
+            },
+            {
+              "runs": [
+                {
+                  "text": "Second line adds detail.",
+                  "fontSize": 36,
+                  "fontFamily": "Arial",
+                  "color": "#000000",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 0.9,
+              "spaceBefore": 10,
+              "spaceAfter": 0,
+              "bullet": {
+                "kind": "bullet",
+                "level": 0,
+                "character": "•"
+              }
+            },
+            {
+              "runs": [
+                {
+                  "text": "Third line explains why.",
+                  "fontSize": 36,
+                  "fontFamily": "Arial",
+                  "color": "#000000",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 0.9,
+              "spaceBefore": 10,
+              "spaceAfter": 0,
+              "bullet": {
+                "kind": "bullet",
+                "level": 0,
+                "character": "•"
+              }
+            },
+            {
+              "runs": [
+                {
+                  "text": "Fourth line makes a point.",
+                  "fontSize": 36,
+                  "fontFamily": "Arial",
+                  "color": "#000000",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 0.9,
+              "spaceBefore": 10,
+              "spaceAfter": 0,
+              "bullet": {
+                "kind": "bullet",
+                "level": 0,
+                "character": "•"
+              }
+            },
+            {
+              "runs": [
+                {
+                  "text": "Fifth line gives evidence.",
+                  "fontSize": 36,
+                  "fontFamily": "Arial",
+                  "color": "#000000",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 0.9,
+              "spaceBefore": 10,
+              "spaceAfter": 0,
+              "bullet": {
+                "kind": "bullet",
+                "level": 0,
+                "character": "•"
+              }
+            },
+            {
+              "runs": [
+                {
+                  "text": "Sixth line concludes.",
+                  "fontSize": 36,
+                  "fontFamily": "Arial",
+                  "color": "#000000",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 0.9,
+              "spaceBefore": 10,
+              "spaceAfter": 0,
+              "bullet": {
+                "kind": "bullet",
+                "level": 0,
+                "character": "•"
+              }
+            },
+            {
+              "runs": [
+                {
+                  "text": "An additional long line ensures the original font overflows.",
+                  "fontSize": 36,
+                  "fontFamily": "Arial",
+                  "color": "#000000",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 0.9,
+              "spaceBefore": 10,
+              "spaceAfter": 0,
+              "bullet": {
+                "kind": "bullet",
+                "level": 0,
+                "character": "•"
+              }
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          },
+          "autoFit": {
+            "mode": "none"
+          }
+        }
+      ],
+      "notes": "Verify that local bodyPr omits the inherited normal autofit choice, while the adjacent placeholder explicitly writes noAutofit.",
+      "transition": "none",
+      "hidden": false
+    },
+    {
+      "id": "9863d1d8-6233-42fa-8550-89457a86fdaa",
+      "name": "Slide 5",
+      "background": "#ffffff",
+      "elements": [
+        {
+          "id": "370fa167-5789-41e4-8233-d86d7199b51f",
+          "name": "Bounds: Probe percent-string values",
+          "x": 693.3333333333334,
+          "y": 440,
+          "width": 520,
+          "height": 220,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "fb24ebf3-bf0d-40ee-999a-ef3ca8438e4b",
+          "name": "Bounds: Probe fixed line spacing",
+          "x": 66.66666666666667,
+          "y": 440,
+          "width": 520,
+          "height": 220,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "46b7ba47-1da7-43a5-b43c-a701dc29d927",
+          "name": "Bounds: Probe scale and reduction",
+          "x": 693.3333333333334,
+          "y": 146.66666666666666,
+          "width": 520,
+          "height": 220,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "6ab6e6db-f74d-4bac-bbc6-b1b7dbf345e7",
+          "name": "Bounds: Probe scale only",
+          "x": 66.66666666666667,
+          "y": 146.66666666666666,
+          "width": 520,
+          "height": 220,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "1c96d230-8fad-40a7-9ed6-50fe036db1d7",
+          "name": "Heading 5",
+          "x": 42.666666666666664,
+          "y": 24,
+          "width": 1193.3333333333333,
+          "height": 80,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Saved-scale probes use the same authored text",
+          "fontSize": 29,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": true,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Saved-scale probes use the same authored text",
+                  "fontSize": 29,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": true,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 12,
+              "right": 12,
+              "bottom": 12,
+              "left": 12
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          },
+          "autoFit": {
+            "mode": "none"
+          }
+        },
+        {
+          "id": "b3875204-2f9d-4b47-9ef9-907c2c6ae2a8",
+          "name": "Probe scale only",
+          "x": 66.66666666666667,
+          "y": 146.66666666666666,
+          "width": 520,
+          "height": 220,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "First line\nSecond line\nThird line",
+          "fontSize": 24,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "First line",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "\n",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "Second line",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "\n",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "Third line",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1.5,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 12,
+              "right": 12,
+              "bottom": 12,
+              "left": 12
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          },
+          "autoFit": {
+            "mode": "shrink",
+            "fontScale": 0.8,
+            "lineSpacingReduction": 0
+          }
+        },
+        {
+          "id": "be9eb86e-dc47-425a-82e6-10b0aaf6fb55",
+          "name": "Probe scale and reduction",
+          "x": 693.3333333333334,
+          "y": 146.66666666666666,
+          "width": 520,
+          "height": 220,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "First line\nSecond line\nThird line",
+          "fontSize": 24,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "First line",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "\n",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "Second line",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "\n",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "Third line",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1.5,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 12,
+              "right": 12,
+              "bottom": 12,
+              "left": 12
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          },
+          "autoFit": {
+            "mode": "shrink",
+            "fontScale": 0.8,
+            "lineSpacingReduction": 0.2
+          }
+        },
+        {
+          "id": "79eaeaa2-d3ad-4a53-88aa-f479b365f93d",
+          "name": "Probe fixed line spacing",
+          "x": 66.66666666666667,
+          "y": 440,
+          "width": 520,
+          "height": 220,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "First line\nSecond line\nThird line",
+          "fontSize": 24,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "First line",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "\n",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "Second line",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "\n",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "Third line",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacingPoints": 36,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 12,
+              "right": 12,
+              "bottom": 12,
+              "left": 12
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          },
+          "autoFit": {
+            "mode": "shrink",
+            "fontScale": 0.8,
+            "lineSpacingReduction": 0.2
+          }
+        },
+        {
+          "id": "08a5b99e-d200-43c9-97cc-0c46872321e7",
+          "name": "Probe percent-string values",
+          "x": 693.3333333333334,
+          "y": 440,
+          "width": 520,
+          "height": 220,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "First line\nSecond line\nThird line",
+          "fontSize": 24,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "First line",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "\n",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "Second line",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "\n",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "Third line",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1.5,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 12,
+              "right": 12,
+              "bottom": 12,
+              "left": 12
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          },
+          "autoFit": {
+            "mode": "shrink",
+            "fontScale": 0.8,
+            "lineSpacingReduction": 0.2
+          }
+        }
+      ],
+      "notes": "These original controls use noAutofit. A separately attributed XML-derived probe inserts known saved scales and reduction factors without changing their authored text or spacing.",
+      "transition": "none",
+      "hidden": false
+    },
+    {
+      "id": "9e86acea-20a0-4f15-9ea9-8219b347c67d",
+      "name": "Slide 6",
+      "background": "#ffffff",
+      "elements": [
+        {
+          "id": "6968f594-1e8f-4e75-a59c-42ebc5cd7764",
+          "name": "Bounds: Resize rotated bottom",
+          "x": 873.3333333333334,
+          "y": 476.38698162729656,
+          "width": 346.6666666666667,
+          "height": 140.55937007874016,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "ed48bbc5-ad04-4e66-99c0-58fad71dacb4",
+          "name": "Bounds: Resize rotated middle",
+          "x": 466.6666666666667,
+          "y": 476.38698162729656,
+          "width": 346.6666666666667,
+          "height": 140.55937007874016,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "e7a40f25-6489-4b08-aa62-c40214acfa18",
+          "name": "Bounds: Resize rotated top",
+          "x": 60,
+          "y": 476.38698162729656,
+          "width": 346.6666666666667,
+          "height": 140.55937007874016,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "25caff65-ff42-4eec-8953-898c3e13b337",
+          "name": "Bounds: Resize bottom anchor",
+          "x": 873.3333333333334,
+          "y": 152.77396325459318,
+          "width": 346.6666666666667,
+          "height": 140.55937007874016,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "c8080a21-5970-4212-a5d7-9b0f66479899",
+          "name": "Bounds: Resize middle anchor",
+          "x": 466.6666666666667,
+          "y": 183.05364829396325,
+          "width": 346.6666666666667,
+          "height": 140.55937007874016,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "1215fa37-1d6a-44e3-a728-4b6adc02cff7",
+          "name": "Bounds: Resize top anchor",
+          "x": 60,
+          "y": 213.33333333333334,
+          "width": 346.6666666666667,
+          "height": 140.55937007874016,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "d1da707b-0516-4522-82e3-fa401264bc65",
+          "name": "Heading 6",
+          "x": 42.666666666666664,
+          "y": 24,
+          "width": 1193.3333333333333,
+          "height": 80,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Shape resize anchors and rotation",
+          "fontSize": 29,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": true,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Shape resize anchors and rotation",
+                  "fontSize": 29,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": true,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 12,
+              "right": 12,
+              "bottom": 12,
+              "left": 12
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          },
+          "autoFit": {
+            "mode": "none"
+          }
+        },
+        {
+          "id": "ea6adef0-77ee-4d6f-9293-a81be4206456",
+          "name": "Resize top anchor",
+          "x": 60,
+          "y": 213.33333333333334,
+          "width": 346.6666666666667,
+          "height": 140.55937007874016,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "First line of text.\nSecond line of text.\nThird line of text.",
+          "fontSize": 24,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "First line of text.",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Second line of text.",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Third line of text.",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 12,
+              "right": 12,
+              "bottom": 12,
+              "left": 12
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          },
+          "autoFit": {
+            "mode": "resize"
+          }
+        },
+        {
+          "id": "5bf0566f-08bd-4cf6-a478-f796a97799e9",
+          "name": "Resize middle anchor",
+          "x": 466.6666666666667,
+          "y": 183.05364829396325,
+          "width": 346.6666666666667,
+          "height": 140.55937007874016,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "First line of text.\nSecond line of text.\nThird line of text.",
+          "fontSize": 24,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "middle",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "First line of text.",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Second line of text.",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Third line of text.",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 12,
+              "right": 12,
+              "bottom": 12,
+              "left": 12
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          },
+          "autoFit": {
+            "mode": "resize"
+          }
+        },
+        {
+          "id": "5b5eca3e-0d4e-4200-bb40-f00bca6d61e8",
+          "name": "Resize bottom anchor",
+          "x": 873.3333333333334,
+          "y": 152.77396325459318,
+          "width": 346.6666666666667,
+          "height": 140.55937007874016,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "First line of text.\nSecond line of text.\nThird line of text.",
+          "fontSize": 24,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "bottom",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "First line of text.",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Second line of text.",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Third line of text.",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 12,
+              "right": 12,
+              "bottom": 12,
+              "left": 12
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          },
+          "autoFit": {
+            "mode": "resize"
+          }
+        },
+        {
+          "id": "dd6b3bea-e2b4-4466-82a8-882492d9b3fe",
+          "name": "Resize rotated top",
+          "x": 60,
+          "y": 476.38698162729656,
+          "width": 346.6666666666667,
+          "height": 140.55937007874016,
+          "rotation": 30,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "First line of text.\nSecond line of text.\nThird line of text.",
+          "fontSize": 24,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "First line of text.",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Second line of text.",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Third line of text.",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 12,
+              "right": 12,
+              "bottom": 12,
+              "left": 12
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          },
+          "autoFit": {
+            "mode": "resize"
+          }
+        },
+        {
+          "id": "e872fe5c-fc82-4361-9bfe-09c0afc9c1ba",
+          "name": "Resize rotated middle",
+          "x": 466.6666666666667,
+          "y": 476.38698162729656,
+          "width": 346.6666666666667,
+          "height": 140.55937007874016,
+          "rotation": 30,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "First line of text.\nSecond line of text.\nThird line of text.",
+          "fontSize": 24,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "middle",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "First line of text.",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Second line of text.",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Third line of text.",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 12,
+              "right": 12,
+              "bottom": 12,
+              "left": 12
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          },
+          "autoFit": {
+            "mode": "resize"
+          }
+        },
+        {
+          "id": "f20cfe42-1c6f-4643-af5d-deb20aafbebd",
+          "name": "Resize rotated bottom",
+          "x": 873.3333333333334,
+          "y": 476.38698162729656,
+          "width": 346.6666666666667,
+          "height": 140.55937007874016,
+          "rotation": 30,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "First line of text.\nSecond line of text.\nThird line of text.",
+          "fontSize": 24,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "bottom",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "First line of text.",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Second line of text.",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Third line of text.",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 12,
+              "right": 12,
+              "bottom": 12,
+              "left": 12
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          },
+          "autoFit": {
+            "mode": "resize"
+          }
+        }
+      ],
+      "notes": "Requested geometry and resulting native positions are recorded separately. Outlines are independent unrotated geometry markers and do not represent rotated text bounds.",
+      "transition": "none",
+      "hidden": false
+    },
+    {
+      "id": "baf163c5-aea1-4fdb-a5a2-56e0d0e87fa8",
+      "name": "Slide 7",
+      "background": "#ffffff",
+      "elements": [
+        {
+          "id": "263bb5a9-9f0c-4098-b54c-8f92035ff1b2",
+          "name": "Bounds: Probe list indents",
+          "x": 693.3333333333334,
+          "y": 166.66666666666666,
+          "width": 520,
+          "height": 413.3333333333333,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "67b200da-b9b4-4f40-8398-d7b757f7bf2b",
+          "name": "Bounds: Probe paragraph spacing",
+          "x": 66.66666666666667,
+          "y": 166.66666666666666,
+          "width": 520,
+          "height": 413.3333333333333,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "bd45c3a4-b63b-49cb-90c6-36aaecdf60d1",
+          "name": "Heading 7",
+          "x": 42.666666666666664,
+          "y": 24,
+          "width": 1193.3333333333333,
+          "height": 80,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Absolute paragraph spacing and list indents",
+          "fontSize": 29,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": true,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Absolute paragraph spacing and list indents",
+                  "fontSize": 29,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": true,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 12,
+              "right": 12,
+              "bottom": 12,
+              "left": 12
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          },
+          "autoFit": {
+            "mode": "none"
+          }
+        },
+        {
+          "id": "eeb155bf-2ea4-4a86-9437-fdd087ecef02",
+          "name": "Probe paragraph spacing",
+          "x": 66.66666666666667,
+          "y": 166.66666666666666,
+          "width": 520,
+          "height": 413.3333333333333,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "First paragraph\nSecond line\nSecond paragraph",
+          "fontSize": 24,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "First paragraph",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "\n",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "Second line",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 10,
+              "spaceAfter": 20
+            },
+            {
+              "runs": [
+                {
+                  "text": "Second paragraph",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 10,
+              "spaceAfter": 20
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 12,
+              "right": 12,
+              "bottom": 12,
+              "left": 12
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          },
+          "autoFit": {
+            "mode": "shrink",
+            "fontScale": 0.5,
+            "lineSpacingReduction": 0
+          }
+        },
+        {
+          "id": "8097a7b8-171e-48c4-b28f-9d077cbda562",
+          "name": "Probe list indents",
+          "x": 693.3333333333334,
+          "y": 166.66666666666666,
+          "width": 520,
+          "height": 413.3333333333333,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "First bullet\nNested bullet\nLast bullet",
+          "fontSize": 24,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "First bullet",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0,
+              "bullet": {
+                "kind": "bullet",
+                "level": 0,
+                "character": "•"
+              }
+            },
+            {
+              "runs": [
+                {
+                  "text": "Nested bullet",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0,
+              "bullet": {
+                "kind": "bullet",
+                "level": 1,
+                "character": "•"
+              }
+            },
+            {
+              "runs": [
+                {
+                  "text": "Last bullet",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0,
+              "bullet": {
+                "kind": "bullet",
+                "level": 0,
+                "character": "•"
+              }
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 12,
+              "right": 12,
+              "bottom": 12,
+              "left": 12
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          },
+          "autoFit": {
+            "mode": "shrink",
+            "fontScale": 0.5,
+            "lineSpacingReduction": 0
+          }
+        }
+      ],
+      "notes": "These original controls use noAutofit. The XML-derived probe halves fontScale with zero line reduction, to isolate absolute paragraph spacing and fixed EMU list indents.",
+      "transition": "none",
+      "hidden": false
+    }
+  ],
+  "updatedAt": "2026-11-06T06:22:30.824Z"
+}

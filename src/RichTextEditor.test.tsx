@@ -1,4 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { useState } from 'react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import RichTextEditor from './RichTextEditor';
 import { createElement, THEMES } from './model';
@@ -18,6 +20,105 @@ afterEach(() => {
 });
 
 describe('rich text modal', () => {
+  it('keeps a numeric draft focused through Save mousedown, then flushes and closes on the same click', async () => {
+    const element = withParagraphs(createElement('text', THEMES[0]), [
+      { runs: [{ text: 'Pending exact spacing' }], lineSpacingPoints: 36 },
+    ]);
+    const original = structuredClone(element),
+      onSave = vi.fn(),
+      onClose = vi.fn();
+    function Harness() {
+      const [open, setOpen] = useState(true);
+      return open ? (
+        <RichTextEditor
+          element={element}
+          onSave={onSave}
+          onClose={() => {
+            onClose();
+            setOpen(false);
+          }}
+        />
+      ) : null;
+    }
+    render(<Harness />);
+    await screen.findByRole('textbox', { name: 'Rich text content' });
+    const user = userEvent.setup();
+    const input = screen.getByLabelText('Line spacing (pt)') as HTMLInputElement;
+    await user.clear(input);
+    await user.type(input, '48');
+    expect(document.activeElement).toBe(input);
+    const save = screen.getByRole('button', { name: 'Save text' });
+    await user.pointer({ target: save, keys: '[MouseLeft>]' });
+    // A default focus transfer here would run NumericSetting.onBlur and the
+    // editor's focus/scroll command before the browser has delivered the click.
+    expect(document.activeElement).toBe(input);
+    expect(onSave).not.toHaveBeenCalled();
+    await user.pointer({ keys: '[/MouseLeft]' });
+    expect(onSave).toHaveBeenCalledOnce();
+    expect(onSave.mock.calls[0][0].paragraphs[0]).toMatchObject({ lineSpacingPoints: 48 });
+    expect(onSave.mock.calls[0][0].paragraphs[0]).not.toHaveProperty('lineSpacing');
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(element).toEqual(original);
+  });
+
+  it('keeps imported exact zero spacing and saved shrink parameters on a no-op Save', async () => {
+    const element = withParagraphs(
+      {
+        ...createElement('text', THEMES[0]),
+        autoFit: { mode: 'shrink' as const, fontScale: 0.63, lineSpacingReduction: 0.11 },
+      },
+      [{ runs: [{ text: 'Keep authored sizes', fontSize: 24 }], lineSpacingPoints: 0 }],
+    );
+    const original = structuredClone(element),
+      onSave = vi.fn();
+    render(<RichTextEditor element={element} onSave={onSave} onClose={vi.fn()} />);
+    await screen.findByRole('textbox', { name: 'Rich text content' });
+    expect((screen.getByLabelText('Line spacing mode') as HTMLSelectElement).value).toBe('points');
+    const points = screen.getByLabelText('Line spacing (pt)') as HTMLInputElement;
+    expect(points.value).toBe('0');
+    fireEvent.focus(points);
+    fireEvent.blur(points);
+    fireEvent.click(screen.getByRole('button', { name: 'Save text' }));
+    expect(onSave).toHaveBeenCalledOnce();
+    const saved = onSave.mock.calls[0][0];
+    expect(saved.autoFit).toEqual(element.autoFit);
+    expect(saved.paragraphs[0]).toMatchObject({
+      lineSpacingPoints: 0,
+      runs: [{ text: 'Keep authored sizes', fontSize: 24 }],
+    });
+    expect(saved.paragraphs[0]).not.toHaveProperty('lineSpacing');
+    expect(element).toEqual(original);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('switches exact and relative spacing while clearing the alternate value and accepting exact zero', async () => {
+    const element = withParagraphs({ ...createElement('text', THEMES[0]), fontSize: 20 }, [
+      { runs: [{ text: 'Spacing mode' }], lineSpacingPoints: 30 },
+    ]);
+    const onSave = vi.fn();
+    render(<RichTextEditor element={element} onSave={onSave} onClose={vi.fn()} />);
+    await screen.findByRole('textbox', { name: 'Rich text content' });
+    const mode = screen.getByLabelText('Line spacing mode');
+    fireEvent.change(mode, { target: { value: 'relative' } });
+    expect((screen.getByLabelText('Line spacing') as HTMLInputElement).value).toBe('1.5');
+    const multiple = screen.getByLabelText('Line spacing');
+    fireEvent.change(multiple, { target: { value: '2' } });
+    fireEvent.blur(multiple);
+    fireEvent.click(screen.getByRole('button', { name: 'Save text' }));
+    expect(onSave.mock.calls[0][0].paragraphs[0]).toMatchObject({ lineSpacing: 2 });
+    expect(onSave.mock.calls[0][0].paragraphs[0]).not.toHaveProperty('lineSpacingPoints');
+    fireEvent.change(mode, { target: { value: 'points' } });
+    expect((screen.getByLabelText('Line spacing (pt)') as HTMLInputElement).value).toBe('40');
+    const points = screen.getByLabelText('Line spacing (pt)');
+    fireEvent.change(points, { target: { value: '0' } });
+    fireEvent.blur(points);
+    fireEvent.click(screen.getByRole('button', { name: 'Save text' }));
+    expect(onSave.mock.calls[1][0].paragraphs[0]).toMatchObject({ lineSpacingPoints: 0 });
+    expect(onSave.mock.calls[1][0].paragraphs[0]).not.toHaveProperty('lineSpacing');
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it('opens real editable content and saves a rich document only when Save is chosen', async () => {
     const element = withParagraphs(createElement('text', THEMES[0]), [
       {

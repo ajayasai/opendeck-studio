@@ -7,7 +7,7 @@ import Canvas from './Canvas';
 import Presenter from './Presenter';
 import { createDeck, createElement, createSlide, validateDeck } from './model';
 import { useEditor } from './useEditor';
-import type { Deck } from './types';
+import type { Deck, TextElement } from './types';
 
 const persistence = vi.hoisted(() => ({
   loadDeck: vi.fn(),
@@ -16,6 +16,8 @@ const persistence = vi.hoisted(() => ({
   loadSavedDeck: vi.fn(),
 }));
 vi.mock('./storage', () => persistence);
+const fitting = vi.hoisted(() => ({ fitTextElement: vi.fn() }));
+vi.mock('./textFitting', () => fitting);
 
 class TestResizeObserver {
   constructor(private callback: ResizeObserverCallback) {}
@@ -63,6 +65,10 @@ beforeEach(() => {
   persistence.saveDeck.mockReset().mockResolvedValue(undefined);
   persistence.listSavedDecks.mockReset().mockResolvedValue([]);
   persistence.loadSavedDeck.mockReset().mockResolvedValue(null);
+  fitting.fitTextElement.mockReset().mockImplementation((element: TextElement) => ({
+    ...element,
+    autoFit: { mode: 'shrink', fontScale: 0.5, lineSpacingReduction: 0 },
+  }));
   vi.stubGlobal('ResizeObserver', TestResizeObserver);
   vi.stubGlobal('PointerEvent', TestPointerEvent);
   Object.defineProperty(HTMLElement.prototype, 'setPointerCapture', {
@@ -180,6 +186,71 @@ describe('workspace persistence and file recovery', () => {
     expect(title.value).toBe(original);
     await user().click(screen.getByRole('button', { name: 'Redo (Ctrl+Shift+Z)' }));
     expect(title.value).toBe('Imported backup');
+  });
+});
+
+describe('saved fitting integration', () => {
+  function fittedDeck(): Deck {
+    const deck = createDeck();
+    const element = createElement('text', deck.theme);
+    element.name = 'Imported fitted text';
+    element.autoFit = { mode: 'shrink', fontScale: 0.63, lineSpacingReduction: 0.11 };
+    deck.slides = [{ ...deck.slides[0], elements: [element] }];
+    return deck;
+  }
+  const savedText = () => storedDeck().slides[0].elements[0] as TextElement;
+
+  it('keeps saved scaling during restore, metadata edits, same-ID import, and history navigation', async () => {
+    const saved = fittedDeck();
+    persistence.loadDeck.mockResolvedValue(saved);
+    const title = await boot();
+    fireEvent.change(title, { target: { value: 'Only metadata changed' } });
+    const incoming = structuredClone(saved);
+    const text = incoming.slides[0].elements[0] as TextElement;
+    text.text = 'Changed in a saved copy';
+    text.fontSize = 33;
+    text.autoFit = { mode: 'shrink', fontScale: 0.37, lineSpacingReduction: 0.08 };
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Open presentation file'), {
+        target: { files: [nativeFile(JSON.stringify(incoming))] },
+      });
+    });
+    await flushSave();
+    expect(savedText()).toEqual(text);
+    expect(fitting.fitTextElement).not.toHaveBeenCalled();
+    await user().click(screen.getByRole('button', { name: 'Undo (Ctrl+Z)' }));
+    await flushSave();
+    expect(savedText().autoFit).toEqual((saved.slides[0].elements[0] as TextElement).autoFit);
+    await user().click(screen.getByRole('button', { name: 'Redo (Ctrl+Shift+Z)' }));
+    await flushSave();
+    expect(savedText()).toEqual(text);
+    expect(fitting.fitTextElement).not.toHaveBeenCalled();
+  });
+
+  it('persists a text edit and fitting result in one undo step and runs explicit recalculation once', async () => {
+    const saved = fittedDeck(),
+      original = saved.slides[0].elements[0] as TextElement;
+    persistence.loadDeck.mockResolvedValue(saved);
+    await boot();
+    await user().click(screen.getByRole('button', { name: 'text: Imported fitted text' }));
+    const text = screen.getByLabelText('Text', { selector: 'textarea' });
+    fireEvent.change(text, { target: { value: 'A fitting-relevant edit' } });
+    fireEvent.blur(text);
+    await flushSave();
+    expect(fitting.fitTextElement).toHaveBeenCalledOnce();
+    expect(savedText()).toMatchObject({
+      text: 'A fitting-relevant edit',
+      fontSize: original.fontSize,
+      autoFit: { mode: 'shrink', fontScale: 0.5, lineSpacingReduction: 0 },
+    });
+    await user().click(screen.getByRole('button', { name: 'Undo (Ctrl+Z)' }));
+    await flushSave();
+    expect(savedText()).toEqual(original);
+    await user().click(screen.getByRole('button', { name: 'Redo (Ctrl+Shift+Z)' }));
+    expect(fitting.fitTextElement).toHaveBeenCalledOnce();
+    await user().click(screen.getByRole('button', { name: 'Recalculate fit' }));
+    expect(fitting.fitTextElement).toHaveBeenCalledTimes(2);
+    expect(fitting.fitTextElement.mock.calls[1][0].text).toBe('A fitting-relevant edit');
   });
 });
 

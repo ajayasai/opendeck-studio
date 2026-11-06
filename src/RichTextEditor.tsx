@@ -244,6 +244,12 @@ export default function RichTextEditor({
           Select words to change their style. Paragraph controls apply to selected paragraphs. Save
           applies this edit as one change.
         </p>
+        {element.autoFit?.mode === 'shrink' && (
+          <p className="inspector-hint">
+            Font sizes here are authored sizes. AutoFit is recalculated when you save text or
+            formatting changes.
+          </p>
+        )}
         <div className="rich-editor-toolbar" role="toolbar" aria-label="Rich text formatting">
           <div className="rich-editor-toolbar-group">
             {tool(
@@ -369,14 +375,66 @@ export default function RichTextEditor({
                 onChange={(event) => editor?.chain().focus().setColor(event.target.value).run()}
               />
             </label>
+            <label className="field">
+              <span>Line spacing mode</span>
+              <select
+                value={paragraphStyle.lineSpacingPoints != null ? 'points' : 'relative'}
+                onChange={(event) =>
+                  editor
+                    ?.chain()
+                    .focus()
+                    .updateAttributes(
+                      'paragraph',
+                      event.target.value === 'points'
+                        ? {
+                            lineSpacingPoints: Math.min(
+                              1000,
+                              paragraphNumber('lineSpacing', 1.16) * currentSize,
+                            ),
+                            lineSpacing: null,
+                          }
+                        : {
+                            lineSpacing: Math.max(
+                              0.5,
+                              Math.min(
+                                10,
+                                paragraphNumber('lineSpacingPoints', currentSize * 1.16) /
+                                  currentSize,
+                              ),
+                            ),
+                            lineSpacingPoints: null,
+                          },
+                    )
+                    .run()
+                }
+              >
+                <option value="relative">Multiple</option>
+                <option value="points">Exactly (pt)</option>
+              </select>
+            </label>
             <NumericSetting
-              label="Line spacing"
-              value={paragraphNumber('lineSpacing', 1.16)}
-              min={0.5}
-              max={10}
-              step={0.05}
-              onChange={(lineSpacing) =>
-                editor?.chain().focus().updateAttributes('paragraph', { lineSpacing }).run()
+              label={
+                paragraphStyle.lineSpacingPoints != null ? 'Line spacing (pt)' : 'Line spacing'
+              }
+              value={
+                paragraphStyle.lineSpacingPoints != null
+                  ? paragraphNumber('lineSpacingPoints', 0)
+                  : paragraphNumber('lineSpacing', 1.16)
+              }
+              min={paragraphStyle.lineSpacingPoints != null ? 0 : 0.5}
+              max={paragraphStyle.lineSpacingPoints != null ? 1000 : 10}
+              step={paragraphStyle.lineSpacingPoints != null ? 0.5 : 0.05}
+              onChange={(value) =>
+                editor
+                  ?.chain()
+                  .focus()
+                  .updateAttributes(
+                    'paragraph',
+                    paragraphStyle.lineSpacingPoints != null
+                      ? { lineSpacingPoints: value, lineSpacing: null }
+                      : { lineSpacing: value, lineSpacingPoints: null },
+                  )
+                  .run()
               }
             />
             <NumericSetting
@@ -477,7 +535,15 @@ export default function RichTextEditor({
             <button className="secondary-button" onClick={onClose}>
               Cancel
             </button>
-            <button className="primary-button" disabled={!editor || blocked} onClick={save}>
+            <button
+              type="button"
+              className="primary-button"
+              disabled={!editor || blocked}
+              // Flush numeric drafts inside save(), after the click has landed.
+              // Blurring earlier can refocus/scroll the editor and move this button.
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={save}
+            >
               Save text
             </button>
           </div>

@@ -6,6 +6,60 @@ import type { TextFrame, TextParagraph } from './types';
 
 afterEach(cleanup);
 describe('rich slide rendering', () => {
+  it('applies saved shrink scale to inherited and explicit runs and marker glyphs while retaining absolute list spacing', () => {
+    const element = createElement('text', createDeck().theme);
+    element.fontSize = 40;
+    element.autoFit = { mode: 'shrink', fontScale: 0.5, lineSpacingReduction: 0.2 };
+    element.text = 'LargeSmall';
+    element.paragraphs = [
+      {
+        runs: [{ text: 'Large', fontSize: 30 }, { text: 'Small' }],
+        bullet: { kind: 'number', level: 2, start: 3 },
+        lineSpacing: 1.5,
+        spaceBefore: 4,
+        spaceAfter: 8,
+      },
+    ];
+    const original = structuredClone(element),
+      view = render(<RichTextView element={element} />);
+    const paragraph = view.container.querySelector<HTMLElement>('.text-paragraph')!,
+      marker = screen.getByText('3.');
+    const content = view.container.querySelector<HTMLElement>('.paragraph-content')!;
+    expect(screen.getByText('Large').style.fontSize).toBe('15pt');
+    expect(screen.getByText('Small').style.fontSize).toBe('20pt');
+    expect(marker.style.fontSize).toBe('15pt');
+    expect(marker.style.minWidth).toBe('36pt');
+    expect(marker.style.paddingRight).toBe('9pt');
+    expect(paragraph.style.paddingLeft).toBe('84pt');
+    expect(paragraph.style.marginTop).toBe('4pt');
+    expect(paragraph.style.marginBottom).toBe('8pt');
+    // Reduction is subtracted from the multiplier (1.5 - .2), not multiplied into it.
+    expect(Number(paragraph.style.lineHeight)).toBeCloseTo(1.3);
+    expect(parseFloat(content.style.minHeight)).toBeCloseTo(19.5);
+    expect(element).toEqual(original);
+  });
+
+  it('keeps exact point line spacing unchanged by saved shrink and clamps relative reduction at zero', () => {
+    const element = createElement('text', createDeck().theme);
+    element.autoFit = { mode: 'shrink', fontScale: 0.25, lineSpacingReduction: 2 };
+    element.text = 'Exact\nZero exact\nRelative';
+    element.paragraphs = [
+      { runs: [{ text: 'Exact', fontSize: 40 }], lineSpacingPoints: 27.25 },
+      { runs: [{ text: 'Zero exact' }], lineSpacingPoints: 0 },
+      { runs: [{ text: 'Relative' }], lineSpacing: 1.5 },
+    ];
+    const view = render(<RichTextView element={element} />);
+    const paragraphs = Array.from(view.container.querySelectorAll<HTMLElement>('.text-paragraph'));
+    const contents = Array.from(view.container.querySelectorAll<HTMLElement>('.paragraph-content'));
+    expect(paragraphs.map((paragraph) => paragraph.style.lineHeight)).toEqual([
+      '27.25pt',
+      '0pt',
+      '0',
+    ]);
+    expect(contents.map((content) => content.style.minHeight)).toEqual(['27.25pt', '0pt', '0pt']);
+    expect(screen.getByText('Exact').style.fontSize).toBe('10pt');
+  });
+
   it('renders character overrides including false emphasis and paragraph spacing', () => {
     const e = createElement('text', createDeck().theme);
     e.bold = true;

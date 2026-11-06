@@ -2,7 +2,7 @@
 
 An open-source presentation studio for the browser. Create slides, keep your files locally, and exchange editable content through PowerPoint's PPTX format.
 
-**Status: 0.1.0-alpha.3.** OpenDeck is an original implementation with a focused editor, rich text authoring, and partial PPTX compatibility. It is not a complete replacement for every PowerPoint workflow. The [compatibility matrix](docs/COMPATIBILITY.md) states the boundaries; the [roadmap](docs/ROADMAP.md) tracks the work ahead.
+**Status: 0.1.0-alpha.4.** OpenDeck is an original implementation with a focused editor, rich text authoring, and partial PPTX compatibility. It is not a complete replacement for every PowerPoint workflow. The [compatibility matrix](docs/COMPATIBILITY.md) states the boundaries; the [roadmap](docs/ROADMAP.md) tracks the work ahead.
 
 [Try the public demo](https://ajayasai.github.io/opendeck-studio/) · [Download the release](https://github.com/ajayasai/opendeck-studio/releases) · [Testing evidence](docs/TESTING.md)
 
@@ -35,6 +35,7 @@ npm run preview
 - A rich text editor for selected-word font, size, color, bold, italic, underline, and safe hyperlinks.
 - Structured bullets and numbered lists, nesting and starting numbers, paragraph alignment, line spacing, and spacing before/after.
 - Text-box margins, wrapping, independent overflow controls, and top/middle/bottom alignment, with supported layout/master inheritance on PPTX import.
+- Shrink-to-fit text and automatic box resizing, preserving authored font sizes and saved PowerPoint fitting factors; relative or exact point-based paragraph line spacing.
 - Slide organization, five visual themes, reusable layouts, speaker notes, and presentation playback.
 - Object alignment, layer ordering, grid snapping, keyboard shortcuts, and a slide sorter.
 - Fullscreen presenting with a timer, notes panel, next-slide preview, laser pointer, and blackout control.
@@ -51,7 +52,11 @@ The [rich-text example](examples/rich-text.pptx) and [native OpenDeck copy](exam
 
 Select a text box and use **Format → Text box** to adjust its four margins, wrap text, or allow/clip overflow on each axis. The [text-frame example](examples/text-frame.pptx) and [native copy](examples/text-frame.opendeck) exercise asymmetric and zero margins, vertical alignment, wrapping, and inherited layout/master properties.
 
-Tables and charts use simplified models. Advanced PowerPoint content can change or disappear during import/export; keep the original file and review the result before relying on it. Autofit, complete-line clipping, attached text-box fills/outlines, hyperlink theme colors, and some numbering restarts can differ. See the [compatibility notes](docs/COMPATIBILITY.md).
+Use **Format → AutoFit** to shrink text or resize its box when text, formatting, or box dimensions change. **Recalculate fit** uses the fonts available in your browser. Imported fitting results stay intact until an edit affects text metrics or you request recalculation. The [autofit example](examples/autofit.pptx) and [native copy](examples/autofit.opendeck) include mixed sizes, saved scaling, fixed line spacing, and rotated resize boxes. The known-scale example is explicitly derived from an XML probe; both it and the original PowerPoint-authored baseline passed a native PowerPoint round trip.
+
+![Saved text fitting in the OpenDeck editor](docs/assets/autofit-editor.jpg)
+
+Tables and charts use simplified models. Advanced PowerPoint content can change or disappear during import/export; keep the original file and review the result before relying on it. Browser line metrics, paragraph edge spacing, autofit recalculation, complete-line clipping, attached text-box fills/outlines, hyperlink theme colors, and some numbering restarts can differ. See the [compatibility notes](docs/COMPATIBILITY.md).
 
 ## Your files
 
@@ -62,6 +67,8 @@ Use **File → My presentations** to reopen saved decks. Autosave keeps separate
 Earlier plain-text OpenDeck files remain readable. Use alpha.2 or later for rich-text native backups; opening and saving them with alpha.1 can discard the rich formatting.
 
 Use alpha.3 or later for text-frame backups. Earlier readers can discard the optional margins, wrap, and overflow fields when re-saving. Files without these fields retain the earlier zero-margin, wrapped, clipped behavior.
+
+Use alpha.4 or later for autofit and exact line-spacing backups. Earlier readers can discard those optional fields when re-saving. Existing documents retain their saved geometry and font sizes when opened.
 
 You can edit without an internet connection after the application and its assets are loaded. For predictable offline access, run the built files on a local static server. This release does not install a PWA or guarantee that a hosted page will reopen offline.
 

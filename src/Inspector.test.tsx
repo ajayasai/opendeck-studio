@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import Inspector from './Inspector';
 import { createDeck, createElement, createSlide } from './model';
 import { applyTextPatch, withParagraphs } from './richText';
-import type { TextElement, TextFrame } from './types';
+import type { TextAutoFit, TextElement, TextFrame } from './types';
 
 afterEach(cleanup);
 const sampleFrame = (): TextFrame => ({
@@ -14,7 +14,7 @@ const sampleFrame = (): TextFrame => ({
   horizontalOverflow: 'overflow',
   verticalOverflow: 'clip',
 });
-function setup(options: { frame?: TextFrame; locked?: boolean } = {}) {
+function setup(options: { frame?: TextFrame; locked?: boolean; autoFit?: TextAutoFit } = {}) {
   const original = createDeck(),
     originalSlide = createSlide(original.theme);
   const source = withParagraphs(createElement('text', original.theme), [
@@ -22,7 +22,9 @@ function setup(options: { frame?: TextFrame; locked?: boolean } = {}) {
   ]);
   source.locked = options.locked ?? false;
   if (options.frame) source.textFrame = options.frame;
-  const onPatch = vi.fn();
+  if (options.autoFit) source.autoFit = options.autoFit;
+  const onPatch = vi.fn(),
+    onFit = vi.fn();
   function Harness() {
     const [element, setElement] = useState(source);
     const slide = { ...originalSlide, elements: [element] },
@@ -42,12 +44,13 @@ function setup(options: { frame?: TextFrame; locked?: boolean } = {}) {
           onTheme={vi.fn()}
           onSelect={vi.fn()}
           onLayer={vi.fn()}
+          onFitText={onFit}
         />
       </>
     );
   }
   render(<Harness />);
-  return { source, onPatch };
+  return { source, onPatch, onFit };
 }
 const current = (): TextElement => JSON.parse(screen.getByTestId('inspector-element').textContent!);
 function editMargin(label: string, value: string) {
@@ -132,5 +135,65 @@ describe('Inspector text-frame controls', () => {
     await user.type(screen.getByLabelText('Left margin (px)'), '90');
     expect(onPatch).not.toHaveBeenCalled();
     expect(current()).toEqual(source);
+  });
+});
+
+describe('Inspector autofit controls', () => {
+  const inspector = () => within(screen.getByLabelText('Slide inspector'));
+  it('shows the legacy disabled fitting mode without introducing fitting metadata', () => {
+    const { onPatch } = setup();
+    expect((screen.getByLabelText('Text fitting') as HTMLSelectElement).value).toBe('none');
+    expect(screen.queryByRole('button', { name: 'Recalculate fit' })).toBeNull();
+    expect(inspector().queryByRole('status')).toBeNull();
+    expect(current()).not.toHaveProperty('autoFit');
+    expect(onPatch).not.toHaveBeenCalled();
+  });
+
+  it('reports imported shrink parameters and recalculates only through the dedicated callback', () => {
+    const { source, onPatch, onFit } = setup({
+      autoFit: { mode: 'shrink', fontScale: 0.6234, lineSpacingReduction: 0.125 },
+    });
+    expect((screen.getByLabelText('Text fitting') as HTMLSelectElement).value).toBe('shrink');
+    expect(inspector().getByRole('status').textContent).toContain('62.34%');
+    expect(inspector().getByRole('status').textContent).toContain('12.5 percentage points');
+    fireEvent.click(screen.getByRole('button', { name: 'Recalculate fit' }));
+    expect(onFit).toHaveBeenCalledExactlyOnceWith(source);
+    expect(onPatch).not.toHaveBeenCalled();
+    expect(current()).toEqual(source);
+  });
+
+  it('changes fitting modes without rewriting authored text, runs or frame settings', () => {
+    const { source } = setup({ frame: sampleFrame() });
+    const select = screen.getByLabelText('Text fitting');
+    fireEvent.change(select, { target: { value: 'shrink' } });
+    expect(current().autoFit).toEqual({ mode: 'shrink', fontScale: 1, lineSpacingReduction: 0 });
+    expect(inspector().getByRole('status').textContent).toContain('100%');
+    fireEvent.change(select, { target: { value: 'resize' } });
+    expect(current().autoFit).toEqual({ mode: 'resize' });
+    expect(inspector().queryByRole('status')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Recalculate fit' })).toBeTruthy();
+    fireEvent.change(select, { target: { value: 'none' } });
+    expect(current().autoFit).toEqual({ mode: 'none' });
+    expect(screen.queryByRole('button', { name: 'Recalculate fit' })).toBeNull();
+    expect(current().paragraphs).toEqual(source.paragraphs);
+    expect(current().textFrame).toEqual(source.textFrame);
+    expect(current().fontSize).toBe(source.fontSize);
+  });
+
+  it('explains the minimum scale and prevents locked-object fitting commands', async () => {
+    const { onPatch, onFit } = setup({
+      locked: true,
+      autoFit: { mode: 'shrink', fontScale: 0.01, lineSpacingReduction: 0 },
+    });
+    expect(screen.getByRole('alert').textContent).toContain('Minimum text scale');
+    const select = screen.getByLabelText('Text fitting'),
+      recalculate = screen.getByRole('button', { name: 'Recalculate fit' });
+    expect(select.matches(':disabled')).toBe(true);
+    expect(recalculate.matches(':disabled')).toBe(true);
+    const user = userEvent.setup();
+    await user.selectOptions(select, 'resize');
+    await user.click(recalculate);
+    expect(onPatch).not.toHaveBeenCalled();
+    expect(onFit).not.toHaveBeenCalled();
   });
 });

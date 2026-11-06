@@ -9,6 +9,7 @@ if (
     'powerpoint-rich-text.pptx',
     'powerpoint-text-frame.pptx',
     'powerpoint-text-frame-attached-outline-probe.pptx',
+    'powerpoint-autofit.pptx',
   ].some((name) => path?.endsWith(name))
 )
   throw new Error('Expected the dedicated original fixture filename.');

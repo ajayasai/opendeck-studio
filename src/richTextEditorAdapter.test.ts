@@ -34,6 +34,80 @@ afterEach(() => {
 });
 
 describe('native rich text adapter', () => {
+  it('retains exact point line spacing through actual editor serialization, including blanks and zero', () => {
+    const element = withParagraphs(textBox(), [
+      { runs: [{ text: 'Exact\nsoft break' }], lineSpacingPoints: 18.25, spaceAfter: 5 },
+      { runs: [{ text: '' }], lineSpacingPoints: 0 },
+      { runs: [{ text: 'Item' }], lineSpacingPoints: 22, bullet: { kind: 'number', level: 0 } },
+      { runs: [{ text: 'Relative' }], lineSpacing: 1.5 },
+    ]);
+    const editor = actualEditor(element);
+    const output = fromTiptapDocument(editor.getJSON(), element);
+    expect(plainText(output)).toBe(element.text);
+    expect(output.map((paragraph) => paragraph.lineSpacingPoints)).toEqual([
+      18.25,
+      0,
+      22,
+      undefined,
+    ]);
+    expect(output.map((paragraph) => paragraph.lineSpacing)).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      1.5,
+    ]);
+    expect(editor.getHTML()).toContain('line-height: 18.25pt');
+    expect(editor.getHTML()).toContain('line-height: 0pt');
+    expect(editor.getHTML()).toContain('line-height: 1.5');
+  });
+
+  it('converts safe pasted point/pixel line heights without converting them into relative spacing', () => {
+    const result = sanitizeRichTextPaste(
+      '<p style="line-height:24px">Pixels</p><p style="line-height:19.5pt">Points</p>' +
+        '<p style="line-height:0pt">Zero</p><p style="line-height:1.75">Relative</p>' +
+        '<p style="line-height:1001pt">Too large</p><p style="line-height:calc(10px + 3px)">Unsupported</p>',
+    );
+    const editor = actualEditor(textBox());
+    editor.commands.setContent(result.html);
+    const output = fromTiptapDocument(editor.getJSON(), textBox());
+    expect(output.map((paragraph) => paragraph.lineSpacingPoints)).toEqual([
+      18,
+      19.5,
+      0,
+      undefined,
+      undefined,
+      undefined,
+    ]);
+    expect(output.map((paragraph) => paragraph.lineSpacing)).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      1.75,
+      undefined,
+      undefined,
+    ]);
+    expect(result.html).not.toMatch(/1001|calc\(/);
+  });
+
+  it('requires exact and relative spacing commands to clear the alternate representation', () => {
+    const element = withParagraphs(textBox(), [
+      { runs: [{ text: 'Exact' }], lineSpacingPoints: 20 },
+    ]);
+    const editor = actualEditor(element);
+    editor.commands.updateAttributes('paragraph', { lineSpacing: 1.5 });
+    expect(() => fromTiptapDocument(editor.getJSON(), element)).toThrow('either');
+    editor.commands.updateAttributes('paragraph', { lineSpacingPoints: null });
+    expect(fromTiptapDocument(editor.getJSON(), element)[0]).toMatchObject({ lineSpacing: 1.5 });
+    expect(fromTiptapDocument(editor.getJSON(), element)[0]).not.toHaveProperty(
+      'lineSpacingPoints',
+    );
+    editor.commands.updateAttributes('paragraph', { lineSpacing: null, lineSpacingPoints: 27.5 });
+    expect(fromTiptapDocument(editor.getJSON(), element)[0]).toMatchObject({
+      lineSpacingPoints: 27.5,
+    });
+    expect(fromTiptapDocument(editor.getJSON(), element)[0]).not.toHaveProperty('lineSpacing');
+  });
+
   it('preserves hard breaks, blank paragraphs, paragraph spacing, and effective text styles', () => {
     const element = withParagraphs(textBox(), [
       {

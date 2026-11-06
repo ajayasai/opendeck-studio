@@ -123,8 +123,12 @@ export function validateParagraphs(input: unknown, expectedText?: string): TextP
         throw new Error('Invalid paragraph alignment.');
       paragraph.align = source.align;
     }
+    if (source.lineSpacing !== undefined && source.lineSpacingPoints !== undefined)
+      throw new Error('Paragraph line spacing must use either a multiplier or exact points.');
     if (source.lineSpacing !== undefined)
       paragraph.lineSpacing = number(source.lineSpacing, 'line spacing', 0.5, 10);
+    if (source.lineSpacingPoints !== undefined)
+      paragraph.lineSpacingPoints = number(source.lineSpacingPoints, 'exact line spacing', 0, 1000);
     if (source.spaceBefore !== undefined)
       paragraph.spaceBefore = number(source.spaceBefore, 'spacing before', 0, 1000);
     if (source.spaceAfter !== undefined)

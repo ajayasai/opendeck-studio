@@ -19,6 +19,14 @@ export function fontPoints(value: unknown): number | undefined {
   return finite(Number(match[1]) * (match[2]?.toLowerCase() === 'px' ? 0.75 : 1), 1, 1000);
 }
 
+/** Exact paragraph spacing accepts only finite point or pixel lengths, including zero. */
+function spacingPoints(value: string): number | undefined {
+  const match = value.trim().match(/^([\d.]+)(pt|px)$/i);
+  return match
+    ? finite(Number(match[1]) * (match[2].toLowerCase() === 'px' ? 0.75 : 1), 0, 1000)
+    : undefined;
+}
+
 export function hexColor(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
   const trimmed = value.trim();
@@ -76,6 +84,7 @@ const spacingAttribute = (
     return value ?? null;
   },
   renderHTML: (attrs: Record<string, unknown>) => {
+    if (css === 'lineHeight' && attrs.lineSpacingPoints != null) return {};
     const value = finite(attrs[name], min, max);
     if (value === undefined) return {};
     const property =
@@ -92,6 +101,14 @@ export const NativeParagraphAttributes = Extension.create({
         types: ['paragraph'],
         attributes: {
           lineSpacing: spacingAttribute('lineSpacing', 'lineHeight', 0.5, 10),
+          lineSpacingPoints: {
+            default: null,
+            parseHTML: (element: HTMLElement) => spacingPoints(element.style.lineHeight) ?? null,
+            renderHTML: (attrs: Record<string, unknown>) => {
+              const value = finite(attrs.lineSpacingPoints, 0, 1000);
+              return value === undefined ? {} : { style: `line-height: ${value}pt` };
+            },
+          },
           spaceBefore: spacingAttribute('spaceBefore', 'marginTop', 0, 1000),
           spaceAfter: spacingAttribute('spaceAfter', 'marginBottom', 0, 1000),
           emptyRun: { default: null, rendered: false, parseHTML: () => null },
@@ -210,6 +227,7 @@ export function toTiptapDocument(element: TextElement): JSONContent {
       attrs: {
         textAlign: paragraph.align ?? element.align,
         lineSpacing: paragraph.lineSpacing ?? null,
+        lineSpacingPoints: paragraph.lineSpacingPoints ?? null,
         spaceBefore: paragraph.spaceBefore ?? null,
         spaceAfter: paragraph.spaceAfter ?? null,
         emptyRun: paragraph.runs.every((run) => !run.text)
@@ -321,7 +339,9 @@ export function fromTiptapDocument(document: JSONContent, element: TextElement):
     };
     if (['left', 'center', 'right'].includes(attrs.textAlign)) p.align = attrs.textAlign;
     else p.align = element.align;
-    for (const key of ['lineSpacing', 'spaceBefore', 'spaceAfter'] as const) {
+    if (attrs.lineSpacing != null && attrs.lineSpacingPoints != null)
+      throw new Error('Paragraph line spacing must use either a multiplier or exact points.');
+    for (const key of ['lineSpacing', 'lineSpacingPoints', 'spaceBefore', 'spaceAfter'] as const) {
       const number = finite(
         attrs[key],
         key === 'lineSpacing' ? 0.5 : 0,
@@ -470,6 +490,10 @@ export function sanitizeRichTextPaste(html: string): { html: string; changed: bo
           clean.style.textAlign = originalStyle.textAlign;
         const spacing = finite(originalStyle.lineHeight, 0.5, 10);
         if (spacing !== undefined) clean.style.lineHeight = String(spacing);
+        else {
+          const points = spacingPoints(originalStyle.lineHeight);
+          if (points !== undefined) clean.style.lineHeight = `${points}pt`;
+        }
         for (const property of ['marginTop', 'marginBottom'] as const) {
           const raw = originalStyle[property];
           const value = raw.match(/^([\d.]+)(pt|px)$/i);

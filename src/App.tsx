@@ -64,6 +64,10 @@ import { useDialog } from './useDialog';
 import Library from './Library';
 import { applyTextPatch } from './richText';
 import RichTextEditor from './RichTextLoader';
+import { prepareTextLayout } from './textFit';
+import { fitTextElement } from './textFitting';
+
+const prepareLayout = (before: Deck, next: Deck) => prepareTextLayout(before, next, fitTextElement);
 
 const isTyping = (target: EventTarget | null) =>
   target instanceof HTMLElement &&
@@ -123,7 +127,7 @@ export default function App() {
     canUndo,
     canRedo,
     getCurrentDeck,
-  } = useEditor(createDeck);
+  } = useEditor(createDeck, prepareLayout);
   const [slideIndex, setSlideIndex] = useState(0),
     [selection, setSelection] = useState<string[]>([]),
     [ready, setReady] = useState(false),
@@ -292,6 +296,28 @@ export default function App() {
   }
   function replaceElements(elements: SlideElement[]) {
     patchSlide({ elements });
+    return getCurrentDeck().slides.find((item) => item.id === slide.id)?.elements;
+  }
+  function recalculateTextFit(element: TextElement) {
+    if (!finishCanvasDraft()) return;
+    commit(
+      (current) => ({
+        ...current,
+        slides: current.slides.map((item) =>
+          item.id === slide.id
+            ? {
+                ...item,
+                elements: item.elements.map((candidate) =>
+                  candidate.id === element.id && candidate.type === 'text' && !candidate.locked
+                    ? fitTextElement(candidate)
+                    : candidate,
+                ),
+              }
+            : item,
+        ),
+      }),
+      { preserveLayout: true },
+    );
   }
   function editRichText(element: TextElement) {
     if (!finishCanvasDraft()) return;
@@ -565,7 +591,7 @@ export default function App() {
     setBusy(true);
     try {
       await preserveCurrent();
-      commit(next);
+      commit(next, { preserveLayout: true });
       setSlideIndex(0);
       setSelection([]);
       setOverview(false);
@@ -602,7 +628,7 @@ export default function App() {
         next = validateDeck(JSON.parse(await file.text()));
       }
       await preserveCurrent();
-      commit(next);
+      commit(next, { preserveLayout: true });
       setSlideIndex(0);
       setSelection([]);
       setSaveAllowed(true);
@@ -1270,6 +1296,7 @@ export default function App() {
                   selected={selection}
                   onSelect={setSelection}
                   onChange={replaceElements}
+                  getElements={() => currentSlide()?.elements ?? []}
                   zoom={zoom}
                   grid={grid}
                 />
@@ -1304,6 +1331,7 @@ export default function App() {
             slide={slide}
             selected={selected}
             onElementPatch={patchElements}
+            onFitText={recalculateTextFit}
             onSlidePatch={patchSlide}
             onTheme={applyTheme}
             onSelect={(id) => setSelection([id])}

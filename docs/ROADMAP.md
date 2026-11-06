@@ -8,7 +8,9 @@ Milestones are ordered by dependency and usefulness, not promised dates.
 
 ## Current progress
 
-The alpha.1 foundation is public. Alpha.2 added selected-range rich-text editing and supported run/paragraph interchange. Alpha.3 adds signed text-box insets, wrapping, independent overflow controls, vertical anchors, and supported slide/layout/master body-property inheritance. Original PowerPoint-authored fixtures and native save/re-import checks accompany these milestones; the [testing record](TESTING.md) describes their scope. Reliable interchange and the broader parity goal remain unfinished.
+The alpha.1 foundation is public. Alpha.2 added selected-range rich-text editing and supported run/paragraph interchange. Alpha.3 added signed text-box insets, wrapping, independent overflow controls, vertical anchors, and supported slide/layout/master body-property inheritance. Alpha.4 adds no/shrink/resize fitting modes, saved font scale and line-spacing reduction, live fitting after relevant edits, and exact fixed-point line spacing. Base run sizes remain editable and separate from fitting results.
+
+Original PowerPoint-authored fixtures and native save/re-import checks accompany these milestones; the [testing record](TESTING.md) describes their scope. The original autofit fixture enabled fitting through windowless COM but did not compute saved shrink factors. A separately identified XML-derived probe supplies known factors for native rendering and round-trip checks. Neither establishes a complete PowerPoint layout engine. Reliable interchange and the broader parity goal remain unfinished.
 
 ## 0.1 — Usable public foundation
 
@@ -25,7 +27,9 @@ Release gate: the test suite and production build pass; the editor's principal u
 
 ## 0.2 — Reliable interchange
 
-Build on the supported rich runs, paragraphs, links, and text-frame geometry. Next priorities are saved autofit scaling and live fitting, complete-line clipping, attached text-box fills/outlines, full theme/master/layout inheritance, grouped transforms, editable table fidelity, multi-series charts, image cropping, gradients, shadows, internal slide links/actions, and preservation of unsupported package content where feasible. Improve tab stops, typography, numbering restart behavior, and layout fidelity against a broader corpus.
+Build on supported rich runs, paragraphs, links, text-frame geometry, saved autofit factors, and live fitting. Next priorities are cross-engine text metrics, paragraph boundary spacing, complete-line clipping, attached text-box fills/outlines, full theme/master/layout inheritance, grouped transforms, editable table fidelity, multi-series charts, image cropping, gradients, shadows, internal slide links/actions, and preservation of unsupported package content where feasible. Improve tab stops, typography, numbering restart behavior, and layout fidelity against a broader corpus.
+
+The current browser renderer applies first-paragraph before-spacing and last-paragraph after-spacing, while native PowerPoint probes ignore those boundary values by default; `spcFirstLastPara` is not modeled. Relative line-height also uses CSS metrics, which differ from the 1.2-times-font-size advance observed in a native 100%-spacing probe. Resolve these measured differences before claiming equivalent automatic layout. Keep stored factors, source nominal fonts, exact point spacing, and derived layout results independently testable.
 
 Release gate: a redistributable corpus of independently authored decks, explicit per-feature import/export results, package validation, and visual comparisons in multiple applications. Add regression fixtures for every compatibility bug. Track content preservation, editability, visual fidelity, and behavior separately.
 

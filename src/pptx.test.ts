@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import JSZip from 'jszip';
 import { exportPptx, importPptx, pptxExportWarnings } from './pptx';
-import type { Deck, ElementBase, Theme, TextElement } from './types';
+import type { Deck, ElementBase, Theme, TextElement, TextAutoFit } from './types';
 import { plainText } from './richText';
 import { validateDeck } from './model';
 import { resolveTextFrame } from './textFrame';
@@ -301,6 +301,53 @@ describe('editable PPTX interoperability', () => {
     });
   });
 
+  it.each(['shape', 'image', 'table', 'chart'] as const)(
+    'warns at the positive non-text unit boundary for %s without flagging negative positions',
+    (type) => {
+      const deck = sample();
+      const item = deck.slides[0].elements.find((element) => element.type === type)!;
+      deck.slides[0].elements = [item];
+      const warned = () =>
+        pptxExportWarnings(deck).some((message) => message.includes('library unit limit'));
+      for (const key of ['x', 'y', 'width', 'height'] as const) {
+        Object.assign(item, { x: 100, y: 100, width: 100, height: 100, [key]: 9599.99 });
+        expect(warned(), `${type} ${key} below threshold`).toBe(false);
+        item[key] = 9600;
+        expect(warned(), `${type} ${key} at threshold`).toBe(true);
+      }
+      Object.assign(item, { x: -100000, y: -100000, width: 100, height: 100 });
+      expect(warned()).toBe(false);
+    },
+  );
+
+  it('checks the exported line center and excludes corrected text geometry from the unit-limit warning', () => {
+    const deck = sample();
+    const text = deck.slides[0].elements[0];
+    Object.assign(text, { x: 50000, y: 50000, width: 50000, height: 50000 });
+    deck.slides[0].elements = [text];
+    const warned = () =>
+      pptxExportWarnings(deck).some((message) => message.includes('library unit limit'));
+    expect(warned()).toBe(false);
+    for (const shape of ['line', 'arrow'] as const) {
+      const line = {
+        ...base,
+        type: 'shape' as const,
+        shape,
+        fill: '#174F43',
+        stroke: '#174F43',
+        strokeWidth: 2,
+        x: 100,
+        y: 9590,
+        width: 100,
+        height: 20,
+      };
+      deck.slides[0].elements = [line];
+      expect(warned()).toBe(true);
+      Object.assign(line, { y: -10000, height: 20000 });
+      expect(warned()).toBe(false);
+    }
+  });
+
   it('follows presentation relationship order rather than slide filenames, and resolves theme colors', async () => {
     const result = await importPptx(await fixture());
     expect(result.deck.slides[0].elements[0]).toMatchObject({
@@ -315,6 +362,65 @@ describe('editable PPTX interoperability', () => {
     });
     expect(result.deck.slides[1].elements[0]).toMatchObject({ text: 'Later' });
   });
+
+  it.each([
+    { x: 50000, y: -50000, width: 0.01, height: 0.01, rotation: 360 },
+    { x: -100000, y: 100000, width: 100000, height: 100000, rotation: -360 },
+    { x: 9600, y: 9600, width: 9600, height: 9600, rotation: 720 },
+  ])('preserves legal text geometry beyond the library unit heuristic: %j', async (geometry) => {
+    const deck = sample();
+    const text = deck.slides[0].elements[0] as TextElement;
+    Object.assign(text, geometry, { autoFit: { mode: 'resize' } });
+    deck.slides[0].elements = [text];
+    expect(() => validateDeck(deck)).not.toThrow();
+    const bytes = await buffer(await exportPptx(deck));
+    const zip = await JSZip.loadAsync(bytes);
+    const xml = new DOMParser().parseFromString(
+      await zip.file('ppt/slides/slide1.xml')!.async('string'),
+      'application/xml',
+    );
+    const transform = xml
+      .getElementsByTagNameNS('*', 'sp')[0]
+      .getElementsByTagNameNS('*', 'xfrm')[0];
+    const off = transform.getElementsByTagNameNS('*', 'off')[0];
+    const ext = transform.getElementsByTagNameNS('*', 'ext')[0];
+    expect(off.getAttribute('x')).toBe(String(Math.round(geometry.x * 9525)));
+    expect(off.getAttribute('y')).toBe(String(Math.round(geometry.y * 9525)));
+    expect(ext.getAttribute('cx')).toBe(String(Math.round(geometry.width * 9525)));
+    expect(ext.getAttribute('cy')).toBe(String(Math.round(geometry.height * 9525)));
+    expect(transform.getAttribute('rot')).toBe(String(geometry.rotation * 60000));
+    const imported = await importPptx(bytes);
+    expect(imported.deck.slides[0].elements[0]).toMatchObject({
+      ...geometry,
+      autoFit: { mode: 'resize' },
+    });
+    expect(() => validateDeck(imported.deck)).not.toThrow();
+    expect(pptxExportWarnings(deck).join(' ')).not.toContain('equivalent angle');
+  });
+
+  it.each([
+    [360000, 360],
+    [-360000, -360],
+    [359999, 359],
+    [-359999, -359],
+  ])(
+    'writes representable equivalent text angles for %s degrees while preserving nonzero full turns',
+    async (rotation, expected) => {
+      const deck = sample();
+      const text = deck.slides[0].elements[0] as TextElement;
+      text.rotation = rotation;
+      text.autoFit = { mode: 'resize' };
+      deck.slides[0].elements = [text];
+      expect(pptxExportWarnings(deck).join(' ')).toContain('equivalent angle');
+      const bytes = await buffer(await exportPptx(deck));
+      const imported = await importPptx(bytes);
+      expect(imported.deck.slides[0].elements[0]).toMatchObject({
+        rotation: expected,
+        autoFit: { mode: 'resize' },
+      });
+      expect(text.rotation).toBe(rotation);
+    },
+  );
 
   it('preserves object stacking order across different drawing types', async () => {
     const shape =
@@ -559,17 +665,17 @@ describe('editable PPTX interoperability', () => {
   );
 
   it.each([
-    ['<a:normAutofit/>', 'Shrink-text-to-fit behavior'],
+    ['<a:normAutofit/>', { mode: 'shrink', fontScale: 1, lineSpacingReduction: 0 }],
     [
       '<a:normAutofit fontScale="80000" lnSpcReduction="10000"/>',
-      'autofit font scaling and line-spacing reductions',
+      { mode: 'shrink', fontScale: 0.8, lineSpacingReduction: 0.1 },
     ],
     [
       '<a:normAutofit fontScale="80.000%" lnSpcReduction="10.000%"/>',
-      'autofit font scaling and line-spacing reductions',
+      { mode: 'shrink', fontScale: 0.8, lineSpacingReduction: 0.1 },
     ],
-    ['<a:spAutoFit/>', 'Resize-shape-to-fit-text behavior'],
-  ])('warns for inherited unsupported autofit choice %s', async (fit, warning) => {
+    ['<a:spAutoFit/>', { mode: 'resize' }],
+  ])('preserves the inherited autofit choice %s without baking sizes', async (fit, expected) => {
     const result = await importPptx(
       await fixture((zip) => {
         zip.file('ppt/slides/slide12.xml', slide(placeholderText('idx="3"', '<a:bodyPr/>')));
@@ -579,7 +685,336 @@ describe('editable PPTX interoperability', () => {
         );
       }),
     );
-    expect(result.warnings.join(' ')).toContain(warning);
+    const text = result.deck.slides[0].elements[0] as TextElement;
+    expect(text.autoFit).toEqual(expected);
+    expect(text.fontSize).toBe(24);
+    expect(result.warnings.join(' ')).toContain('Automatic text fitting can reflow differently');
+    expect(result.warnings.join(' ')).not.toMatch(/not applied|behavior is not retained/);
+  });
+
+  it.each([
+    [
+      '',
+      '<a:normAutofit fontScale="70000" lnSpcReduction="20000"/>',
+      { mode: 'shrink', fontScale: 0.7, lineSpacingReduction: 0.2 },
+    ],
+    ['<a:noAutofit/>', '<a:normAutofit fontScale="70000"/>', { mode: 'none' }],
+    ['<a:noAutofit/>', '<a:spAutoFit/>', { mode: 'none' }],
+    [
+      '<a:normAutofit/>',
+      '<a:normAutofit fontScale="70000" lnSpcReduction="20000"/>',
+      { mode: 'shrink', fontScale: 1, lineSpacingReduction: 0 },
+    ],
+    [
+      '<a:normAutofit fontScale="81234" lnSpcReduction="0"/>',
+      '<a:spAutoFit/>',
+      { mode: 'shrink', fontScale: 0.81234, lineSpacingReduction: 0 },
+    ],
+    ['<a:spAutoFit/>', '<a:normAutofit fontScale="70000"/>', { mode: 'resize' }],
+    ['', '', { mode: 'none' }],
+  ])(
+    'resolves the nearest entire fit choice and then its own defaults: local=%s master=%s',
+    async (local, master, expected) => {
+      const result = await importPptx(
+        await fixture((zip) => {
+          zip.file(
+            'ppt/slides/slide12.xml',
+            slide(placeholderText('idx="2"', `<a:bodyPr>${local}</a:bodyPr>`)),
+          );
+          zip.file(
+            'ppt/slideLayouts/slideLayout1.xml',
+            `<p:sldLayout ${ns}><p:cSld><p:spTree>${placeholderText('idx="2"', '<a:bodyPr/>')}</p:spTree></p:cSld></p:sldLayout>`,
+          );
+          zip.file(
+            'ppt/slideMasters/slideMaster1.xml',
+            `<p:sldMaster ${ns}><p:cSld><p:spTree>${placeholderText('idx="1" type="body"', `<a:bodyPr>${master}</a:bodyPr>`)}</p:spTree></p:cSld></p:sldMaster>`,
+          );
+        }),
+      );
+      const text = result.deck.slides[0].elements[0] as TextElement;
+      expect(text.autoFit).toEqual(expected);
+      if (expected.mode === 'none')
+        expect(result.warnings.join(' ')).not.toContain('Automatic text fitting');
+    },
+  );
+
+  it.each([
+    ['0', '-20000', 0.01, 0, 'outside the supported range'],
+    ['200000', '13200001', 1, 132, 'outside the supported range'],
+    ['1000', '13200000', 0.01, 132, null],
+    ['81.23456%', '12.34567%', 0.8123456, 0.1234567, null],
+    ['NaN', 'Infinity', 1, 0, 'Invalid autofit'],
+    ['', '', 1, 0, 'Invalid autofit'],
+    ['0x1000', '1e4', 1, 0, 'Invalid autofit'],
+  ])(
+    'normalizes autofit values safely: fontScale=%s reduction=%s',
+    async (font, reduction, expectedFont, expectedReduction, warning) => {
+      const result = await importPptx(
+        await fixture((zip) => {
+          zip.file(
+            'ppt/slides/slide12.xml',
+            slide(
+              textShape('Scaled').replace(
+                '<a:bodyPr/>',
+                `<a:bodyPr><a:normAutofit fontScale="${font}" lnSpcReduction="${reduction}"/></a:bodyPr>`,
+              ),
+            ),
+          );
+        }),
+      );
+      const text = result.deck.slides[0].elements[0] as TextElement;
+      expect(text.autoFit?.mode).toBe('shrink');
+      if (text.autoFit?.mode !== 'shrink') throw new Error('Expected normal autofit');
+      expect(text.autoFit.fontScale).toBeCloseTo(expectedFont as number, 12);
+      expect(text.autoFit.lineSpacingReduction).toBeCloseTo(expectedReduction as number, 12);
+      if (warning) expect(result.warnings.join(' ')).toContain(warning);
+      else
+        expect(result.warnings.join(' ')).not.toMatch(
+          /Invalid autofit|outside the supported range/,
+        );
+      const again = (await importPptx(await buffer(await exportPptx(result.deck)))).deck.slides[0]
+        .elements[0] as TextElement;
+      expect(again.autoFit).toEqual(text.autoFit);
+    },
+  );
+
+  it.each<TextAutoFit>([
+    { mode: 'none' },
+    { mode: 'shrink', fontScale: 0.81234, lineSpacingReduction: 0.15 },
+    { mode: 'resize' },
+  ])(
+    'exports exactly one native fit choice for $mode while retaining base fonts and box geometry',
+    async (autoFit) => {
+      const deck = sample();
+      const text = deck.slides[0].elements[0] as TextElement;
+      text.autoFit = autoFit;
+      text.paragraphs = [
+        {
+          runs: [
+            { text: 'Large', fontSize: 40 },
+            { text: ' small', fontSize: 20 },
+          ],
+          lineSpacing: 1.5,
+        },
+      ];
+      text.text = plainText(text.paragraphs);
+      deck.slides[0].elements = [text];
+      const bytes = await buffer(await exportPptx(deck));
+      const zip = await JSZip.loadAsync(bytes);
+      const xml = new DOMParser().parseFromString(
+        await zip.file('ppt/slides/slide1.xml')!.async('string'),
+        'application/xml',
+      );
+      const body = xml.getElementsByTagNameNS('*', 'bodyPr')[0];
+      const choices = Array.from(body.children).filter((node) =>
+        ['noAutofit', 'normAutofit', 'spAutoFit'].includes(node.localName),
+      );
+      expect(choices).toHaveLength(1);
+      expect(choices[0].localName).toBe(
+        autoFit.mode === 'shrink'
+          ? 'normAutofit'
+          : autoFit.mode === 'resize'
+            ? 'spAutoFit'
+            : 'noAutofit',
+      );
+      if (autoFit.mode === 'shrink') {
+        expect(choices[0].getAttribute('fontScale')).toBe('81234');
+        expect(choices[0].getAttribute('lnSpcReduction')).toBe('15000');
+      }
+      expect(
+        Array.from(xml.getElementsByTagNameNS('*', 'rPr')).map((node) => node.getAttribute('sz')),
+      ).toEqual(['4000', '2000']);
+      expect(xml.getElementsByTagNameNS('*', 'spcPct')[0].getAttribute('val')).toBe('150000');
+      const imported = await importPptx(bytes);
+      expect(imported.deck.slides[0].elements[0]).toMatchObject({
+        autoFit,
+        x: text.x,
+        y: text.y,
+        width: text.width,
+        height: text.height,
+      });
+      const again = imported.deck.slides[0].elements[0] as TextElement;
+      expect(again.paragraphs?.[0].runs.map((run) => run.fontSize)).toEqual([40, 20]);
+      expect(again.paragraphs?.[0].lineSpacing).toBe(1.5);
+      expect(imported.deck.slides[0].notes).toBe(deck.slides[0].notes);
+    },
+  );
+
+  it('preserves fixed-point line spacing including zero independently from normal autofit factors', async () => {
+    const result = await importPptx(
+      await fixture((zip) => {
+        const text = textShape('Scaled')
+          .replace(
+            '<a:bodyPr/>',
+            '<a:bodyPr><a:normAutofit fontScale="80000" lnSpcReduction="20000"/></a:bodyPr>',
+          )
+          .replace(
+            '<a:pPr algn="r"/>',
+            '<a:pPr algn="r"><a:lnSpc><a:spcPts val="3750"/></a:lnSpc></a:pPr>',
+          )
+          .replace(
+            '</p:txBody>',
+            '<a:p><a:pPr><a:lnSpc><a:spcPts val="0"/></a:lnSpc></a:pPr><a:endParaRPr sz="1600"/></a:p></p:txBody>',
+          );
+        zip.file('ppt/slides/slide12.xml', slide(text));
+      }),
+    );
+    const text = result.deck.slides[0].elements[0] as TextElement;
+    expect(text.autoFit).toEqual({ mode: 'shrink', fontScale: 0.8, lineSpacingReduction: 0.2 });
+    expect(text.paragraphs?.map((p) => p.lineSpacingPoints)).toEqual([37.5, 0]);
+    expect(text.paragraphs?.map((p) => p.lineSpacing)).toEqual([undefined, undefined]);
+    expect(text.paragraphs?.[0].runs[0].fontSize).toBe(28);
+    expect(result.warnings.join(' ')).not.toContain('Fixed-point line spacing is converted');
+    const bytes = await buffer(await exportPptx(result.deck));
+    const zip = await JSZip.loadAsync(bytes);
+    const xml = new DOMParser().parseFromString(
+      await zip.file('ppt/slides/slide1.xml')!.async('string'),
+      'application/xml',
+    );
+    const lines = Array.from(xml.getElementsByTagNameNS('*', 'lnSpc'));
+    expect(lines.map((line) => line.firstElementChild?.localName)).toEqual(['spcPts', 'spcPts']);
+    expect(lines.map((line) => line.firstElementChild?.getAttribute('val'))).toEqual(['3750', '0']);
+    const again = (await importPptx(bytes)).deck.slides[0].elements[0] as TextElement;
+    expect(again.paragraphs).toEqual(text.paragraphs);
+    expect(again.autoFit).toEqual(text.autoFit);
+  });
+
+  it('imports native PowerPoint fit modes without inventing saved scales absent from the windowless COM fixture', async () => {
+    const source = await readFile('tests/fixtures/powerpoint-autofit.pptx');
+    const imported = await importPptx(
+      source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength),
+    );
+    expect(imported.deck.slides).toHaveLength(7);
+    const texts = imported.deck.slides
+      .flatMap((slide) => slide.elements)
+      .filter((e) => e.type === 'text');
+    const find = (name: string) => texts.find((e) => e.name === name)!;
+    for (const name of [
+      'Plain shrink',
+      'Mixed shrink',
+      'Bulleted shrink',
+      'Spaced shrink',
+      'Default-scale normal fit',
+      'Inherited normal default scale',
+    ])
+      expect(find(name)?.autoFit, name).toEqual({
+        mode: 'shrink',
+        fontScale: 1,
+        lineSpacingReduction: 0,
+      });
+    for (const name of ['No fit baseline', 'Local no-fit overrides inherited normal'])
+      expect(find(name)?.autoFit, name).toEqual({ mode: 'none' });
+    for (const name of [
+      'Wrapped shape resize',
+      'No-wrap shape resize',
+      'Resize top anchor',
+      'Resize middle anchor',
+      'Resize bottom anchor',
+      'Resize rotated top',
+      'Resize rotated middle',
+      'Resize rotated bottom',
+    ])
+      expect(find(name)?.autoFit, name).toEqual({ mode: 'resize' });
+    expect(find('No-wrap shape resize').textFrame?.wrap).toBe('none');
+    expect(
+      ['Resize rotated top', 'Resize rotated middle', 'Resize rotated bottom'].map(
+        (name) => find(name).rotation,
+      ),
+    ).toEqual([30, 30, 30]);
+    expect(
+      ['Resize top anchor', 'Resize middle anchor', 'Resize bottom anchor'].map(
+        (name) => find(name).verticalAlign,
+      ),
+    ).toEqual(['top', 'middle', 'bottom']);
+    expect(find('Probe fixed line spacing').paragraphs?.[0]).toMatchObject({
+      lineSpacingPoints: 36,
+    });
+    expect(find('Probe fixed line spacing').paragraphs?.[0].lineSpacing).toBeUndefined();
+    expect(
+      find('Plain shrink')
+        .paragraphs?.flatMap((p) => p.runs)
+        .every((run) => run.fontSize === 30),
+    ).toBe(true);
+    expect(
+      new Set(
+        find('Mixed shrink')
+          .paragraphs?.flatMap((p) => p.runs)
+          .map((run) => run.fontSize),
+      ),
+    ).toEqual(new Set([42, 30, 20]));
+  });
+
+  it('preserves the native-rendered XML saved-scale probe factors, nominal rich fonts, spacing and geometry through PPTX export', async () => {
+    const source = await readFile('tests/fixtures/powerpoint-autofit-saved-scale-probe.pptx');
+    const imported = await importPptx(
+      source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength),
+    );
+    const texts = imported.deck.slides
+      .flatMap((slide) => slide.elements)
+      .filter((e) => e.type === 'text');
+    const find = (name: string) => texts.find((e) => e.name === name)!;
+    for (const name of ['Plain shrink', 'Mixed shrink', 'Bulleted shrink', 'Spaced shrink'])
+      expect(find(name)?.autoFit, name).toEqual({
+        mode: 'shrink',
+        fontScale: 0.6,
+        lineSpacingReduction: 0.2,
+      });
+    for (const name of [
+      'Inherited normal default scale',
+      'Probe scale and reduction',
+      'Probe fixed line spacing',
+      'Probe percent-string values',
+    ])
+      expect(find(name)?.autoFit, name).toEqual({
+        mode: 'shrink',
+        fontScale: 0.8,
+        lineSpacingReduction: 0.2,
+      });
+    expect(find('Probe scale only').autoFit).toEqual({
+      mode: 'shrink',
+      fontScale: 0.8,
+      lineSpacingReduction: 0,
+    });
+    expect(find('Local no-fit overrides inherited normal').autoFit).toEqual({ mode: 'none' });
+    expect(find('Probe fixed line spacing').paragraphs?.[0].lineSpacingPoints).toBe(36);
+    expect(find('Probe percent-string values').paragraphs?.[0].lineSpacing).toBe(1.5);
+    expect(find('Spaced shrink').paragraphs?.[0]).toMatchObject({
+      lineSpacing: 1.5,
+      spaceBefore: 6,
+      spaceAfter: 12,
+    });
+    expect(find('Probe paragraph spacing').paragraphs?.[0]).toMatchObject({
+      spaceBefore: 10,
+      spaceAfter: 20,
+    });
+    expect(
+      new Set(
+        find('Mixed shrink')
+          .paragraphs?.flatMap((p) => p.runs)
+          .map((run) => run.fontSize),
+      ),
+    ).toEqual(new Set([42, 30, 20]));
+    const bytes = await buffer(await exportPptx(imported.deck));
+    const again = await importPptx(bytes);
+    for (let index = 0; index < imported.deck.slides.length; index++) {
+      const projection = (deck: Deck) =>
+        deck.slides[index].elements
+          .filter((e) => e.type === 'text')
+          .map((e) => ({
+            name: e.name,
+            autoFit: e.autoFit,
+            paragraphs: e.paragraphs,
+            x: e.x,
+            y: e.y,
+            width: e.width,
+            height: e.height,
+            rotation: e.rotation,
+            textFrame: e.textFrame,
+            verticalAlign: e.verticalAlign,
+          }));
+      expect(projection(again.deck)).toEqual(projection(imported.deck));
+      expect(again.deck.slides[index].notes).toBe(imported.deck.slides[index].notes);
+    }
   });
 
   it('warns for effective inherited columns, ellipsis, vertical text and anchoring while local supported overrides suppress those warnings', async () => {

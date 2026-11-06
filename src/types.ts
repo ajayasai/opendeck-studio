@@ -18,6 +18,10 @@ export interface TextFrame {
   horizontalOverflow: 'overflow' | 'clip';
   verticalOverflow: 'overflow' | 'clip';
 }
+export type TextAutoFit =
+  | { mode: 'none' }
+  | { mode: 'shrink'; fontScale: number; lineSpacingReduction: number }
+  | { mode: 'resize' };
 export interface TextElement extends ElementBase {
   type: 'text';
   text: string;
@@ -33,6 +37,8 @@ export interface TextElement extends ElementBase {
   paragraphs?: TextParagraph[];
   /** Absent in legacy files: zero insets, square wrapping, and clipping on both axes. */
   textFrame?: TextFrame;
+  /** Saved fitting result; base run sizes remain unchanged. Absence means no fitting. */
+  autoFit?: TextAutoFit;
 }
 export interface TextRun {
   text: string;
@@ -50,6 +56,8 @@ export interface TextParagraph {
   bullet?: { kind: 'bullet' | 'number'; level: number; start?: number; character?: string };
   /** Line height multiplier and spacing before/after in points. */
   lineSpacing?: number;
+  /** Exact line height in points, mutually exclusive with relative lineSpacing. */
+  lineSpacingPoints?: number;
   spaceBefore?: number;
   spaceAfter?: number;
 }

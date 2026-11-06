@@ -29,6 +29,45 @@ function example(): TextElement {
 }
 
 describe('rich text representation and compatibility', () => {
+  it('validates exact line spacing independently and rejects contradictory representations', () => {
+    for (const lineSpacingPoints of [0, 0.125, 1000]) {
+      const paragraphs = [{ runs: [{ text: 'Exact' }], lineSpacingPoints }];
+      expect(validateParagraphs(paragraphs)).toEqual(paragraphs);
+    }
+    for (const lineSpacingPoints of [null, '18', NaN, Infinity, -0.01, 1000.01])
+      expect(() => validateParagraphs([{ runs: [], lineSpacingPoints }])).toThrow(
+        'exact line spacing',
+      );
+    expect(() =>
+      validateParagraphs([{ runs: [], lineSpacing: 1.5, lineSpacingPoints: 18 }]),
+    ).toThrow('either');
+    const deck = createDeck();
+    deck.slides[0].elements[0] = withParagraphs(box(), [
+      { runs: [{ text: 'Exact' }], lineSpacingPoints: 23.5 },
+    ]);
+    expect(validateDeck(JSON.parse(JSON.stringify(deck)))).toEqual(deck);
+  });
+
+  it('preserves exact spacing through plain text insertion and paragraph continuation', () => {
+    const source = withParagraphs(box(), [
+      { runs: [{ text: 'Hello world', bold: true }], lineSpacingPoints: 19.25, spaceAfter: 3 },
+      { runs: [{ text: 'Relative' }], lineSpacing: 1.5 },
+    ]);
+    const next = replacePlainText(source, 'Hello new\nworld\nRelative');
+    expect(next.paragraphs!.map((paragraph) => paragraph.lineSpacingPoints)).toEqual([
+      19.25,
+      19.25,
+      undefined,
+    ]);
+    expect(next.paragraphs!.map((paragraph) => paragraph.lineSpacing)).toEqual([
+      undefined,
+      undefined,
+      1.5,
+    ]);
+    expect(next.text).toBe(plainText(next.paragraphs!));
+    expect(source.text).toBe('Hello world\nRelative');
+  });
+
   it('projects runs and paragraphs exactly, including blank paragraphs and inline hard breaks', () => {
     const paragraphs: TextParagraph[] = [
       { runs: [{ text: 'Hello' }, { text: '\nworld' }] },

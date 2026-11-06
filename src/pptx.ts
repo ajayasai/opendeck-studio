@@ -3,6 +3,7 @@ import JSZip from 'jszip';
 import { contrastText, validateDeck } from './model';
 import { getParagraphs, plainText, safeHyperlink } from './richText';
 import { resolveTextFrame } from './textFrame';
+import { resolveAutoFit } from './textFit';
 import type {
   Deck,
   ElementBase,
@@ -14,6 +15,7 @@ import type {
   TextElement,
   TextParagraph,
   TextRun,
+  TextAutoFit,
 } from './types';
 
 // ECMA-376: Open Packaging Conventions and PresentationML. Import deliberately
@@ -29,6 +31,8 @@ const MAX_XML = 5 * 1024 * 1024;
 const imagePattern = /^data:image\/(png|jpeg|gif|webp);base64,[A-Za-z0-9+/=\r\n]+$/;
 const verticalClipWarning =
   'PowerPoint can omit whole lines that cross the inset content bottom when vertical overflow is clipped; browser clipping may show partial or additional lines.';
+const autoFitWarning =
+  'Automatic text fitting can reflow differently in other applications because font metrics and line layout differ.';
 const identifier = () => crypto.randomUUID();
 const hex = (color: string, fallback = 'FFFFFF') =>
   /^#[\da-f]{6}$/i.test(color) ? color.slice(1) : fallback;
@@ -61,6 +65,23 @@ function drawingNode(
   return node;
 }
 
+/** Office normally writes thousandths of a percent; retain finer percent input too. */
+function fitPercentage(value: number): string {
+  const units = value * 100000;
+  return Math.abs(units - Math.round(units)) < 1e-7
+    ? String(Math.round(units))
+    : `${Number((value * 100).toPrecision(15))}%`;
+}
+
+function textRotationUnits(rotation: number): number {
+  const units = Math.round(rotation * 60000);
+  // DrawingML rot is a signed 32-bit angle; the native model permits more turns.
+  // Keep a full turn nonzero because shape fitting distinguishes it from zero.
+  return units >= -2147483648 && units <= 2147483647
+    ? units
+    : Math.round((rotation % 360 || Math.sign(rotation) * 360) * 60000);
+}
+
 function writeTextBody(
   doc: Document,
   shape: Element,
@@ -69,6 +90,23 @@ function writeTextBody(
 ): void {
   const body = child(shape, 'txBody');
   if (!body) return;
+  const properties = child(shape, 'spPr');
+  if (properties) {
+    // PptxGenJS treats numeric positions/sizes >=100 as already being EMUs.
+    // Write the native geometry explicitly, including very small/large boxes.
+    const transform = child(properties, 'xfrm') ?? drawingNode(doc, 'xfrm');
+    if (source.rotation !== 0)
+      transform.setAttribute('rot', String(textRotationUnits(source.rotation)));
+    else transform.removeAttribute('rot');
+    transform.replaceChildren(
+      drawingNode(doc, 'off', { x: Math.round(source.x * EMU), y: Math.round(source.y * EMU) }),
+      drawingNode(doc, 'ext', {
+        cx: Math.round(source.width * EMU),
+        cy: Math.round(source.height * EMU),
+      }),
+    );
+    if (!transform.parentNode) properties.prepend(transform);
+  }
   const frame = resolveTextFrame(source);
   const bodyPr = drawingNode(doc, 'bodyPr', {
     lIns: Math.round(frame.insets.left * EMU),
@@ -83,8 +121,15 @@ function writeTextBody(
     'anchor',
     source.verticalAlign === 'middle' ? 'ctr' : source.verticalAlign === 'bottom' ? 'b' : 't',
   );
-  // The editor stores fixed run sizes and box geometry, without automatic resizing.
-  bodyPr.appendChild(drawingNode(doc, 'noAutofit'));
+  const autoFit = resolveAutoFit(source);
+  bodyPr.appendChild(
+    autoFit.mode === 'shrink'
+      ? drawingNode(doc, 'normAutofit', {
+          fontScale: fitPercentage(autoFit.fontScale),
+          lnSpcReduction: fitPercentage(autoFit.lineSpacingReduction),
+        })
+      : drawingNode(doc, autoFit.mode === 'resize' ? 'spAutoFit' : 'noAutofit'),
+  );
   body.replaceChildren(bodyPr, drawingNode(doc, 'lstStyle'));
   const linkIds = new Map<string, string>();
   const usedIds = new Set(descendants(relations, 'Relationship').map((r) => attr(r, 'Id')));
@@ -159,7 +204,9 @@ function writeTextBody(
     });
     const spacing = drawingNode(doc, 'lnSpc');
     spacing.appendChild(
-      drawingNode(doc, 'spcPct', { val: Math.round((paragraph.lineSpacing ?? 1.16) * 100000) }),
+      paragraph.lineSpacingPoints !== undefined
+        ? drawingNode(doc, 'spcPts', { val: Math.round(paragraph.lineSpacingPoints * 100) })
+        : drawingNode(doc, 'spcPct', { val: Math.round((paragraph.lineSpacing ?? 1.16) * 100000) }),
     );
     props.appendChild(spacing);
     for (const [name, value] of [
@@ -233,6 +280,26 @@ export function pptxExportWarnings(deck: Deck): string[] {
   const warnings: string[] = [];
   if (
     deck.slides.some((slide) =>
+      slide.elements.some((element) => {
+        if (element.type === 'text') return false;
+        const linear =
+          element.type === 'shape' && (element.shape === 'line' || element.shape === 'arrow');
+        // Match the actual inch arguments, including centered horizontal lines.
+        // Negative positions take the library's inches path and are unaffected.
+        return [
+          element.x / 96,
+          element.y / 96 + (linear ? element.height / 96 / 2 : 0),
+          element.width / 96,
+          linear ? 0 : element.height / 96,
+        ].some((value) => value >= 100);
+      }),
+    )
+  )
+    warnings.push(
+      'Non-text objects with positive positions or dimensions of 9,600 px or more may be misplaced or resized in PPTX export because of a library unit limit.',
+    );
+  if (
+    deck.slides.some((slide) =>
       slide.elements.some(
         (element) =>
           element.type === 'text' && resolveTextFrame(element).verticalOverflow === 'clip',
@@ -253,6 +320,11 @@ export function pptxExportWarnings(deck: Deck): string[] {
   for (const text of deck.slides
     .flatMap((slide) => slide.elements)
     .filter((element) => element.type === 'text')) {
+    if (textRotationUnits(text.rotation) !== Math.round(text.rotation * 60000))
+      warnings.push(
+        'Text rotations beyond the DrawingML angle range use an equivalent angle in PPTX; a full turn remains nonzero.',
+      );
+    if (resolveAutoFit(text).mode !== 'none') warnings.push(autoFitWarning);
     if (getParagraphs(text).some((paragraph) => paragraph.runs.some((run) => run.hyperlink)))
       warnings.push(
         'PowerPoint may display hyperlinks using its theme link colors even when an explicit run color is stored.',
@@ -601,11 +673,19 @@ function shapeGeometry(
   const off = child(xfrm, 'off');
   const ext = child(xfrm, 'ext');
   return {
-    x: clamp(transform.x + (number(attr(off, 'x'), 80 * EMU) / EMU) * transform.sx, -20000, 20000),
-    y: clamp(transform.y + (number(attr(off, 'y'), 80 * EMU) / EMU) * transform.sy, -20000, 20000),
-    width: clamp((number(attr(ext, 'cx'), 600 * EMU) / EMU) * transform.sx, 1, 20000),
-    height: clamp((number(attr(ext, 'cy'), 100 * EMU) / EMU) * transform.sy, 1, 20000),
-    rotation: (((number(attr(xfrm, 'rot')) / 60000 + transform.rotation) % 360) + 360) % 360,
+    x: clamp(
+      transform.x + (number(attr(off, 'x'), 80 * EMU) / EMU) * transform.sx,
+      -100000,
+      100000,
+    ),
+    y: clamp(
+      transform.y + (number(attr(off, 'y'), 80 * EMU) / EMU) * transform.sy,
+      -100000,
+      100000,
+    ),
+    width: clamp((number(attr(ext, 'cx'), 600 * EMU) / EMU) * transform.sx, 0.01, 100000),
+    height: clamp((number(attr(ext, 'cy'), 100 * EMU) / EMU) * transform.sy, 0.01, 100000),
+    rotation: clamp(number(attr(xfrm, 'rot')) / 60000 + transform.rotation, -360000, 360000),
   };
 }
 
@@ -685,7 +765,7 @@ function masterPlaceholderFor(
 function readTextBodyProperties(
   bodies: Array<Element | undefined>,
   warn: Warn,
-): Pick<TextElement, 'textFrame' | 'verticalAlign'> {
+): Pick<TextElement, 'textFrame' | 'verticalAlign' | 'autoFit'> {
   const cascade = bodies.map((body) => child(body, 'bodyPr'));
   // Resolve each attribute independently. A local zero or false is an override,
   // while an absent attribute continues through layout/master to OOXML defaults.
@@ -743,24 +823,37 @@ function readTextBodyProperties(
         )
       : [],
   )[0];
-  if (fit?.localName === 'spAutoFit')
-    warn('Resize-shape-to-fit-text behavior is not retained; the saved text-box size is kept.');
+  let autoFit: TextAutoFit = { mode: fit?.localName === 'spAutoFit' ? 'resize' : 'none' };
   if (fit?.localName === 'normAutofit') {
-    const percent = (value: string | null, fallback: number) =>
-      value?.trim().endsWith('%')
-        ? number(value.trim().slice(0, -1), fallback / 1000) * 1000
-        : number(value, fallback);
-    const fontScale = percent(attr(fit, 'fontScale'), 100000);
-    const lineReduction = percent(attr(fit, 'lnSpcReduction'), 0);
-    warn(
-      fontScale !== 100000 || lineReduction !== 0
-        ? 'Text autofit font scaling and line-spacing reductions are not applied; original run sizes and paragraph spacing are kept.'
-        : 'Shrink-text-to-fit behavior is not retained; fixed run sizes and paragraph spacing are kept.',
-    );
+    const factor = (name: string, fallback: number, min: number, max: number): number => {
+      const value = attr(fit, name)?.trim();
+      if (value === undefined) return fallback;
+      const percent = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)%$/.test(value);
+      const numeric = /^[+-]?\d+$/.test(value);
+      const parsed = percent
+        ? Number(value.slice(0, -1)) / 100
+        : numeric
+          ? Number(value) / 100000
+          : NaN;
+      if (!Number.isFinite(parsed)) {
+        warn(`Invalid autofit ${name} used its default value.`);
+        return fallback;
+      }
+      if (parsed < min || parsed > max)
+        warn(`Autofit ${name} outside the supported range was limited to ${min}–${max}.`);
+      return clamp(parsed, min, max);
+    };
+    autoFit = {
+      mode: 'shrink',
+      fontScale: factor('fontScale', 1, 0.01, 1),
+      lineSpacingReduction: factor('lnSpcReduction', 0, 0, 132),
+    };
   }
+  if (autoFit.mode !== 'none') warn(autoFitWarning);
   const verticalOverflow = overflow('vertOverflow');
   if (verticalOverflow === 'clip') warn(verticalClipWarning);
   return {
+    autoFit,
     textFrame: {
       insets: {
         top: inset('tIns', 45720),
@@ -938,16 +1031,18 @@ function readParagraphs(
     const lineSpacing = firstChild(cascade, 'lnSpc');
     const percent = child(lineSpacing, 'spcPct');
     const points = child(lineSpacing, 'spcPts');
-    result.lineSpacing = clamp(
-      percent
-        ? number(attr(percent, 'val'), 100000) / 100000
-        : points
-          ? number(attr(points, 'val'), size * 100) / (size * 100)
-          : 1,
-      0.5,
-      10,
-    );
-    if (points) warn('Fixed-point line spacing is converted to a relative line-height multiplier.');
+    if (points) {
+      const value = number(attr(points, 'val'), size * 100) / 100;
+      if (value < 0 || value > 1000)
+        warn('Fixed-point line spacing outside the supported range was limited to 0–1,000 points.');
+      result.lineSpacingPoints = clamp(value, 0, 1000);
+    } else {
+      result.lineSpacing = clamp(
+        percent ? number(attr(percent, 'val'), 100000) / 100000 : 1,
+        0.5,
+        10,
+      );
+    }
     for (const [name, key] of [
       ['spcBef', 'spaceBefore'],
       ['spcAft', 'spaceAfter'],
