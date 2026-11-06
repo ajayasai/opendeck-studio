@@ -1,0 +1,86 @@
+/** Geometry is in CSS pixels at 96 DPI. Text size is in points (1pt = 4/3 px). */
+export interface ElementBase {
+  id: string;
+  name: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  opacity: number;
+  locked: boolean;
+  animation: 'none' | 'fade' | 'rise';
+}
+export interface TextElement extends ElementBase {
+  type: 'text';
+  text: string;
+  fontSize: number;
+  fontFamily: string;
+  color: string;
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+  align: 'left' | 'center' | 'right';
+  verticalAlign: 'top' | 'middle' | 'bottom';
+}
+export interface ShapeElement extends ElementBase {
+  type: 'shape';
+  shape: 'rect' | 'roundRect' | 'ellipse' | 'triangle' | 'line' | 'arrow';
+  fill: string;
+  stroke: string;
+  strokeWidth: number;
+}
+export interface ImageElement extends ElementBase {
+  type: 'image';
+  src: string;
+  alt: string;
+  fit: 'contain' | 'cover';
+}
+export interface TableElement extends ElementBase {
+  type: 'table';
+  rows: string[][];
+  header: boolean;
+  color: string;
+  fill: string;
+  fontSize: number;
+}
+export interface ChartElement extends ElementBase {
+  type: 'chart';
+  chartType: 'bar' | 'line' | 'pie';
+  labels: string[];
+  values: number[];
+  color: string;
+}
+export type SlideElement = TextElement | ShapeElement | ImageElement | TableElement | ChartElement;
+export interface Slide {
+  id: string;
+  name: string;
+  background: string;
+  elements: SlideElement[];
+  notes: string;
+  transition: 'none' | 'fade' | 'slide';
+  hidden: boolean;
+}
+export interface Theme {
+  id: string;
+  name: string;
+  background: string;
+  foreground: string;
+  accent: string;
+  muted: string;
+  fontFamily: string;
+}
+export interface Deck {
+  schemaVersion: 1;
+  id: string;
+  title: string;
+  width: number;
+  height: number;
+  theme: Theme;
+  slides: Slide[];
+  updatedAt: string;
+}
+export interface ImportResult {
+  deck: Deck;
+  warnings: string[];
+}
