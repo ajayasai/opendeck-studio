@@ -3,7 +3,14 @@ import { readFile, writeFile } from 'node:fs/promises';
 import JSZip from 'jszip';
 import { JSDOM } from 'jsdom';
 const path = process.argv[2];
-if (!path?.endsWith('powerpoint-original.pptx') && !path?.endsWith('powerpoint-rich-text.pptx'))
+if (
+  ![
+    'powerpoint-original.pptx',
+    'powerpoint-rich-text.pptx',
+    'powerpoint-text-frame.pptx',
+    'powerpoint-text-frame-attached-outline-probe.pptx',
+  ].some((name) => path?.endsWith(name))
+)
   throw new Error('Expected the dedicated original fixture filename.');
 const dom = new JSDOM();
 const zip = await JSZip.loadAsync(await readFile(path));

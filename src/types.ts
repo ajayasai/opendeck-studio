@@ -11,6 +11,13 @@ export interface ElementBase {
   locked: boolean;
   animation: 'none' | 'fade' | 'rise';
 }
+export interface TextFrame {
+  /** Signed CSS pixels at 96 DPI; negative insets extend the content area. */
+  insets: { top: number; right: number; bottom: number; left: number };
+  wrap: 'square' | 'none';
+  horizontalOverflow: 'overflow' | 'clip';
+  verticalOverflow: 'overflow' | 'clip';
+}
 export interface TextElement extends ElementBase {
   type: 'text';
   text: string;
@@ -24,6 +31,8 @@ export interface TextElement extends ElementBase {
   verticalAlign: 'top' | 'middle' | 'bottom';
   /** Optional rich representation. text remains the exact plain-text projection. */
   paragraphs?: TextParagraph[];
+  /** Absent in legacy files: zero insets, square wrapping, and clipping on both axes. */
+  textFrame?: TextFrame;
 }
 export interface TextRun {
   text: string;

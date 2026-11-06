@@ -2,6 +2,7 @@ import PptxGenJS from 'pptxgenjs';
 import JSZip from 'jszip';
 import { contrastText, validateDeck } from './model';
 import { getParagraphs, plainText, safeHyperlink } from './richText';
+import { resolveTextFrame } from './textFrame';
 import type {
   Deck,
   ElementBase,
@@ -26,6 +27,8 @@ const MAX_EXPANDED = 100 * 1024 * 1024;
 const MAX_PART = 20 * 1024 * 1024;
 const MAX_XML = 5 * 1024 * 1024;
 const imagePattern = /^data:image\/(png|jpeg|gif|webp);base64,[A-Za-z0-9+/=\r\n]+$/;
+const verticalClipWarning =
+  'PowerPoint can omit whole lines that cross the inset content bottom when vertical overflow is clipped; browser clipping may show partial or additional lines.';
 const identifier = () => crypto.randomUUID();
 const hex = (color: string, fallback = 'FFFFFF') =>
   /^#[\da-f]{6}$/i.test(color) ? color.slice(1) : fallback;
@@ -66,12 +69,22 @@ function writeTextBody(
 ): void {
   const body = child(shape, 'txBody');
   if (!body) return;
-  const bodyPr = child(body, 'bodyPr') ?? drawingNode(doc, 'bodyPr');
+  const frame = resolveTextFrame(source);
+  const bodyPr = drawingNode(doc, 'bodyPr', {
+    lIns: Math.round(frame.insets.left * EMU),
+    rIns: Math.round(frame.insets.right * EMU),
+    tIns: Math.round(frame.insets.top * EMU),
+    bIns: Math.round(frame.insets.bottom * EMU),
+    wrap: frame.wrap,
+    horzOverflow: frame.horizontalOverflow,
+    vertOverflow: frame.verticalOverflow,
+  });
   bodyPr.setAttribute(
     'anchor',
     source.verticalAlign === 'middle' ? 'ctr' : source.verticalAlign === 'bottom' ? 'b' : 't',
   );
-  for (const margin of ['lIns', 'rIns', 'tIns', 'bIns']) bodyPr.setAttribute(margin, '0');
+  // The editor stores fixed run sizes and box geometry, without automatic resizing.
+  bodyPr.appendChild(drawingNode(doc, 'noAutofit'));
   body.replaceChildren(bodyPr, drawingNode(doc, 'lstStyle'));
   const linkIds = new Map<string, string>();
   const usedIds = new Set(descendants(relations, 'Relationship').map((r) => attr(r, 'Id')));
@@ -218,6 +231,15 @@ function writeTextBody(
 
 export function pptxExportWarnings(deck: Deck): string[] {
   const warnings: string[] = [];
+  if (
+    deck.slides.some((slide) =>
+      slide.elements.some(
+        (element) =>
+          element.type === 'text' && resolveTextFrame(element).verticalOverflow === 'clip',
+      ),
+    )
+  )
+    warnings.push(verticalClipWarning);
   if (deck.slides.some((s) => s.elements.some((e) => e.animation !== 'none')))
     warnings.push('Element entrance animations are not written to PPTX.');
   if (
@@ -628,17 +650,130 @@ function textContent(body: Element | undefined): string {
     .join('\n');
 }
 
-function placeholder(node: Element, templates: Element[]): Element | undefined {
+function layoutPlaceholderFor(node: Element, templates: Element[]): Element | undefined {
   const ph = descendant(node, 'ph');
   if (!ph) return undefined;
   const idx = attr(ph, 'idx') ?? '0';
+  // PowerPoint matches slide placeholders to layout placeholders by idx only.
+  // A type fallback can pick a different content box or even a decorative shape.
+  return templates.find((template) => {
+    const candidate = descendant(template, 'ph');
+    return candidate && (attr(candidate, 'idx') ?? '0') === idx;
+  });
+}
+
+function masterPlaceholderFor(
+  layout: Element | undefined,
+  templates: Element[],
+): Element | undefined {
+  const ph = descendant(layout, 'ph');
+  if (!ph) return undefined;
   const type = attr(ph, 'type') ?? 'obj';
-  return (
-    templates.find((template) => {
-      const candidate = descendant(template, 'ph');
-      return candidate && (attr(candidate, 'idx') ?? '0') === idx;
-    }) ?? templates.find((template) => (attr(descendant(template, 'ph'), 'type') ?? 'obj') === type)
-  );
+  // Layout-to-master inheritance uses the placeholder's role, not its idx.
+  const masterType =
+    type === 'ctrTitle'
+      ? 'title'
+      : ['obj', 'subTitle', 'pic', 'chart', 'clipArt', 'dgm', 'media', 'tbl'].includes(type)
+        ? 'body'
+        : type;
+  return templates.find((template) => {
+    const candidate = descendant(template, 'ph');
+    return candidate && (attr(candidate, 'type') ?? 'obj') === masterType;
+  });
+}
+
+function readTextBodyProperties(
+  bodies: Array<Element | undefined>,
+  warn: Warn,
+): Pick<TextElement, 'textFrame' | 'verticalAlign'> {
+  const cascade = bodies.map((body) => child(body, 'bodyPr'));
+  // Resolve each attribute independently. A local zero or false is an override,
+  // while an absent attribute continues through layout/master to OOXML defaults.
+  const effective = (name: string) =>
+    cascade.map((node) => attr(node, name)).find((value) => value !== null) ?? null;
+  const enabled = (name: string) => ['1', 'true'].includes(effective(name) ?? '');
+  const inset = (name: string, fallback: number): number => {
+    const value = number(effective(name), fallback) / EMU;
+    if (value < -10000 || value > 10000)
+      warn('Text-box insets outside the supported range were limited to ±10,000 pixels.');
+    return clamp(value, -10000, 10000);
+  };
+  const overflow = (name: 'horzOverflow' | 'vertOverflow'): 'overflow' | 'clip' => {
+    const value = effective(name) ?? 'overflow';
+    if (value === 'overflow' || value === 'clip') return value;
+    if (name === 'vertOverflow' && value === 'ellipsis') {
+      warn(
+        'Vertical text overflow with ellipsis is imported as clipping; ellipsis markers are omitted.',
+      );
+      return 'clip';
+    }
+    warn('An unsupported text-overflow mode was imported as overflow.');
+    return 'overflow';
+  };
+  const wrap = effective('wrap') ?? 'square';
+  if (wrap !== 'square' && wrap !== 'none')
+    warn('An unsupported text-wrapping mode was imported as square wrapping.');
+  const anchor = effective('anchor') ?? 't';
+  if (!['t', 'ctr', 'b'].includes(anchor))
+    warn('Distributed or justified vertical text anchoring is imported as top alignment.');
+  if (enabled('anchorCtr'))
+    warn(
+      'Horizontal centering of the complete text block is not retained; paragraph alignment is kept.',
+    );
+  if ((effective('vert') ?? 'horz') !== 'horz' || number(effective('rot')) !== 0)
+    warn('Vertical and rotated text layout is imported as horizontal text.');
+  if (number(effective('numCol'), 1) > 1)
+    warn(
+      'Multi-column text is imported as a single column; column spacing and direction are not retained.',
+    );
+  if (enabled('spcFirstLastPara'))
+    warn('Special spacing around the first and last text paragraphs is not retained.');
+  if (enabled('compatLnSpc')) warn('Legacy compatible text line spacing may differ.');
+  if (enabled('upright')) warn('Keeping text upright inside a rotated shape is not retained.');
+  const warp = cascade.map((node) => child(node, 'prstTxWarp')).find(Boolean);
+  if (warp && attr(warp, 'prst') !== 'textNoShape')
+    warn('Warped text is imported with a rectangular text layout.');
+
+  // Autofit is a choice, not three independent inherited properties: an explicit
+  // local noAutofit must suppress either auto-fit choice on the layout/master.
+  const fit = cascade.flatMap((node) =>
+    node
+      ? Array.from(node.children).filter((entry) =>
+          ['noAutofit', 'normAutofit', 'spAutoFit'].includes(entry.localName),
+        )
+      : [],
+  )[0];
+  if (fit?.localName === 'spAutoFit')
+    warn('Resize-shape-to-fit-text behavior is not retained; the saved text-box size is kept.');
+  if (fit?.localName === 'normAutofit') {
+    const percent = (value: string | null, fallback: number) =>
+      value?.trim().endsWith('%')
+        ? number(value.trim().slice(0, -1), fallback / 1000) * 1000
+        : number(value, fallback);
+    const fontScale = percent(attr(fit, 'fontScale'), 100000);
+    const lineReduction = percent(attr(fit, 'lnSpcReduction'), 0);
+    warn(
+      fontScale !== 100000 || lineReduction !== 0
+        ? 'Text autofit font scaling and line-spacing reductions are not applied; original run sizes and paragraph spacing are kept.'
+        : 'Shrink-text-to-fit behavior is not retained; fixed run sizes and paragraph spacing are kept.',
+    );
+  }
+  const verticalOverflow = overflow('vertOverflow');
+  if (verticalOverflow === 'clip') warn(verticalClipWarning);
+  return {
+    textFrame: {
+      insets: {
+        top: inset('tIns', 45720),
+        right: inset('rIns', 91440),
+        bottom: inset('bIns', 45720),
+        left: inset('lIns', 91440),
+      },
+      wrap: wrap === 'none' ? 'none' : 'square',
+      horizontalOverflow: overflow('horzOverflow'),
+      verticalOverflow,
+    },
+    verticalAlign: anchor === 'ctr' ? 'middle' : anchor === 'b' ? 'bottom' : 'top',
+  };
 }
 
 /** Resolve the supported DrawingML text cascade from nearest to most distant. */
@@ -1057,7 +1192,8 @@ export async function importPptx(
       theme.accent = `#${colors.accent1}`;
       theme.foreground = `#${colors.dk1}`;
     }
-    const templates = [...descendants(layout, 'sp'), ...descendants(master, 'sp')];
+    const layoutTemplates = descendants(layout, 'sp');
+    const masterTemplates = descendants(master, 'sp');
     const bg =
       child(child(slideDoc.documentElement, 'cSld'), 'bg') ??
       child(child(layout?.documentElement, 'cSld'), 'bg') ??
@@ -1095,7 +1231,7 @@ export async function importPptx(
     if (descendant(slideDoc, 'videoFile') || descendant(slideDoc, 'audioFile'))
       warn('Embedded audio and video are not imported.');
     if (descendant(slideDoc, 'extLst')) warn('Vendor-specific drawing extensions may be omitted.');
-    if (templates.some((sp) => !descendant(sp, 'ph')))
+    if ([...layoutTemplates, ...masterTemplates].some((sp) => !descendant(sp, 'ph')))
       warn('Decorative master/layout objects are not imported.');
 
     async function parseShape(node: Element, transform: Transform): Promise<void> {
@@ -1128,10 +1264,11 @@ export async function importPptx(
             await parseShape(nested, group);
         return;
       }
-      const firstTemplate = placeholder(node, templates);
-      const template = child(child(firstTemplate, 'spPr'), 'xfrm')
-        ? firstTemplate
-        : (placeholder(firstTemplate ?? node, descendants(master, 'sp')) ?? firstTemplate);
+      const layoutPlaceholder = layoutPlaceholderFor(node, layoutTemplates);
+      const masterPlaceholder = masterPlaceholderFor(layoutPlaceholder, masterTemplates);
+      const template = child(child(layoutPlaceholder, 'spPr'), 'xfrm')
+        ? layoutPlaceholder
+        : (masterPlaceholder ?? layoutPlaceholder);
       const geometry = base(node, template, transform);
       const properties = child(node, 'spPr');
       if (
@@ -1164,6 +1301,29 @@ export async function importPptx(
         const solidFill = child(properties, 'solidFill');
         const line = child(properties, 'ln');
         const isTextBox = ['1', 'true'].includes(attr(descendant(node, 'cNvSpPr'), 'txBox') ?? '');
+        const explicitFill = ['solidFill', 'gradFill', 'pattFill', 'blipFill']
+          .map((name) => child(properties, name))
+          .find(Boolean);
+        // An empty a:ln is emitted for unpainted text boxes, including our own
+        // export. Its presence alone does not establish a visible border.
+        const explicitLineFill = ['solidFill', 'gradFill', 'pattFill']
+          .map((name) => child(line, name))
+          .find(Boolean);
+        const transparent = (node: Element | undefined) => {
+          const fill = node?.localName === 'solidFill' ? node : child(node, 'solidFill');
+          return !!fill && number(attr(descendant(fill, 'alpha'), 'val'), 100000) === 0;
+        };
+        if (
+          isTextBox &&
+          ((explicitFill && !transparent(explicitFill)) ||
+            (explicitLineFill &&
+              !child(line, 'noFill') &&
+              number(attr(line, 'w'), 1) > 0 &&
+              !transparent(explicitLineFill)))
+        )
+          warn(
+            'Text-box fill or border decorations are not imported; only the editable text is retained.',
+          );
         if (!text && descendant(node, 'ph') && !solidFill && !line) return;
         if (!isTextBox && (!text || solidFill || line)) {
           if (!shapeMap[preset])
@@ -1203,14 +1363,10 @@ export async function importPptx(
           });
         }
         if (text || isTextBox) {
-          const layoutPlaceholder = placeholder(node, descendants(layout, 'sp'));
-          const masterPlaceholder = placeholder(
-            layoutPlaceholder ?? node,
-            descendants(master, 'sp'),
-          );
           const placeholderType =
             attr(descendant(node, 'ph'), 'type') ??
-            attr(descendant(layoutPlaceholder, 'ph'), 'type');
+            attr(descendant(layoutPlaceholder, 'ph'), 'type') ??
+            (descendant(node, 'ph') ? 'obj' : undefined);
           const styleName =
             placeholderType === 'title' || placeholderType === 'ctrTitle'
               ? 'titleStyle'
@@ -1229,28 +1385,15 @@ export async function importPptx(
             warn,
           );
           const first = paragraphs[0]?.runs[0];
-          const bodyPr = child(body, 'bodyPr');
-          if (
-            ['lIns', 'rIns', 'tIns', 'bIns'].some(
-              (name) =>
-                number(attr(bodyPr, name), name === 'lIns' || name === 'rIns' ? 91440 : 45720) !==
-                0,
-            )
-          )
-            warn(
-              'Text-box internal margins are not retained; imported text uses zero internal margins.',
-            );
-          const anchor =
-            attr(bodyPr, 'anchor') ??
-            attr(child(child(layoutPlaceholder, 'txBody'), 'bodyPr'), 'anchor') ??
-            attr(child(child(masterPlaceholder, 'txBody'), 'bodyPr'), 'anchor');
+          const bodyProperties = readTextBodyProperties(
+            [body, child(layoutPlaceholder, 'txBody'), child(masterPlaceholder, 'txBody')],
+            warn,
+          );
           const rPr = descendant(body, 'rPr') ?? descendant(body, 'defRPr');
           const alpha = descendant(child(rPr, 'solidFill'), 'alpha');
           const alphas = descendants(body, 'alpha').map((node) => attr(node, 'val'));
           if (new Set(alphas).size > 1)
             warn('Mixed per-run text opacity is flattened to the first text opacity.');
-          if (attr(bodyPr, 'vert') && attr(bodyPr, 'vert') !== 'horz')
-            warn('Vertical and rotated text layout is imported as horizontal text.');
           slide.elements.push({
             ...geometry,
             id: identifier(),
@@ -1264,7 +1407,7 @@ export async function importPptx(
             italic: first?.italic ?? false,
             underline: first?.underline ?? false,
             align: paragraphs[0]?.align ?? 'left',
-            verticalAlign: anchor === 'ctr' ? 'middle' : anchor === 'b' ? 'bottom' : 'top',
+            ...bodyProperties,
             opacity: alpha
               ? clamp(number(attr(alpha, 'val'), 100000) / 100000, 0, 1)
               : geometry.opacity,

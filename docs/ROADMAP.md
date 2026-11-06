@@ -8,7 +8,7 @@ Milestones are ordered by dependency and usefulness, not promised dates.
 
 ## Current progress
 
-The alpha.1 foundation is public. Alpha.2 adds a bounded rich-text milestone: selected-range editing, validated character runs and paragraphs, safe text links, list continuation/nesting/starts, spacing, and supported PPTX interchange. Focused browser editing and original PowerPoint-authored rich-text round trips have been checked; the [testing record](TESTING.md) describes their scope. This advances the interchange milestone without completing it or the broader parity goal.
+The alpha.1 foundation is public. Alpha.2 added selected-range rich-text editing and supported run/paragraph interchange. Alpha.3 adds signed text-box insets, wrapping, independent overflow controls, vertical anchors, and supported slide/layout/master body-property inheritance. Original PowerPoint-authored fixtures and native save/re-import checks accompany these milestones; the [testing record](TESTING.md) describes their scope. Reliable interchange and the broader parity goal remain unfinished.
 
 ## 0.1 — Usable public foundation
 
@@ -25,7 +25,7 @@ Release gate: the test suite and production build pass; the editor's principal u
 
 ## 0.2 — Reliable interchange
 
-Build on alpha.2's rich runs, paragraphs, and external text links. Next priorities are full theme/master/layout inheritance, grouped transforms, editable table fidelity, multi-series charts, image cropping, gradients, shadows, internal slide links/actions, and preservation of unsupported package content where feasible. Improve rich-text insets, tab stops, typography, numbering restart behavior, and layout fidelity against a broader corpus.
+Build on the supported rich runs, paragraphs, links, and text-frame geometry. Next priorities are saved autofit scaling and live fitting, complete-line clipping, attached text-box fills/outlines, full theme/master/layout inheritance, grouped transforms, editable table fidelity, multi-series charts, image cropping, gradients, shadows, internal slide links/actions, and preservation of unsupported package content where feasible. Improve tab stops, typography, numbering restart behavior, and layout fidelity against a broader corpus.
 
 Release gate: a redistributable corpus of independently authored decks, explicit per-feature import/export results, package validation, and visual comparisons in multiple applications. Add regression fixtures for every compatibility bug. Track content preservation, editability, visual fidelity, and behavior separately.
 

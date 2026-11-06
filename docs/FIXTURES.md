@@ -60,6 +60,34 @@ The fixture is committed so regular CI can exercise it without Windows or Office
 
 `scripts/verify-rich-text-with-powerpoint.ps1` opens and renders the original and derivative, saves the derivative again in PowerPoint, and invokes `scripts/check-rich-office-roundtrip.mjs`. Both the semantic checks and the visual comparison's limitations are recorded in [TESTING.md](TESTING.md). Generated native render evidence is kept under ignored `test-results/rich-text-powerpoint/`; the public repository does not bundle a local Office profile or the ignored saved copy.
 
+## Original text-frame fixture and separate probes
+
+`tests/fixtures/powerpoint-text-frame.pptx` contains six original slides authored through Microsoft PowerPoint COM on Windows. It exercises asymmetric/zero margins, mixed font sizes, top/middle/bottom anchors, wrap/nowrap, hard/soft breaks, genuine layout inheritance, and two content placeholders that share a master body placeholder despite different indexes. Rectangle marker objects show text-box boundaries. Autofit is disabled in these geometry cases. The installed PowerPoint reported version `16.0`; the executable product version recorded for this run was `16.0.20527.20150`.
+
+The authoring script is `scripts/create-powerpoint-text-frame-fixture.ps1`. It also retains `powerpoint-text-frame-attached-outline-probe.pptx`, the original COM-authored form with borders attached directly to text boxes, to reproduce the known decoration omission. Shared sanitation replaces Office profile metadata with project attribution. All fixture content is original and distributed under the repository's MIT license.
+
+COM rejected the attempted negative-margin assignments, leaving the source defaults unchanged. `scripts/prepare-text-frame-probe.mjs` therefore creates the separate `powerpoint-text-frame-clip-probe.pptx` by changing only selected `a:bodyPr` attributes in a copy of the original. It sets signed insets and horizontal/vertical clip flags. This probe is **XML-derived, not directly PowerPoint-authored**, although PowerPoint subsequently opened and rendered it. The script records every changed attribute and verifies the genuine inheritance cases.
+
+Frozen SHA-256 values for this milestone:
+
+| File                                                | SHA-256                                                            |
+| --------------------------------------------------- | ------------------------------------------------------------------ |
+| `powerpoint-text-frame.pptx`                        | `a9fb9ff78744aee60050b25e17e2c182a37b17fa6163ba09424cef79353ae480` |
+| `powerpoint-text-frame-clip-probe.pptx`             | `9a5dfb7572e6b0a18e380384d51ba22dc9644a7fe563c6b631695e18501843b9` |
+| `powerpoint-text-frame-attached-outline-probe.pptx` | `067b9739e7ef0d7f422d0d6b25dfa9e4e1a2f97adaff0d5081ec018b6020295d` |
+| `examples/text-frame.pptx`                          | `59429c71e92059864c526e0179e7052e8fe36a03162e362f750d9356d14bd01a` |
+
+Generate and verify the committed inputs without recreating them:
+
+```powershell
+node scripts/generate-text-frame-example.mjs
+powershell -File scripts/verify-text-frame-with-powerpoint.ps1
+```
+
+The generator writes `examples/text-frame.opendeck` and its PPTX export, plus an ignored probe export. Native outputs, properties, provenance and round-trip assertions go under `test-results/text-frame-powerpoint/`. Regeneration changes package bytes; update hashes only after inspecting and rechecking the regenerated files. Normal CI reads the committed fixtures without Office.
+
+The semantic and visual findings are recorded in [TESTING.md](TESTING.md). The original and XML-derived paths establish different kinds of evidence; neither establishes full text-layout equivalence.
+
 ## Synthetic OOXML and generated round trips
 
 `src/pptx.test.ts` also creates small OOXML packages in memory to isolate relationship ordering, malformed input, theme/layout inheritance, groups, and warning behavior. These synthetic packages deliberately focus on importer cases; they are not all complete, independently validated PowerPoint presentations.

@@ -2,7 +2,7 @@
 
 An open-source presentation studio for the browser. Create slides, keep your files locally, and exchange editable content through PowerPoint's PPTX format.
 
-**Status: 0.1.0-alpha.2.** OpenDeck is an original implementation with a focused editor, rich text authoring, and partial PPTX compatibility. It is not a complete replacement for every PowerPoint workflow. The [compatibility matrix](docs/COMPATIBILITY.md) states the boundaries; the [roadmap](docs/ROADMAP.md) tracks the work ahead.
+**Status: 0.1.0-alpha.3.** OpenDeck is an original implementation with a focused editor, rich text authoring, and partial PPTX compatibility. It is not a complete replacement for every PowerPoint workflow. The [compatibility matrix](docs/COMPATIBILITY.md) states the boundaries; the [roadmap](docs/ROADMAP.md) tracks the work ahead.
 
 [Try the public demo](https://ajayasai.github.io/opendeck-studio/) · [Download the release](https://github.com/ajayasai/opendeck-studio/releases) · [Testing evidence](docs/TESTING.md)
 
@@ -34,6 +34,7 @@ npm run preview
 - A slide canvas with selectable text, shapes, images, tables, and charts.
 - A rich text editor for selected-word font, size, color, bold, italic, underline, and safe hyperlinks.
 - Structured bullets and numbered lists, nesting and starting numbers, paragraph alignment, line spacing, and spacing before/after.
+- Text-box margins, wrapping, independent overflow controls, and top/middle/bottom alignment, with supported layout/master inheritance on PPTX import.
 - Slide organization, five visual themes, reusable layouts, speaker notes, and presentation playback.
 - Object alignment, layer ordering, grid snapping, keyboard shortcuts, and a slide sorter.
 - Fullscreen presenting with a timer, notes panel, next-slide preview, laser pointer, and blackout control.
@@ -48,7 +49,9 @@ Select a text box and choose **Edit styles & lists** to edit selected words and 
 
 The [rich-text example](examples/rich-text.pptx) and [native OpenDeck copy](examples/rich-text.opendeck) exercise mixed typography, paragraph spacing, links, nested bullets, and numbered lists. Their PowerPoint verification is recorded in the [testing evidence](docs/TESTING.md).
 
-Tables and charts use simplified models. Advanced PowerPoint content can change or disappear during import/export; keep the original file and review the result before relying on it. Text-box insets, hyperlink theme colors, and some numbering restarts can differ. See the [compatibility notes](docs/COMPATIBILITY.md).
+Select a text box and use **Format → Text box** to adjust its four margins, wrap text, or allow/clip overflow on each axis. The [text-frame example](examples/text-frame.pptx) and [native copy](examples/text-frame.opendeck) exercise asymmetric and zero margins, vertical alignment, wrapping, and inherited layout/master properties.
+
+Tables and charts use simplified models. Advanced PowerPoint content can change or disappear during import/export; keep the original file and review the result before relying on it. Autofit, complete-line clipping, attached text-box fills/outlines, hyperlink theme colors, and some numbering restarts can differ. See the [compatibility notes](docs/COMPATIBILITY.md).
 
 ## Your files
 
@@ -57,6 +60,8 @@ The application runs in your browser and does not require a document-upload serv
 Use **File → My presentations** to reopen saved decks. Autosave keeps separate presentations by document ID, so creating a new deck does not intentionally replace the previous deck's library entry. The library is not version history: opening a native backup with the same document ID updates that presentation when saved.
 
 Earlier plain-text OpenDeck files remain readable. Use alpha.2 or later for rich-text native backups; opening and saving them with alpha.1 can discard the rich formatting.
+
+Use alpha.3 or later for text-frame backups. Earlier readers can discard the optional margins, wrap, and overflow fields when re-saving. Files without these fields retain the earlier zero-margin, wrapped, clipped behavior.
 
 You can edit without an internet connection after the application and its assets are loaded. For predictable offline access, run the built files on a local static server. This release does not install a PWA or guarantee that a hosted page will reopen offline.
 

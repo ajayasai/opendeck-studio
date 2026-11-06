@@ -1,5 +1,6 @@
 import type { Deck, Slide, SlideElement, Theme, TextElement, ShapeElement } from './types';
 import { validateParagraphs } from './richText';
+import { validateTextFrame } from './textFrame';
 
 export const uid = (): string =>
   globalThis.crypto?.randomUUID?.() ??
@@ -583,6 +584,7 @@ export function validateDeck(input: unknown): Deck {
             ...(e.paragraphs !== undefined
               ? { paragraphs: validateParagraphs(e.paragraphs, string(e.text, 'text', 100000)) }
               : {}),
+            ...(e.textFrame !== undefined ? { textFrame: validateTextFrame(e.textFrame) } : {}),
           };
         case 'shape':
           return {

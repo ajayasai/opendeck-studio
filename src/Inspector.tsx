@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import {
   AlignCenter,
   AlignLeft,
@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { THEMES } from './model';
 import { replacePlainText } from './richText';
+import { resolveTextFrame, textContentRect } from './textFrame';
 import type {
   ChartElement,
   Deck,
@@ -26,6 +27,7 @@ import type {
   SlideElement,
   TableElement,
   TextElement,
+  TextFrame,
   Theme,
 } from './types';
 
@@ -57,8 +59,15 @@ function NumberField({
   onChange: (value: number) => void;
 }) {
   const [draft, setDraft] = useState(String(Math.round(value * 100) / 100));
-  useEffect(() => setDraft(String(Math.round(value * 100) / 100)), [value]);
+  const changed = useRef(false);
+  useEffect(() => {
+    changed.current = false;
+    setDraft(String(Math.round(value * 100) / 100));
+  }, [value]);
   const commit = () => {
+    // Formatting the display must not round-trip untouched imported geometry.
+    if (!changed.current) return;
+    changed.current = false;
     const next = Number(draft);
     if (!draft.trim() || !Number.isFinite(next)) {
       setDraft(String(value));
@@ -77,17 +86,86 @@ function NumberField({
         min={min}
         max={max}
         step={step}
-        onChange={(event) => setDraft(event.target.value)}
+        onChange={(event) => {
+          changed.current = true;
+          setDraft(event.target.value);
+        }}
         onBlur={commit}
         onKeyDown={(event) => {
           if (event.key === 'Enter') event.currentTarget.blur();
           if (event.key === 'Escape') {
+            changed.current = false;
             setDraft(String(value));
             event.stopPropagation();
           }
         }}
       />
     </label>
+  );
+}
+
+function TextFrameControls({
+  element,
+  onChange,
+}: {
+  element: TextElement;
+  onChange: (frame: TextFrame) => void;
+}) {
+  const frame = resolveTextFrame(element),
+    content = textContentRect(element);
+  return (
+    <section className="panel-section">
+      <h3>Text box</h3>
+      <div className="field-grid">
+        {(['top', 'right', 'bottom', 'left'] as const).map((side) => (
+          <NumberField
+            key={side}
+            label={`${side[0].toUpperCase()}${side.slice(1)} margin (px)`}
+            value={frame.insets[side]}
+            min={-10000}
+            max={10000}
+            step={0.1}
+            onChange={(value) => onChange({ ...frame, insets: { ...frame.insets, [side]: value } })}
+          />
+        ))}
+      </div>
+      <p className="inspector-hint">Negative margins extend the text area beyond the box.</p>
+      {(!content.width || !content.height) && (
+        <p className="field-error" role="alert">
+          Margins leave no room for text. Reduce the margins or enlarge the box.
+        </p>
+      )}
+      <button
+        className="secondary-button"
+        onClick={() => onChange({ ...frame, insets: { top: 0, right: 0, bottom: 0, left: 0 } })}
+      >
+        Reset margins
+      </button>
+      <label className="checkbox-field">
+        <input
+          type="checkbox"
+          checked={frame.wrap === 'square'}
+          onChange={(event) =>
+            onChange({ ...frame, wrap: event.target.checked ? 'square' : 'none' })
+          }
+        />
+        Wrap text
+      </label>
+      {(['horizontalOverflow', 'verticalOverflow'] as const).map((axis) => (
+        <label className="field" key={axis}>
+          <span>{axis === 'horizontalOverflow' ? 'Text beyond width' : 'Text beyond height'}</span>
+          <select
+            value={frame[axis]}
+            onChange={(event) =>
+              onChange({ ...frame, [axis]: event.target.value as 'overflow' | 'clip' })
+            }
+          >
+            <option value="overflow">Allow overflow</option>
+            <option value="clip">Clip at box edge</option>
+          </select>
+        </label>
+      ))}
+    </section>
   );
 }
 
@@ -562,133 +640,142 @@ export function Inspector({
             {element && (
               <fieldset disabled={element.locked} className="inspector-fieldset" key={element.id}>
                 {element.type === 'text' && (
-                  <section className="panel-section">
-                    <h3>Typography</h3>
-                    {onEditRichText && (
-                      <button className="secondary-button" onClick={() => onEditRichText(element)}>
-                        Edit styles & lists
-                      </button>
-                    )}
-                    {element.paragraphs && (
-                      <p className="inspector-hint">
-                        This box has character and paragraph formatting. Use the styled editor to
-                        format a selection. Controls below apply to the entire box.
-                      </p>
-                    )}
-                    <TextField
-                      label="Text"
-                      value={element.text}
-                      multiline
-                      validate={
-                        element.paragraphs
-                          ? (candidate) => {
-                              replacePlainText(element, candidate);
-                            }
-                          : undefined
-                      }
-                      onChange={(text) => onElementPatch({ text })}
-                    />
-                    <label className="field">
-                      <span>Font family</span>
-                      <select
-                        value={element.fontFamily}
-                        onChange={(event) => onElementPatch({ fontFamily: event.target.value })}
-                      >
-                        {[
-                          ...new Set([
-                            element.fontFamily,
-                            'Arial',
-                            'Georgia',
-                            'Verdana',
-                            'Tahoma',
-                            'Trebuchet MS',
-                            'Times New Roman',
-                            'Courier New',
-                          ]),
-                        ].map((font) => (
-                          <option key={font}>{font}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <NumberField
-                      label="Font size (pt)"
-                      value={element.fontSize}
-                      min={1}
-                      max={1000}
-                      onChange={(fontSize) => onElementPatch({ fontSize })}
-                    />
-                    <div className="field-grid">
-                      <div className="segmented" aria-label="Text emphasis">
+                  <>
+                    <section className="panel-section">
+                      <h3>Typography</h3>
+                      {onEditRichText && (
                         <button
-                          aria-label="Bold"
-                          title="Bold"
-                          aria-pressed={element.bold}
-                          className={element.bold ? 'active' : ''}
-                          onClick={() => onElementPatch({ bold: !element.bold })}
+                          className="secondary-button"
+                          onClick={() => onEditRichText(element)}
                         >
-                          <Bold size={16} />
+                          Edit styles & lists
                         </button>
-                        <button
-                          aria-label="Italic"
-                          title="Italic"
-                          aria-pressed={element.italic}
-                          className={element.italic ? 'active' : ''}
-                          onClick={() => onElementPatch({ italic: !element.italic })}
-                        >
-                          <Italic size={16} />
-                        </button>
-                        <button
-                          aria-label="Underline"
-                          title="Underline"
-                          aria-pressed={element.underline}
-                          className={element.underline ? 'active' : ''}
-                          onClick={() => onElementPatch({ underline: !element.underline })}
-                        >
-                          <Underline size={16} />
-                        </button>
-                      </div>
-                      <div className="segmented" aria-label="Text alignment">
-                        {(
-                          [
-                            { align: 'left', Icon: AlignLeft },
-                            { align: 'center', Icon: AlignCenter },
-                            { align: 'right', Icon: AlignRight },
-                          ] as const
-                        ).map(({ align, Icon }) => (
-                          <button
-                            key={align}
-                            aria-label={`Align text ${align}`}
-                            title={`Align text ${align}`}
-                            aria-pressed={element.align === align}
-                            className={element.align === align ? 'active' : ''}
-                            onClick={() => onElementPatch({ align })}
-                          >
-                            <Icon size={16} />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <label className="field">
-                      <span>Vertical alignment</span>
-                      <select
-                        value={element.verticalAlign}
-                        onChange={(event) =>
-                          onElementPatch({
-                            verticalAlign: event.target.value as 'top' | 'middle' | 'bottom',
-                          })
+                      )}
+                      {element.paragraphs && (
+                        <p className="inspector-hint">
+                          This box has character and paragraph formatting. Use the styled editor to
+                          format a selection. Controls below apply to the entire box.
+                        </p>
+                      )}
+                      <TextField
+                        label="Text"
+                        value={element.text}
+                        multiline
+                        validate={
+                          element.paragraphs
+                            ? (candidate) => {
+                                replacePlainText(element, candidate);
+                              }
+                            : undefined
                         }
-                      >
-                        <option value="top">Top</option>
-                        <option value="middle">Middle</option>
-                        <option value="bottom">Bottom</option>
-                      </select>
-                    </label>
-                    <ColorField
-                      label="Text color"
-                      value={element.color}
-                      onChange={(color) => onElementPatch({ color })}
+                        onChange={(text) => onElementPatch({ text })}
+                      />
+                      <label className="field">
+                        <span>Font family</span>
+                        <select
+                          value={element.fontFamily}
+                          onChange={(event) => onElementPatch({ fontFamily: event.target.value })}
+                        >
+                          {[
+                            ...new Set([
+                              element.fontFamily,
+                              'Arial',
+                              'Georgia',
+                              'Verdana',
+                              'Tahoma',
+                              'Trebuchet MS',
+                              'Times New Roman',
+                              'Courier New',
+                            ]),
+                          ].map((font) => (
+                            <option key={font}>{font}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <NumberField
+                        label="Font size (pt)"
+                        value={element.fontSize}
+                        min={1}
+                        max={1000}
+                        onChange={(fontSize) => onElementPatch({ fontSize })}
+                      />
+                      <div className="field-grid">
+                        <div className="segmented" aria-label="Text emphasis">
+                          <button
+                            aria-label="Bold"
+                            title="Bold"
+                            aria-pressed={element.bold}
+                            className={element.bold ? 'active' : ''}
+                            onClick={() => onElementPatch({ bold: !element.bold })}
+                          >
+                            <Bold size={16} />
+                          </button>
+                          <button
+                            aria-label="Italic"
+                            title="Italic"
+                            aria-pressed={element.italic}
+                            className={element.italic ? 'active' : ''}
+                            onClick={() => onElementPatch({ italic: !element.italic })}
+                          >
+                            <Italic size={16} />
+                          </button>
+                          <button
+                            aria-label="Underline"
+                            title="Underline"
+                            aria-pressed={element.underline}
+                            className={element.underline ? 'active' : ''}
+                            onClick={() => onElementPatch({ underline: !element.underline })}
+                          >
+                            <Underline size={16} />
+                          </button>
+                        </div>
+                        <div className="segmented" aria-label="Text alignment">
+                          {(
+                            [
+                              { align: 'left', Icon: AlignLeft },
+                              { align: 'center', Icon: AlignCenter },
+                              { align: 'right', Icon: AlignRight },
+                            ] as const
+                          ).map(({ align, Icon }) => (
+                            <button
+                              key={align}
+                              aria-label={`Align text ${align}`}
+                              title={`Align text ${align}`}
+                              aria-pressed={element.align === align}
+                              className={element.align === align ? 'active' : ''}
+                              onClick={() => onElementPatch({ align })}
+                            >
+                              <Icon size={16} />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <label className="field">
+                        <span>Vertical alignment</span>
+                        <select
+                          value={element.verticalAlign}
+                          onChange={(event) =>
+                            onElementPatch({
+                              verticalAlign: event.target.value as 'top' | 'middle' | 'bottom',
+                            })
+                          }
+                        >
+                          <option value="top">Top</option>
+                          <option value="middle">Middle</option>
+                          <option value="bottom">Bottom</option>
+                        </select>
+                      </label>
+                      <ColorField
+                        label="Text color"
+                        value={element.color}
+                        onChange={(color) => onElementPatch({ color })}
+                      />
+                    </section>
+                    <TextFrameControls
+                      element={element}
+                      onChange={(textFrame) => onElementPatch({ textFrame })}
                     />
-                  </section>
+                  </>
                 )}
                 {element.type === 'shape' && (
                   <section className="panel-section">

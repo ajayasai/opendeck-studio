@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.0-alpha.3 — 2026-11-06
+
+Text-frame geometry and PowerPoint inheritance milestone. Full PowerPoint parity remains unfinished.
+
+- Add four signed text-box margins, wrap control, independent overflow settings, and a margin reset in the inspector.
+- Render the inset text rectangle separately from the outer clipping bounds; retain hard and soft breaks when wrapping is disabled.
+- Preserve supported insets, wrap, overflow and vertical anchors in native backups and editable PPTX interchange.
+- Resolve each imported body property independently through slide, layout and master, including explicit-zero overrides and content placeholders whose indexes differ from the master body placeholder.
+- Detect effective inherited autofit and unsupported body settings, and report known full-line clipping and attached text-box decoration differences.
+- Preserve fractional imported numeric values when a field is focused and blurred without editing.
+- Keep legacy native documents compatible through an optional schema-version-1 extension; earlier readers may discard text-frame fields on save.
+- Add an original six-slide PowerPoint fixture, separate XML-derived clipping/signed-margin and native attached-outline probes, native round-trip scripts, and geometry regression tests.
+
+PowerPoint 16.0 opened, rendered, saved and re-imported both the six-slide original geometry path and the separately attributed XML-derived probe. Checks compare effective native margins, wrapping and anchors, then supported text, rich formatting, geometry, notes and object counts after re-saving. Exact files, visual differences, browser checks, and hashes are recorded in the [testing evidence](docs/TESTING.md).
+
 ## 0.1.0-alpha.2 — 2026-11-06
 
 Rich text authoring and interoperability milestone. Full PowerPoint parity remains an active, unfinished goal.

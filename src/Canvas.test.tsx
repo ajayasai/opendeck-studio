@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Canvas from './Canvas';
 import { createDeck, createElement, createSlide } from './model';
 import { withParagraphs } from './richText';
+import type { TextFrame } from './types';
 
 class TestPointerEvent extends MouseEvent {
   pointerId: number;
@@ -24,13 +25,14 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function setup() {
+function setup(textFrame?: TextFrame, value = 'Original story') {
   const deck = createDeck(),
     slide = createSlide(deck.theme);
   const text = withParagraphs(createElement('text', deck.theme), [
-    { runs: [{ text: 'Original story', bold: true }] },
+    { runs: [{ text: value, bold: true }] },
   ]);
   text.name = 'Story';
+  if (textFrame) text.textFrame = textFrame;
   const shape = createElement('shape', deck.theme);
   shape.name = 'Block';
   shape.x = 500;
@@ -117,5 +119,46 @@ describe('canvas rich text validation recovery', () => {
     expect(input.value).toBe('Keep this draft');
     fireEvent.blur(input);
     expect(onChange.mock.calls[0][0][0].text).toBe('Keep this draft');
+  });
+});
+
+describe('canvas inline text geometry', () => {
+  it('keeps the legacy editor aligned to the full box and enables soft wrapping', () => {
+    const { input, slide } = setup();
+    const element = slide.elements[0];
+    expect([input.style.left, input.style.top]).toEqual(['0px', '0px']);
+    expect([input.style.width, input.style.height]).toEqual([
+      `${element.width}px`,
+      `${element.height}px`,
+    ]);
+    expect(input.getAttribute('wrap')).toBe('soft');
+    expect(input.style.whiteSpace).toBe('pre-wrap');
+  });
+
+  it('uses signed insets and preserves hard breaks without soft wrapping or losing frame metadata on commit', () => {
+    const frame: TextFrame = {
+      insets: { top: -10, right: 30, bottom: 4, left: -20 },
+      wrap: 'none',
+      horizontalOverflow: 'overflow',
+      verticalOverflow: 'clip',
+    };
+    const { input, slide, onChange } = setup(frame, 'First line\nSecond line');
+    const element = slide.elements[0];
+    expect([input.style.left, input.style.top, input.style.width, input.style.height]).toEqual([
+      '-20px',
+      '-10px',
+      `${element.width - 10}px`,
+      `${element.height + 6}px`,
+    ]);
+    expect(input.getAttribute('wrap')).toBe('off');
+    expect(input.style.whiteSpace).toBe('pre');
+    expect(input.style.overflowWrap).toBe('normal');
+    expect(input.value).toBe('First line\nSecond line');
+    fireEvent.change(input, { target: { value: 'First line\nSecond line!' } });
+    fireEvent.blur(input);
+    expect(onChange.mock.calls[0][0][0]).toMatchObject({
+      text: 'First line\nSecond line!',
+      textFrame: frame,
+    });
   });
 });

@@ -1,0 +1,1616 @@
+{
+  "schemaVersion": 1,
+  "id": "bdf70bc8-013e-445d-bf48-184bf1dbf2ce",
+  "title": "Text frames: margins, wrapping and inheritance",
+  "width": 1280,
+  "height": 720,
+  "theme": {
+    "id": "imported",
+    "name": "Imported",
+    "background": "#ffffff",
+    "foreground": "#000000",
+    "accent": "#156082",
+    "muted": "#6b7771",
+    "fontFamily": "Aptos"
+  },
+  "slides": [
+    {
+      "id": "ab23ac64-c8cf-4c75-a78d-a51bb2debcc9",
+      "name": "Slide 1",
+      "background": "#ffffff",
+      "elements": [
+        {
+          "id": "d7c3e7d5-10a8-498b-acf6-31e013b27706",
+          "name": "Bounds: Explicit zero insets",
+          "x": 680,
+          "y": 166.66666666666666,
+          "width": 520,
+          "height": 373.3333333333333,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "213e5908-a116-41a7-90bd-9e05285a4879",
+          "name": "Bounds: Asymmetric insets",
+          "x": 72,
+          "y": 166.66666666666666,
+          "width": 520,
+          "height": 373.3333333333333,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "b800f28e-ac5d-4b1e-9645-cd482e237f52",
+          "name": "Heading 1",
+          "x": 56,
+          "y": 32,
+          "width": 1160,
+          "height": 73.33333333333333,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Insets define the text area",
+          "fontSize": 30,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": true,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Insets define the text area",
+                  "fontSize": 30,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": true,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          }
+        },
+        {
+          "id": "6f4142db-3bd2-4ab1-bc49-9da0892be3e5",
+          "name": "Asymmetric insets",
+          "x": 72,
+          "y": 166.66666666666666,
+          "width": 520,
+          "height": 373.3333333333333,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Same words, different margins.\nMixed font sizes stay editable.\nA soft break follows.",
+          "fontSize": 34,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": true,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Same",
+                  "fontSize": 34,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": true,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": " words, different margins.",
+                  "fontSize": 27,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Mixed font sizes stay editable.",
+                  "fontSize": 27,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "\n",
+                  "fontSize": 27,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "A soft break follows.",
+                  "fontSize": 27,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 32,
+              "right": 24,
+              "bottom": 16,
+              "left": 48
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          }
+        },
+        {
+          "id": "f414a4e5-db45-49d8-ac1d-289296b8dd33",
+          "name": "Explicit zero insets",
+          "x": 680,
+          "y": 166.66666666666666,
+          "width": 520,
+          "height": 373.3333333333333,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Same words, different margins.\nMixed font sizes stay editable.\nA soft break follows.",
+          "fontSize": 34,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": true,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Same",
+                  "fontSize": 34,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": true,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": " words, different margins.",
+                  "fontSize": 27,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Mixed font sizes stay editable.",
+                  "fontSize": 27,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "\n",
+                  "fontSize": 27,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "A soft break follows.",
+                  "fontSize": 27,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          }
+        }
+      ],
+      "notes": "Original asymmetric and explicit-zero inset cases. Outlines show shape bounds; paragraphs and a soft break use mixed font sizes.",
+      "transition": "none",
+      "hidden": false
+    },
+    {
+      "id": "7d7e0b35-4802-409b-9ddb-b2c4612b22db",
+      "name": "Slide 2",
+      "background": "#ffffff",
+      "elements": [
+        {
+          "id": "87232630-3932-40d3-beb6-173a2c83d693",
+          "name": "Bounds: Bottom anchor",
+          "x": 866.6666666666666,
+          "y": 180,
+          "width": 353.3333333333333,
+          "height": 360,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "9b9d44c5-53bd-4d8c-9092-18405aef7570",
+          "name": "Bounds: Middle anchor",
+          "x": 464,
+          "y": 180,
+          "width": 353.3333333333333,
+          "height": 360,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "b7adfe02-c52c-48e7-8216-5ac709a444b8",
+          "name": "Bounds: Top anchor",
+          "x": 60,
+          "y": 180,
+          "width": 353.3333333333333,
+          "height": 360,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "66345458-3565-447d-b8bd-56cfbb38ff87",
+          "name": "Heading 2",
+          "x": 56,
+          "y": 32,
+          "width": 1160,
+          "height": 73.33333333333333,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Vertical anchors use the inset rectangle",
+          "fontSize": 30,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": true,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Vertical anchors use the inset rectangle",
+                  "fontSize": 30,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": true,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          }
+        },
+        {
+          "id": "b262f7e3-6d43-4eb5-b2a2-5e0074e7c5d8",
+          "name": "Top anchor",
+          "x": 60,
+          "y": 180,
+          "width": 353.3333333333333,
+          "height": 360,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Top anchor\nSecond line",
+          "fontSize": 26,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Top anchor",
+                  "fontSize": 26,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Second line",
+                  "fontSize": 26,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 40,
+              "right": 16,
+              "bottom": 64,
+              "left": 24
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          }
+        },
+        {
+          "id": "548603f6-5c32-4d87-90e3-acd1ff155320",
+          "name": "Middle anchor",
+          "x": 464,
+          "y": 180,
+          "width": 353.3333333333333,
+          "height": 360,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Middle anchor\nSecond line",
+          "fontSize": 26,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "middle",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Middle anchor",
+                  "fontSize": 26,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Second line",
+                  "fontSize": 26,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 40,
+              "right": 16,
+              "bottom": 64,
+              "left": 24
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          }
+        },
+        {
+          "id": "64fa276d-ebd8-4866-8e9f-446cdb40d787",
+          "name": "Bottom anchor",
+          "x": 866.6666666666666,
+          "y": 180,
+          "width": 353.3333333333333,
+          "height": 360,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Bottom anchor\nSecond line",
+          "fontSize": 26,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "bottom",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Bottom anchor",
+                  "fontSize": 26,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Second line",
+                  "fontSize": 26,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 40,
+              "right": 16,
+              "bottom": 64,
+              "left": 24
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          }
+        }
+      ],
+      "notes": "Identical positive insets with top, middle, and bottom anchoring; no auto-fit.",
+      "transition": "none",
+      "hidden": false
+    },
+    {
+      "id": "3c3b835a-d6ea-464c-b5ac-9f322d2696c5",
+      "name": "Slide 3",
+      "background": "#ffffff",
+      "elements": [
+        {
+          "id": "73476133-d267-4f42-9d16-728480ff7792",
+          "name": "Bounds: Hard and soft breaks without wrapping",
+          "x": 706.6666666666666,
+          "y": 420,
+          "width": 426.6666666666667,
+          "height": 120,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "cc3db7e1-c3e0-499c-ba39-afe374ee70da",
+          "name": "Bounds: Wrapped vertical overflow",
+          "x": 72,
+          "y": 420,
+          "width": 320,
+          "height": 100,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "492ee63e-6c05-45d2-b6c3-6053a739ca97",
+          "name": "Bounds: No wrap overflow",
+          "x": 72,
+          "y": 186.66666666666666,
+          "width": 320,
+          "height": 100,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "183eaa90-412e-4c9f-a0cc-b7f39527f516",
+          "name": "Heading 3",
+          "x": 56,
+          "y": 32,
+          "width": 1160,
+          "height": 73.33333333333333,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Wrapping is separate from overflowing",
+          "fontSize": 30,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": true,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Wrapping is separate from overflowing",
+                  "fontSize": 30,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": true,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          }
+        },
+        {
+          "id": "752eb5e2-dab6-41a6-9b76-3ac41ec1a347",
+          "name": "No wrap overflow",
+          "x": 72,
+          "y": 186.66666666666666,
+          "width": 320,
+          "height": 100,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Unwrapped words extend beyond this outlined frame.",
+          "fontSize": 25,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Unwrapped words extend beyond this outlined frame.",
+                  "fontSize": 25,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 16,
+              "right": 40,
+              "bottom": 24,
+              "left": 32
+            },
+            "wrap": "none",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          }
+        },
+        {
+          "id": "d5f20412-3442-461e-a0d1-9743d2be6ab3",
+          "name": "Wrapped vertical overflow",
+          "x": 72,
+          "y": 420,
+          "width": 320,
+          "height": 100,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Wrapped words stay inside the available width and continue below the outlined frame.",
+          "fontSize": 25,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Wrapped words stay inside the available width and continue below the outlined frame.",
+                  "fontSize": 25,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 16,
+              "right": 40,
+              "bottom": 24,
+              "left": 32
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          }
+        },
+        {
+          "id": "4a82c32d-0471-4366-9030-f5c6896c34cb",
+          "name": "Hard and soft breaks without wrapping",
+          "x": 706.6666666666666,
+          "y": 420,
+          "width": 426.6666666666667,
+          "height": 120,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Hard break\nSoft\nbreak",
+          "fontSize": 25,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Hard break",
+                  "fontSize": 25,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Soft",
+                  "fontSize": 25,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "\n",
+                  "fontSize": 25,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "break",
+                  "fontSize": 25,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 16,
+              "right": 24,
+              "bottom": 16,
+              "left": 24
+            },
+            "wrap": "none",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          }
+        }
+      ],
+      "notes": "AutoSize is disabled. Native overflow extends beyond the outline. The XML-derived probe changes only overflow flags for comparison.",
+      "transition": "none",
+      "hidden": false
+    },
+    {
+      "id": "5867581d-552c-447a-a942-22f197af6c73",
+      "name": "Slide 4",
+      "background": "#ffffff",
+      "elements": [
+        {
+          "id": "ea050dab-281b-43c9-b357-8e44227cd1d1",
+          "name": "Bounds: Negative overflow control",
+          "x": 706.6666666666666,
+          "y": 466.6666666666667,
+          "width": 320,
+          "height": 86.66666666666667,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "110d95d7-c288-4f1d-9be4-7798dd7049e9",
+          "name": "Bounds: Positive overflow control",
+          "x": 706.6666666666666,
+          "y": 200,
+          "width": 320,
+          "height": 113.33333333333333,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "380f7767-710a-443b-8ecc-2fcc9574993e",
+          "name": "Bounds: Negative insets",
+          "x": 133.33333333333334,
+          "y": 200,
+          "width": 386.6666666666667,
+          "height": 213.33333333333334,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "shape",
+          "shape": "rect",
+          "fill": "transparent",
+          "stroke": "#4f6a72",
+          "strokeWidth": 1.3333333333333333
+        },
+        {
+          "id": "bd1efa7e-4aca-4bda-9a0e-8626ff4307e3",
+          "name": "Heading 4",
+          "x": 56,
+          "y": 32,
+          "width": 1160,
+          "height": 73.33333333333333,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Signed margins and explicit boundaries",
+          "fontSize": 30,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": true,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Signed margins and explicit boundaries",
+                  "fontSize": 30,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": true,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 0,
+              "right": 0,
+              "bottom": 0,
+              "left": 0
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          }
+        },
+        {
+          "id": "b5f173c1-3c9c-4a65-9955-6e46be19eb94",
+          "name": "Negative insets",
+          "x": 133.33333333333334,
+          "y": 200,
+          "width": 386.6666666666667,
+          "height": 213.33333333333334,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Margin test: compare the outline.\nSecond line",
+          "fontSize": 28,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Margin test: compare the outline.",
+                  "fontSize": 28,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Second line",
+                  "fontSize": 28,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          }
+        },
+        {
+          "id": "4ca4aa3c-2328-4afb-bd8c-83479e0b9c41",
+          "name": "Positive overflow control",
+          "x": 706.6666666666666,
+          "y": 200,
+          "width": 320,
+          "height": 113.33333333333333,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Clip probe: words cross the outlined right edge.\nSecond line crosses the bottom edge.\nThird line.",
+          "fontSize": 28,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Clip probe: words cross the outlined right edge.",
+                  "fontSize": 28,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Second line crosses the bottom edge.",
+                  "fontSize": 28,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Third line.",
+                  "fontSize": 28,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 20,
+              "right": 56,
+              "bottom": 29.333333333333332,
+              "left": 40
+            },
+            "wrap": "none",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          }
+        },
+        {
+          "id": "7f70205e-c246-4236-bb5f-4539a4e69692",
+          "name": "Negative overflow control",
+          "x": 706.6666666666666,
+          "y": 466.6666666666667,
+          "width": 320,
+          "height": 86.66666666666667,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Clip probe: inspect left and top edges.\nSecond line crosses the bottom edge.\nThird line.",
+          "fontSize": 28,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Clip probe: inspect left and top edges.",
+                  "fontSize": 28,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Second line crosses the bottom edge.",
+                  "fontSize": 28,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Third line.",
+                  "fontSize": 28,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 4.8,
+              "right": 9.6,
+              "bottom": 4.8,
+              "left": 9.6
+            },
+            "wrap": "none",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          }
+        }
+      ],
+      "notes": "Signed inset requests and native acceptance are recorded in original-native-properties.json. Outlines mark shape bounds, not the inset rectangle.",
+      "transition": "none",
+      "hidden": false
+    },
+    {
+      "id": "ef995130-1067-4560-a580-be0139fab757",
+      "name": "Slide 5",
+      "background": "#ffffff",
+      "elements": [
+        {
+          "id": "7104c91d-8d27-4950-a040-cac1e9de8b5c",
+          "name": "Inherited layout title",
+          "x": 93.33333333333333,
+          "y": 120,
+          "width": 1093.3333333333333,
+          "height": 173.33333333333334,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Inherited layout text frame",
+          "fontSize": 30,
+          "fontFamily": "Arial",
+          "color": "#000000",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "center",
+          "verticalAlign": "bottom",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Inherited layout text frame",
+                  "fontSize": 30,
+                  "fontFamily": "Arial",
+                  "color": "#000000",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "center",
+              "lineSpacing": 0.9,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 17.333333333333332,
+              "right": 44,
+              "bottom": 22.666666666666668,
+              "left": 36
+            },
+            "wrap": "none",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          }
+        },
+        {
+          "id": "8e8edaf2-4f80-433e-a7c7-8baa84da4873",
+          "name": "Inherited layout body",
+          "x": 93.33333333333333,
+          "y": 386.6666666666667,
+          "width": 1093.3333333333333,
+          "height": 173.33333333333334,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "This slide overrides content only.\nInsets, wrapping and anchor come from the layout.",
+          "fontSize": 24,
+          "fontFamily": "Arial",
+          "color": "#000000",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "center",
+          "verticalAlign": "middle",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "This slide overrides content only.",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#000000",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "center",
+              "lineSpacing": 0.9,
+              "spaceBefore": 10,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Insets, wrapping and anchor come from the layout.",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#000000",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "center",
+              "lineSpacing": 0.9,
+              "spaceBefore": 10,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 12,
+              "right": 20,
+              "bottom": 36,
+              "left": 28
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          }
+        }
+      ],
+      "notes": "Original PowerPoint layout inheritance. Verify local slide bodyPr omits margin, anchor and wrap attributes before calling this an inheritance fixture.",
+      "transition": "none",
+      "hidden": false
+    },
+    {
+      "id": "bbd5b926-e4f3-461f-b14b-402c3328f295",
+      "name": "Slide 6",
+      "background": "#ffffff",
+      "elements": [
+        {
+          "id": "ab809680-0fc7-436e-a192-3581f4e23220",
+          "name": "Inherited master title",
+          "x": 88,
+          "y": 38.333333333333336,
+          "width": 1104,
+          "height": 139.16671916010498,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Master properties cross placeholder indexes",
+          "fontSize": 28,
+          "fontFamily": "Arial",
+          "color": "#000000",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Master properties cross placeholder indexes",
+                  "fontSize": 28,
+                  "fontFamily": "Arial",
+                  "color": "#000000",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 0.9,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 10.666666666666666,
+              "right": 16,
+              "bottom": 21.333333333333332,
+              "left": 5.333333333333333
+            },
+            "wrap": "none",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          }
+        },
+        {
+          "id": "e8e27d69-dc60-44a4-8d17-313554853b61",
+          "name": "Inherited master content 1",
+          "x": 88,
+          "y": 191.66666666666666,
+          "width": 544,
+          "height": 456.83338582677163,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Content placeholder 1.\nShared master body margins and bottom anchor.",
+          "fontSize": 24,
+          "fontFamily": "Arial",
+          "color": "#000000",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "bottom",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Content placeholder 1.",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#000000",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 0.9,
+              "spaceBefore": 10,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Shared master body margins and bottom anchor.",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#000000",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 0.9,
+              "spaceBefore": 10,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 13.333333333333334,
+              "right": 21.333333333333332,
+              "bottom": 26.666666666666668,
+              "left": 32
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          }
+        },
+        {
+          "id": "cfb3dc71-1262-4d1c-85d1-25903b961d75",
+          "name": "Inherited master content 2",
+          "x": 648,
+          "y": 191.66666666666666,
+          "width": 544,
+          "height": 456.83338582677163,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Content placeholder 2.\nShared master body margins and bottom anchor.",
+          "fontSize": 24,
+          "fontFamily": "Arial",
+          "color": "#000000",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "bottom",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Content placeholder 2.",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#000000",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 0.9,
+              "spaceBefore": 10,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Shared master body margins and bottom anchor.",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#000000",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 0.9,
+              "spaceBefore": 10,
+              "spaceAfter": 0
+            }
+          ],
+          "textFrame": {
+            "insets": {
+              "top": 13.333333333333334,
+              "right": 21.333333333333332,
+              "bottom": 26.666666666666668,
+              "left": 32
+            },
+            "wrap": "square",
+            "horizontalOverflow": "overflow",
+            "verticalOverflow": "overflow"
+          }
+        }
+      ],
+      "notes": "Original master inheritance. Layout content placeholders have distinct indexes but resolve to the same body placeholder in the master. Slide and layout bodyPr must omit inherited properties.",
+      "transition": "none",
+      "hidden": false
+    }
+  ],
+  "updatedAt": "2026-11-06T05:30:26.040Z"
+}

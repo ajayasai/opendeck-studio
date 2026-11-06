@@ -4,6 +4,7 @@ import { exportPptx, importPptx, pptxExportWarnings } from './pptx';
 import type { Deck, ElementBase, Theme, TextElement } from './types';
 import { plainText } from './richText';
 import { validateDeck } from './model';
+import { resolveTextFrame } from './textFrame';
 import { readFile } from 'node:fs/promises';
 
 const theme: Theme = {
@@ -148,6 +149,8 @@ const textShape = (text: string, shapeId = '2', extra = '') =>
   `<p:sp><p:nvSpPr><p:cNvPr id="${shapeId}" name="Text ${shapeId}"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="914400" y="457200"/><a:ext cx="3657600" cy="914400"/></a:xfrm></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:pPr algn="r"/><a:r><a:rPr sz="2800"><a:solidFill><a:schemeClr val="accent1"/></a:solidFill>${extra}</a:rPr><a:t>${text}</a:t></a:r></a:p></p:txBody></p:sp>`;
 const slide = (content: string) =>
   `<p:sld ${ns}><p:cSld><p:spTree>${content}</p:spTree></p:cSld></p:sld>`;
+const placeholderText = (ph: string, bodyPr: string, properties = '<p:spPr/>') =>
+  `<p:sp><p:nvSpPr><p:cNvPr id="2" name="Frame"/><p:cNvSpPr txBox="1"/><p:nvPr><p:ph ${ph}/></p:nvPr></p:nvSpPr>${properties}<p:txBody>${bodyPr}<a:p><a:r><a:t>Frame text</a:t></a:r></a:p></p:txBody></p:sp>`;
 async function fixture(modify?: (zip: JSZip) => void): Promise<ArrayBuffer> {
   const zip = new JSZip();
   zip.file('_rels/.rels', rels(relationship('r1', 'officeDocument', 'ppt/presentation.xml')));
@@ -351,6 +354,394 @@ describe('editable PPTX interoperability', () => {
       width: 100,
       height: 50,
     });
+  });
+
+  it('uses OOXML text-frame defaults when no attribute is specified', async () => {
+    const result = await importPptx(await fixture());
+    const text = result.deck.slides[0].elements[0] as TextElement;
+    expect(text.textFrame).toEqual({
+      insets: { top: 4.8, right: 9.6, bottom: 4.8, left: 9.6 },
+      wrap: 'square',
+      horizontalOverflow: 'overflow',
+      verticalOverflow: 'overflow',
+    });
+    expect(text.verticalAlign).toBe('top');
+    expect(result.warnings.join(' ')).not.toMatch(/margins are not retained|autofit|fit-text/i);
+    expect(result.warnings.join(' ')).not.toContain('omit whole lines');
+  });
+
+  it('exports legacy zero insets and clipping explicitly without enabling autofit', async () => {
+    const deck = sample();
+    deck.slides[0].elements = [deck.slides[0].elements[0]];
+    expect(pptxExportWarnings(deck).join(' ')).toContain('omit whole lines');
+    const bytes = await buffer(await exportPptx(deck));
+    const zip = await JSZip.loadAsync(bytes);
+    const xml = new DOMParser().parseFromString(
+      await zip.file('ppt/slides/slide1.xml')!.async('string'),
+      'application/xml',
+    );
+    const body = xml.getElementsByTagNameNS('*', 'bodyPr')[0];
+    for (const attribute of ['lIns', 'rIns', 'tIns', 'bIns'])
+      expect(body.getAttribute(attribute)).toBe('0');
+    expect(body.getAttribute('wrap')).toBe('square');
+    expect(body.getAttribute('horzOverflow')).toBe('clip');
+    expect(body.getAttribute('vertOverflow')).toBe('clip');
+    expect(body.getElementsByTagNameNS('*', 'noAutofit')).toHaveLength(1);
+    expect(body.getElementsByTagNameNS('*', 'normAutofit')).toHaveLength(0);
+    const reimported = await importPptx(bytes);
+    expect(reimported.warnings.join(' ')).not.toContain('Text-box fill or border');
+    const again = reimported.deck.slides[0].elements[0] as TextElement;
+    expect(again.textFrame).toEqual(resolveTextFrame(deck.slides[0].elements[0] as TextElement));
+  });
+
+  it.each(['t', 'ctr', 'b'] as const)(
+    'preserves signed and zero insets, no-wrap and independent overflow with anchor %s',
+    async (anchor) => {
+      const result = await importPptx(
+        await fixture((zip) => {
+          zip.file(
+            'ppt/slides/slide12.xml',
+            slide(
+              textShape('Frame').replace(
+                '<a:bodyPr/>',
+                `<a:bodyPr lIns="0" rIns="152400" tIns="-38100" bIns="0" wrap="none" horzOverflow="overflow" vertOverflow="clip" anchor="${anchor}"><a:noAutofit/></a:bodyPr>`,
+              ),
+            ),
+          );
+        }),
+      );
+      const text = result.deck.slides[0].elements[0] as TextElement;
+      expect(result.warnings.join(' ')).toContain('omit whole lines');
+      expect(text.textFrame).toEqual({
+        insets: { top: -4, right: 16, bottom: 0, left: 0 },
+        wrap: 'none',
+        horizontalOverflow: 'overflow',
+        verticalOverflow: 'clip',
+      });
+      expect(text.verticalAlign).toBe(
+        anchor === 'ctr' ? 'middle' : anchor === 'b' ? 'bottom' : 'top',
+      );
+      const bytes = await buffer(await exportPptx(result.deck));
+      const zip = await JSZip.loadAsync(bytes);
+      const xml = new DOMParser().parseFromString(
+        await zip.file('ppt/slides/slide1.xml')!.async('string'),
+        'application/xml',
+      );
+      const body = xml.getElementsByTagNameNS('*', 'bodyPr')[0];
+      expect(
+        Object.fromEntries(
+          ['lIns', 'rIns', 'tIns', 'bIns', 'wrap', 'horzOverflow', 'vertOverflow', 'anchor'].map(
+            (key) => [key, body.getAttribute(key)],
+          ),
+        ),
+      ).toEqual({
+        lIns: '0',
+        rIns: '152400',
+        tIns: '-38100',
+        bIns: '0',
+        wrap: 'none',
+        horzOverflow: 'overflow',
+        vertOverflow: 'clip',
+        anchor,
+      });
+      const again = (await importPptx(bytes)).deck.slides[0].elements[0] as TextElement;
+      expect(again.textFrame).toEqual(text.textFrame);
+      expect(again.paragraphs).toEqual(text.paragraphs);
+    },
+  );
+
+  it('resolves each body attribute separately through layout and master while explicit zero and noAutofit override inheritance', async () => {
+    const result = await importPptx(
+      await fixture((zip) => {
+        zip.file(
+          'ppt/slides/slide12.xml',
+          slide(
+            placeholderText(
+              'idx="2"',
+              '<a:bodyPr lIns="0" rIns="0" horzOverflow="overflow"><a:noAutofit/></a:bodyPr>',
+            ),
+          ),
+        );
+        zip.file(
+          'ppt/slideLayouts/slideLayout1.xml',
+          `<p:sldLayout ${ns}><p:cSld><p:spTree>${placeholderText('idx="2"', '<a:bodyPr tIns="190500" wrap="none" anchor="ctr"/>')}</p:spTree></p:cSld></p:sldLayout>`,
+        );
+        const wrong = placeholderText('idx="2" type="title"', '<a:bodyPr bIns="9525" anchor="t"/>');
+        const body = placeholderText(
+          'idx="1" type="body"',
+          '<a:bodyPr lIns="381000" rIns="190500" tIns="95250" bIns="285750" horzOverflow="clip" vertOverflow="clip" anchor="b"><a:normAutofit fontScale="75000"/></a:bodyPr>',
+          '<p:spPr><a:xfrm><a:off x="285750" y="381000"/><a:ext cx="3810000" cy="1905000"/></a:xfrm></p:spPr>',
+        );
+        zip.file(
+          'ppt/slideMasters/slideMaster1.xml',
+          `<p:sldMaster ${ns}><p:cSld><p:spTree>${wrong}${body}</p:spTree></p:cSld><p:txStyles><p:bodyStyle><a:lvl1pPr><a:defRPr sz="3200" b="1"/></a:lvl1pPr></p:bodyStyle><p:otherStyle><a:lvl1pPr><a:defRPr sz="1200" b="0"/></a:lvl1pPr></p:otherStyle></p:txStyles></p:sldMaster>`,
+        );
+      }),
+    );
+    expect(result.deck.slides[0].elements[0]).toMatchObject({
+      x: 30,
+      y: 40,
+      width: 400,
+      height: 200,
+      verticalAlign: 'middle',
+      fontSize: 32,
+      bold: true,
+      textFrame: {
+        insets: { top: 20, right: 0, bottom: 30, left: 0 },
+        wrap: 'none',
+        horizontalOverflow: 'overflow',
+        verticalOverflow: 'clip',
+      },
+    });
+    expect(result.warnings.join(' ')).not.toMatch(/autofit|fit-text/i);
+  });
+
+  it('does not inherit body settings from a wrong-index layout placeholder or decorative shape', async () => {
+    const result = await importPptx(
+      await fixture((zip) => {
+        zip.file('ppt/slides/slide12.xml', slide(placeholderText('idx="9"', '<a:bodyPr/>')));
+        const decorative = textShape('Decoration').replace(
+          '<a:bodyPr/>',
+          '<a:bodyPr tIns="952500" wrap="none"/>',
+        );
+        const wrong = placeholderText('idx="8"', '<a:bodyPr bIns="952500" anchor="b"/>');
+        zip.file(
+          'ppt/slideLayouts/slideLayout1.xml',
+          `<p:sldLayout ${ns}><p:cSld><p:spTree>${decorative}${wrong}</p:spTree></p:cSld></p:sldLayout>`,
+        );
+        zip.file(
+          'ppt/slideMasters/slideMaster1.xml',
+          `<p:sldMaster ${ns}><p:cSld><p:spTree>${placeholderText('type="body"', '<a:bodyPr lIns="952500"/>')}</p:spTree></p:cSld></p:sldMaster>`,
+        );
+      }),
+    );
+    expect(result.deck.slides[0].elements[0]).toMatchObject({
+      verticalAlign: 'top',
+      textFrame: {
+        insets: { top: 4.8, right: 9.6, bottom: 4.8, left: 9.6 },
+        wrap: 'square',
+        horizontalOverflow: 'overflow',
+        verticalOverflow: 'overflow',
+      },
+    });
+  });
+
+  it.each([
+    ['<a:solidFill><a:srgbClr val="AABBCC"/></a:solidFill>', true],
+    ['<a:ln w="12700"><a:solidFill><a:srgbClr val="AABBCC"/></a:solidFill></a:ln>', true],
+    ['<a:ln><a:solidFill><a:srgbClr val="AABBCC"/></a:solidFill></a:ln>', true],
+    ['<a:noFill/><a:ln/>', false],
+    ['<a:noFill/><a:ln><a:noFill/></a:ln>', false],
+    [
+      '<a:solidFill><a:srgbClr val="AABBCC"><a:alpha val="0"/></a:srgbClr></a:solidFill><a:ln w="0"/>',
+      false,
+    ],
+  ])(
+    'warns only for visible explicit text-box fill or border loss: %s',
+    async (decoration, warning) => {
+      const result = await importPptx(
+        await fixture((zip) => {
+          zip.file(
+            'ppt/slides/slide12.xml',
+            slide(textShape('Decorated text').replace('</p:spPr>', `${decoration}</p:spPr>`)),
+          );
+        }),
+      );
+      expect(result.deck.slides[0].elements).toHaveLength(1);
+      expect(result.deck.slides[0].elements[0]).toMatchObject({
+        type: 'text',
+        text: 'Decorated text',
+      });
+      expect(result.warnings.some((message) => message.includes('Text-box fill or border'))).toBe(
+        warning,
+      );
+    },
+  );
+
+  it.each([
+    ['<a:normAutofit/>', 'Shrink-text-to-fit behavior'],
+    [
+      '<a:normAutofit fontScale="80000" lnSpcReduction="10000"/>',
+      'autofit font scaling and line-spacing reductions',
+    ],
+    [
+      '<a:normAutofit fontScale="80.000%" lnSpcReduction="10.000%"/>',
+      'autofit font scaling and line-spacing reductions',
+    ],
+    ['<a:spAutoFit/>', 'Resize-shape-to-fit-text behavior'],
+  ])('warns for inherited unsupported autofit choice %s', async (fit, warning) => {
+    const result = await importPptx(
+      await fixture((zip) => {
+        zip.file('ppt/slides/slide12.xml', slide(placeholderText('idx="3"', '<a:bodyPr/>')));
+        zip.file(
+          'ppt/slideLayouts/slideLayout1.xml',
+          `<p:sldLayout ${ns}><p:cSld><p:spTree>${placeholderText('idx="3" type="body"', `<a:bodyPr>${fit}</a:bodyPr>`)}</p:spTree></p:cSld></p:sldLayout>`,
+        );
+      }),
+    );
+    expect(result.warnings.join(' ')).toContain(warning);
+  });
+
+  it('warns for effective inherited columns, ellipsis, vertical text and anchoring while local supported overrides suppress those warnings', async () => {
+    const make = (local: string) =>
+      fixture((zip) => {
+        zip.file('ppt/slides/slide12.xml', slide(placeholderText('idx="3"', local)));
+        zip.file(
+          'ppt/slideLayouts/slideLayout1.xml',
+          `<p:sldLayout ${ns}><p:cSld><p:spTree>${placeholderText('idx="3" type="body"', '<a:bodyPr numCol="2" vert="vert" rot="60000" vertOverflow="ellipsis" anchor="dist" anchorCtr="1"/>')}</p:spTree></p:cSld></p:sldLayout>`,
+        );
+      });
+    const inherited = await importPptx(await make('<a:bodyPr/>'));
+    expect(inherited.deck.slides[0].elements[0]).toMatchObject({
+      verticalAlign: 'top',
+      textFrame: { verticalOverflow: 'clip' },
+    });
+    expect(inherited.warnings.join(' ')).toMatch(/ellipsis/);
+    expect(inherited.warnings.join(' ')).toMatch(/Multi-column/);
+    expect(inherited.warnings.join(' ')).toMatch(/Vertical and rotated/);
+    expect(inherited.warnings.join(' ')).toMatch(/vertical text anchoring/);
+    expect(inherited.warnings.join(' ')).toMatch(/complete text block/);
+    const overridden = await importPptx(
+      await make(
+        '<a:bodyPr numCol="1" vert="horz" rot="0" vertOverflow="overflow" anchor="t" anchorCtr="0"/>',
+      ),
+    );
+    expect(overridden.warnings.join(' ')).not.toMatch(
+      /ellipsis|Multi-column|Vertical and rotated|vertical text anchoring|complete text block/,
+    );
+  });
+
+  it('imports native PowerPoint margins, anchors and layout/master inheritance and preserves all text frames through export', async () => {
+    const source = await readFile('tests/fixtures/powerpoint-text-frame.pptx');
+    const imported = await importPptx(
+      source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength),
+    );
+    expect(imported.deck.slides).toHaveLength(6);
+    const texts = imported.deck.slides
+      .flatMap((slide) => slide.elements)
+      .filter((element) => element.type === 'text');
+    const find = (name: string) => {
+      const text = texts.find((element) => element.name === name);
+      expect(text, name).toBeDefined();
+      return text!;
+    };
+    expect(find('Asymmetric insets').textFrame).toEqual({
+      insets: { left: 48, top: 32, right: 24, bottom: 16 },
+      wrap: 'square',
+      horizontalOverflow: 'overflow',
+      verticalOverflow: 'overflow',
+    });
+    expect(find('Explicit zero insets').textFrame?.insets).toEqual({
+      left: 0,
+      top: 0,
+      right: 0,
+      bottom: 0,
+    });
+    expect(
+      ['Top anchor', 'Middle anchor', 'Bottom anchor'].map((name) => find(name).verticalAlign),
+    ).toEqual(['top', 'middle', 'bottom']);
+    expect(find('No wrap overflow').textFrame?.wrap).toBe('none');
+    expect(find('Hard and soft breaks without wrapping').paragraphs).toHaveLength(2);
+    expect(
+      find('Hard and soft breaks without wrapping').paragraphs?.some((p) =>
+        p.runs.some((r) => r.text.includes('\n')),
+      ),
+    ).toBe(true);
+    const checkInsets = (
+      name: string,
+      points: { left: number; top: number; right: number; bottom: number },
+    ) => {
+      for (const side of ['left', 'top', 'right', 'bottom'] as const)
+        expect(find(name).textFrame?.insets[side], `${name} ${side}`).toBeCloseTo(
+          (points[side] * 4) / 3,
+          8,
+        );
+    };
+    checkInsets('Inherited layout title', { left: 27, top: 13, right: 33, bottom: 17 });
+    expect(find('Inherited layout title')).toMatchObject({
+      verticalAlign: 'bottom',
+      textFrame: { wrap: 'none' },
+    });
+    checkInsets('Inherited layout body', { left: 21, top: 9, right: 15, bottom: 27 });
+    expect(find('Inherited layout body')).toMatchObject({
+      verticalAlign: 'middle',
+      textFrame: { wrap: 'square' },
+    });
+    for (const name of ['Inherited master content 1', 'Inherited master content 2']) {
+      checkInsets(name, { left: 24, top: 10, right: 16, bottom: 20 });
+      expect(find(name)).toMatchObject({ verticalAlign: 'bottom', textFrame: { wrap: 'square' } });
+    }
+    checkInsets('Inherited master title', { left: 4, top: 8, right: 12, bottom: 16 });
+    expect(find('Inherited master title')).toMatchObject({
+      verticalAlign: 'top',
+      textFrame: { wrap: 'none' },
+    });
+    expect(imported.warnings.join(' ')).not.toMatch(
+      /autofit|fit-text|margins are not retained|omit whole lines/i,
+    );
+    const again = await importPptx(await buffer(await exportPptx(imported.deck)));
+    expect(again.warnings.join(' ')).not.toContain('Text-box fill or border');
+    for (let index = 0; index < imported.deck.slides.length; index++) {
+      const originalText = imported.deck.slides[index].elements.filter((e) => e.type === 'text');
+      const exportedText = again.deck.slides[index].elements.filter((e) => e.type === 'text');
+      expect(
+        exportedText.map((e) => ({
+          frame: e.textFrame,
+          anchor: e.verticalAlign,
+          paragraphs: e.paragraphs,
+        })),
+      ).toEqual(
+        originalText.map((e) => ({
+          frame: e.textFrame,
+          anchor: e.verticalAlign,
+          paragraphs: e.paragraphs,
+        })),
+      );
+      expect(again.deck.slides[index].notes).toBe(imported.deck.slides[index].notes);
+    }
+  });
+
+  it('imports the separately XML-derived clipping probe with signed margins and per-axis overflow intact', async () => {
+    const source = await readFile('tests/fixtures/powerpoint-text-frame-clip-probe.pptx');
+    const imported = await importPptx(
+      source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength),
+    );
+    const texts = imported.deck.slides
+      .flatMap((slide) => slide.elements)
+      .filter((element) => element.type === 'text');
+    const find = (name: string) => texts.find((element) => element.name === name)!;
+    expect(find('No wrap overflow').textFrame).toMatchObject({
+      horizontalOverflow: 'clip',
+      verticalOverflow: 'overflow',
+    });
+    expect(find('Wrapped vertical overflow').textFrame).toMatchObject({
+      horizontalOverflow: 'overflow',
+      verticalOverflow: 'clip',
+    });
+    expect(find('Positive overflow control').textFrame).toMatchObject({
+      horizontalOverflow: 'clip',
+      verticalOverflow: 'clip',
+    });
+    for (const name of ['Negative insets', 'Negative overflow control']) {
+      expect(find(name).textFrame?.insets).toEqual({
+        left: -24,
+        top: -16,
+        right: -32,
+        bottom: -101600 / 9525,
+      });
+    }
+    expect(find('Negative overflow control').textFrame).toMatchObject({
+      horizontalOverflow: 'clip',
+      verticalOverflow: 'clip',
+    });
+    expect(imported.warnings.join(' ')).toContain('omit whole lines');
+    const again = await importPptx(await buffer(await exportPptx(imported.deck)));
+    expect(
+      again.deck.slides
+        .flatMap((slide) => slide.elements)
+        .filter((e) => e.type === 'text')
+        .map((e) => e.textFrame),
+    ).toEqual(texts.map((e) => e.textFrame));
   });
 
   it('flattens scaled groups with explicit warnings', async () => {

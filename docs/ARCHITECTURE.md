@@ -22,6 +22,10 @@ Text boxes retain a base style and plain `text`, with optional `paragraphs` cont
 
 Run properties override the text-box base. An omitted boolean inherits the base; explicit `false` disables the corresponding base style. Paragraph boundaries contribute a newline to the plain projection, while a newline inside a run represents a soft line break. Numbered paragraphs use an explicit `start` to begin or restart a sequence; its absence continues the current sequence at that level.
 
+The optional `textFrame` stores signed CSS-pixel insets, `square`/`none` wrapping, and independent `clip`/`overflow` modes. `src/textFrame.ts` validates the extension and resolves legacy defaults (zero insets, wrapped text, clipped axes). It computes the inset content rectangle separately from the outer clipping bounds; consumed dimensions clamp to zero. RichTextView places the content rectangle within a shape-sized frame. CSS `clip` with `visible` keeps mixed overflow axes independent; `hidden` would turn the other visible axis into a scroll container. Inline plain-text editing uses the same inset rectangle with its own textarea editing viewport.
+
+PPTX imports resolve body properties per attribute through slide → layout → master. Slide/layout placeholder matching uses `idx`; layout/master matching uses the placeholder role, including content-to-body mapping. Local zero values override inherited values. OOXML defaults are distinct from legacy native defaults. Export writes explicit body properties and `noAutofit`; automatic fitting and exact PowerPoint whole-line clipping remain outside the renderer.
+
 IDs identify objects independently of array positions. Slide array order is presentation order; element array order is paint order. Notes and hidden-slide state belong to each slide. The theme is a small palette and font definition, not a PowerPoint master/layout hierarchy.
 
 ## Editing and persistence
@@ -52,6 +56,6 @@ Keep package extraction, XML parsing, relationship resolution, model conversion,
 
 ## Extension direction
 
-Advanced typography, grouped objects, masters, multi-series charts, and media require deliberate document-schema evolution. Collaboration should synchronize document commands or a CRDT representation through an optional provider, rather than make a remote service a prerequisite for editing. Format adapters and presentation timing should remain independently testable. Earlier readers that ignore optional rich paragraphs retain only the plain projection, so users should save rich documents with alpha.2 or later.
+Advanced typography, grouped objects, masters, multi-series charts, and media require deliberate document-schema evolution. Collaboration should synchronize document commands or a CRDT representation through an optional provider, rather than make a remote service a prerequisite for editing. Format adapters and presentation timing should remain independently testable. Earlier readers can ignore additive fields: save rich documents with alpha.2 or later and text-frame documents with alpha.3 or later.
 
 See the [roadmap](ROADMAP.md) for milestones and the [compatibility matrix](COMPATIBILITY.md) for current limits.

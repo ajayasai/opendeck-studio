@@ -3,6 +3,7 @@ import type { PointerEvent, Ref } from 'react';
 import type { Deck, Slide, SlideElement } from './types';
 import { ElementContent, elementStyle } from './SlideView';
 import { replacePlainText } from './richText';
+import { resolveTextFrame, textContentRect } from './textFrame';
 
 interface Props {
   ref?: Ref<CanvasHandle>;
@@ -250,6 +251,7 @@ export default function Canvas({
                 aria-invalid={Boolean(textError)}
                 aria-describedby={textError ? errorId : undefined}
                 className="canvas-text-editor"
+                wrap={resolveTextFrame(e).wrap === 'none' ? 'off' : 'soft'}
                 value={text}
                 onChange={(ev) => {
                   setText(ev.target.value);
@@ -271,6 +273,10 @@ export default function Canvas({
                   }
                 }}
                 style={{
+                  position: 'absolute',
+                  ...textContentRect(e),
+                  whiteSpace: resolveTextFrame(e).wrap === 'none' ? 'pre' : 'pre-wrap',
+                  overflowWrap: resolveTextFrame(e).wrap === 'none' ? 'normal' : 'break-word',
                   fontSize: `${e.fontSize}pt`,
                   fontFamily: e.fontFamily,
                   color: e.color,
