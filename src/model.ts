@@ -5,6 +5,7 @@ import { validateAutoFit } from './textFit';
 import { validateTextDecoration } from './textDecoration';
 import { validateGradientFill } from './gradient';
 import { validateImageRect } from './imageGeometry';
+import { MAX_GROUP_DEPTH, MAX_SLIDE_NODES, MAX_DECK_NODES } from './groups';
 
 export const uid = (): string =>
   globalThis.crypto?.randomUUID?.() ??
@@ -136,6 +137,15 @@ export function createElement<T extends SlideElement['type']>(
 ): Extract<SlideElement, { type: T }>;
 export function createElement(type: SlideElement['type'], theme: Theme): SlideElement {
   switch (type) {
+    case 'group':
+      return {
+        ...base('Group'),
+        type: 'group',
+        children: [],
+        childFrame: { x: 0, y: 0, width: 400, height: 240 },
+        width: 400,
+        height: 240,
+      };
     case 'text':
       return text(theme, 'Your next big idea', 100, 100, 520, 100, 32);
     case 'shape':
@@ -354,13 +364,20 @@ export function createDeck(): Deck {
 }
 
 export function cloneElement<T extends SlideElement>(element: T, offset = 20): T {
-  return {
+  const copy = {
     ...structuredClone(element),
     id: uid(),
     x: element.x + offset,
     y: element.y + offset,
     name: `${element.name.slice(0, 251)} copy`,
   };
+  const refresh = (children: SlideElement[]) =>
+    children.forEach((child) => {
+      child.id = uid();
+      if (child.type === 'group') refresh(child.children);
+    });
+  if (copy.type === 'group') refresh(copy.children);
+  return copy;
 }
 
 export function cloneSlide(slide: Slide): Slide {
@@ -549,11 +566,15 @@ export function validateDeck(input: unknown): Deck {
   let imageBytes = 0;
   const slides: Slide[] = d.slides.map((rawSlide) => {
     const s = object(rawSlide, 'slide');
-    if (!Array.isArray(s.elements) || s.elements.length > 2000)
+    if (!Array.isArray(s.elements) || s.elements.length > MAX_SLIDE_NODES)
       throw new Error('A slide may contain at most 2,000 objects.');
     const slideId = id(s.id);
-    const elements: SlideElement[] = s.elements.map((rawElement) => {
-      if (++count > 20000) throw new Error('A presentation may contain at most 20,000 objects.');
+    let slideCount = 0;
+    const parseElement = (rawElement: unknown, depth: number): SlideElement => {
+      if (++count > MAX_DECK_NODES)
+        throw new Error('A presentation may contain at most 20,000 objects.');
+      if (++slideCount > MAX_SLIDE_NODES)
+        throw new Error('A slide may contain at most 2,000 objects, including group contents.');
       const e = object(rawElement, 'object');
       const b = {
         id: id(e.id),
@@ -568,6 +589,25 @@ export function validateDeck(input: unknown): Deck {
         animation: choice(e.animation, ['none', 'fade', 'rise'] as const, 'animation'),
       };
       switch (e.type) {
+        case 'group': {
+          if (depth >= MAX_GROUP_DEPTH) throw new Error('Groups may nest at most 16 levels.');
+          if (!Array.isArray(e.children) || e.children.length > MAX_SLIDE_NODES)
+            throw new Error('Invalid group children.');
+          const frame = object(e.childFrame, 'group child frame');
+          return {
+            ...b,
+            type: 'group',
+            childFrame: {
+              x: number(frame.x, 'group child x', -100000, 100000),
+              y: number(frame.y, 'group child y', -100000, 100000),
+              width: number(frame.width, 'group child width', 0, 100000),
+              height: number(frame.height, 'group child height', 0, 100000),
+            },
+            children: e.children.map((child) => parseElement(child, depth + 1)),
+            ...(e.flipH !== undefined ? { flipH: bool(e.flipH, 'group horizontal flip') } : {}),
+            ...(e.flipV !== undefined ? { flipV: bool(e.flipV, 'group vertical flip') } : {}),
+          };
+        }
         case 'text':
           return {
             ...b,
@@ -696,7 +736,8 @@ export function validateDeck(input: unknown): Deck {
         default:
           throw new Error('Unsupported slide object type.');
       }
-    });
+    };
+    const elements = s.elements.map((element) => parseElement(element, 0));
     return {
       id: slideId,
       name: string(s.name, 'slide name', 256),

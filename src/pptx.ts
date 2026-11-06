@@ -9,6 +9,15 @@ import { readImageDimensions } from './imageDimensions';
 import { fitToRects, imageGeometry } from './imageGeometry';
 import { materializeImageOrientation } from './imageOrientation';
 import {
+  MAX_GROUP_DEPTH,
+  MAX_SLIDE_NODES,
+  MAX_DECK_NODES,
+  groupRenderingWarnings,
+  groupLayoutContext,
+  projectGroupFrame,
+  restoreGroupFrame,
+} from './groups';
+import {
   DEFAULT_TEXT_CORNER_RADIUS,
   resolveTextDecoration,
   TEXT_LINE_DASHES,
@@ -30,6 +39,7 @@ import type {
   RelativeGradientRect,
   ImageElement,
   ImageRect,
+  GroupElement,
 } from './types';
 
 // ECMA-376: Open Packaging Conventions and PresentationML. Import deliberately
@@ -52,6 +62,8 @@ const nativeDash = (dash: string) => dash.replace(/^longDash/, 'lgDash');
 const modelDash = (dash: string) => dash.replace(/^lgDash/, 'longDash');
 const sparseGradientWarning =
   'Gradients with fewer than two stops are exported as an equivalent two-stop solid ramp so PowerPoint can open the file.';
+const groupedGraphicWarning =
+  'Grouped tables and charts can ignore ancestor rotation or table-grid scaling in PowerPoint; their editable hierarchy is retained, but browser appearance can differ.';
 const identifier = () => crypto.randomUUID();
 const hex = (color: string, fallback = 'FFFFFF') =>
   /^#[\da-f]{6}$/i.test(color) ? color.slice(1) : fallback;
@@ -73,6 +85,141 @@ const relationshipId = (node: Element | undefined | null, name = 'id') =>
         (a) => a.localName === name && a.namespaceURI?.endsWith('/relationships'),
       )?.value ?? node.getAttribute(`r:${name}`))
     : null;
+
+type LeafElement = Exclude<SlideElement, GroupElement>;
+
+function treeElements(elements: SlideElement[], depth = 0): SlideElement[] {
+  return elements.flatMap((element) => {
+    if (element.type !== 'group') return [element];
+    if (depth >= MAX_GROUP_DEPTH) throw new Error('The group nesting limit was exceeded.');
+    return [element, ...treeElements(element.children, depth + 1)];
+  });
+}
+
+/** Group opacity is baked into leaves for PPTX, without changing the native document. */
+function exportLeaves(
+  elements: SlideElement[],
+  opacity = 1,
+  depth = 0,
+  ancestors: GroupElement[] = [],
+): LeafElement[] {
+  return elements.flatMap((element): LeafElement[] => {
+    if (element.type !== 'group') {
+      const leaf = element.type === 'image' ? exportPicture(element, ancestors) : element;
+      return [opacity === 1 ? leaf : { ...leaf, opacity: leaf.opacity * opacity }];
+    }
+    if (depth >= MAX_GROUP_DEPTH) throw new Error('The group nesting limit was exceeded.');
+    return exportLeaves(element.children, opacity * element.opacity, depth + 1, [
+      ...ancestors,
+      element,
+    ]);
+  });
+}
+
+/** Native group scaling changes frames before fitting and before the child's own rotation. */
+function exportPicture(element: ImageElement, ancestors: GroupElement[]): ImageElement {
+  const dimensions = readImageDimensions(element.src);
+  const context = groupLayoutContext(ancestors, element.rotation);
+  // Extreme derived geometry is already reported by groupRenderingWarnings; avoid invalid XML.
+  const usable = [
+    context.position.x,
+    context.position.y,
+    context.size.x,
+    context.size.y,
+    element.width * context.size.x,
+    element.height * context.size.y,
+  ].every((value) => Number.isFinite(value) && value > 0);
+  const frameAncestors = usable ? ancestors : [];
+  // Projection around a zero center avoids overflow from unrelated translated
+  // group origins. Native resizing treats center axes and rotated size axes separately.
+  let displayed = projectGroupFrame(
+    { ...element, x: -element.width / 2, y: -element.height / 2 },
+    frameAncestors,
+  );
+  let encoded: ImageElement;
+  if (element.orientation !== 'encoded' && (dimensions?.orientation ?? 1) !== 1) {
+    displayed = materializeImageOrientation(displayed, dimensions?.orientation);
+    // EXIF changes rotation bands. Invert with the resulting band's size axes,
+    // while restoring the original local center through unswapped position axes.
+    const local = restoreGroupFrame(displayed, frameAncestors);
+    encoded = {
+      ...local,
+      x: element.x + element.width / 2 + local.x,
+      y: element.y + element.height / 2 + local.y,
+    };
+  } else encoded = materializeImageOrientation(element, dimensions?.orientation);
+  if (
+    encoded.crop !== undefined ||
+    encoded.fillRect !== undefined ||
+    encoded.fit === 'stretch' ||
+    !dimensions
+  )
+    return encoded;
+  const rects = fitToRects(
+    displayed.width,
+    displayed.height,
+    dimensions.width,
+    dimensions.height,
+    encoded.fit,
+  );
+  return rects ? { ...encoded, ...rects } : encoded;
+}
+
+/** Relationships belong to the slide part, so reparenting leaves preserves their targets. */
+function writeGroups(doc: Document, source: SlideElement[]): void {
+  if (!source.some((element) => element.type === 'group')) return;
+  const tree = child(child(doc.documentElement, 'cSld'), 'spTree');
+  if (!tree) throw new Error('The exported slide has no shape tree.');
+  const nodes = Array.from(tree.children).filter((node) =>
+    ['sp', 'pic', 'graphicFrame', 'cxnSp'].includes(node.localName),
+  );
+  if (nodes.length !== exportLeaves(source).length)
+    throw new Error('The exported group members do not match the generated shape tree.');
+  let index = 0;
+  let nextId =
+    Math.max(1, ...descendants(tree, 'cNvPr').map((node) => number(attr(node, 'id')))) + 1;
+  const presentationNode = (name: string) => doc.createElementNS(PRESENTATION_NS, `p:${name}`);
+  const build = (elements: SlideElement[]): Element[] =>
+    elements.map((element) => {
+      if (element.type !== 'group') return nodes[index++];
+      const group = presentationNode('grpSp');
+      const metadata = presentationNode('nvGrpSpPr');
+      const name = presentationNode('cNvPr');
+      name.setAttribute('id', String(nextId++));
+      name.setAttribute('name', element.name);
+      metadata.append(name, presentationNode('cNvGrpSpPr'), presentationNode('nvPr'));
+      const properties = presentationNode('grpSpPr');
+      const transform = drawingNode(doc, 'xfrm', {
+        ...(element.rotation !== 0 ? { rot: textRotationUnits(element.rotation) } : {}),
+        ...(element.flipH !== undefined ? { flipH: element.flipH ? '1' : '0' } : {}),
+        ...(element.flipV !== undefined ? { flipV: element.flipV ? '1' : '0' } : {}),
+      });
+      transform.append(
+        drawingNode(doc, 'off', { x: Math.round(element.x * EMU), y: Math.round(element.y * EMU) }),
+        drawingNode(doc, 'ext', {
+          cx: Math.round(element.width * EMU),
+          cy: Math.round(element.height * EMU),
+        }),
+        drawingNode(doc, 'chOff', {
+          x: Math.round(element.childFrame.x * EMU),
+          y: Math.round(element.childFrame.y * EMU),
+        }),
+        drawingNode(doc, 'chExt', {
+          cx: Math.round(element.childFrame.width * EMU),
+          cy: Math.round(element.childFrame.height * EMU),
+        }),
+      );
+      properties.appendChild(transform);
+      group.append(metadata, properties, ...build(element.children));
+      return group;
+    });
+  const hierarchy = build(source);
+  const metadata = Array.from(tree.children).filter((node) =>
+    ['nvGrpSpPr', 'grpSpPr'].includes(node.localName),
+  );
+  const extensions = Array.from(tree.children).filter((node) => node.localName === 'extLst');
+  tree.replaceChildren(...metadata, ...hierarchy, ...extensions);
+}
 
 function drawingNode(
   doc: Document,
@@ -117,6 +264,14 @@ function pictureRects(element: ImageElement): { crop?: ImageRect; fillRect?: Ima
 
 function writePicture(doc: Document, picture: Element, source: ImageElement): void {
   source = materializeImageOrientation(source, readImageDimensions(source.src)?.orientation);
+  if (
+    ![source.x, source.y, source.width, source.height].every((value) =>
+      Number.isSafeInteger(Math.round(value * EMU)),
+    )
+  )
+    throw new Error(
+      `The picture “${source.name}” has geometry too extreme to write safely to PPTX. Reduce its group scaling or use an encoded-axis image.`,
+    );
   const properties = child(picture, 'spPr');
   const fill = child(picture, 'blipFill');
   const blip = child(fill, 'blip');
@@ -467,11 +622,30 @@ function writeTextBody(
 
 export function pptxExportWarnings(deck: Deck): string[] {
   const warnings: string[] = [];
+  const elements = deck.slides.flatMap((slide) => treeElements(slide.elements));
+  const leaves = deck.slides.flatMap((slide) => exportLeaves(slide.elements));
+  for (const group of elements.filter((element) => element.type === 'group')) {
+    if (
+      treeElements(group.children).some(
+        (element) => element.type === 'table' || element.type === 'chart',
+      )
+    )
+      warnings.push(groupedGraphicWarning);
+    if (group.opacity !== 1)
+      warnings.push(
+        'Group opacity is applied separately to each member in PPTX; overlapping members can differ from compositing the whole group.',
+      );
+    if (textRotationUnits(group.rotation) !== Math.round(group.rotation * 60000))
+      warnings.push(
+        'Group rotations beyond the DrawingML angle range use an equivalent angle in PPTX.',
+      );
+  }
   const gradients: Array<{ gradient: GradientFill; opacity: number }> = [];
   for (const slide of deck.slides) {
+    warnings.push(...groupRenderingWarnings(slide.elements));
     if (slide.backgroundGradient)
       gradients.push({ gradient: slide.backgroundGradient, opacity: slide.backgroundOpacity ?? 1 });
-    for (const element of slide.elements) {
+    for (const element of exportLeaves(slide.elements)) {
       if (element.type === 'text') {
         for (const paint of [element.decoration?.fill, element.decoration?.line])
           if (paint?.gradient)
@@ -494,9 +668,16 @@ export function pptxExportWarnings(deck: Deck): string[] {
       } else if (element.type === 'image') {
         const dimensions = readImageDimensions(element.src);
         const encoded = materializeImageOrientation(element, dimensions?.orientation);
-        if (Math.abs(encoded.x) > 100000 || Math.abs(encoded.y) > 100000)
+        if (
+          Math.abs(encoded.x) > 100000 ||
+          Math.abs(encoded.y) > 100000 ||
+          encoded.width < 0.01 ||
+          encoded.height < 0.01 ||
+          encoded.width > 100000 ||
+          encoded.height > 100000
+        )
           warnings.push(
-            'Materializing picture orientation places its frame outside the native coordinate bounds; re-import can limit those coordinates.',
+            'Materializing picture orientation places its frame outside the native geometry bounds; re-import can limit its coordinates or dimensions.',
           );
         const layout = imageGeometry(encoded, dimensions);
         if (layout?.reason) warnings.push(layout.reason);
@@ -525,47 +706,38 @@ export function pptxExportWarnings(deck: Deck): string[] {
     );
   }
   if (
-    deck.slides.some((slide) =>
-      slide.elements.some((element) => {
-        if (element.type === 'text' || element.type === 'image') return false;
-        const linear =
-          element.type === 'shape' && (element.shape === 'line' || element.shape === 'arrow');
-        // Match the actual inch arguments, including centered horizontal lines.
-        // Negative positions take the library's inches path and are unaffected.
-        return [
-          element.x / 96,
-          element.y / 96 + (linear ? element.height / 96 / 2 : 0),
-          element.width / 96,
-          linear ? 0 : element.height / 96,
-        ].some((value) => value >= 100);
-      }),
-    )
+    leaves.some((element) => {
+      if (element.type === 'text' || element.type === 'image') return false;
+      const linear =
+        element.type === 'shape' && (element.shape === 'line' || element.shape === 'arrow');
+      // Match the actual inch arguments, including centered horizontal lines.
+      // Negative positions take the library's inches path and are unaffected.
+      return [
+        element.x / 96,
+        element.y / 96 + (linear ? element.height / 96 / 2 : 0),
+        element.width / 96,
+        linear ? 0 : element.height / 96,
+      ].some((value) => value >= 100);
+    })
   )
     warnings.push(
       'Shapes, tables, or charts with positive positions or dimensions of 9,600 px or more may be misplaced or resized in PPTX export because of a library unit limit.',
     );
   if (
-    deck.slides.some((slide) =>
-      slide.elements.some(
-        (element) =>
-          element.type === 'text' && resolveTextFrame(element).verticalOverflow === 'clip',
-      ),
+    leaves.some(
+      (element) => element.type === 'text' && resolveTextFrame(element).verticalOverflow === 'clip',
     )
   )
     warnings.push(verticalClipWarning);
-  if (deck.slides.some((s) => s.elements.some((e) => e.animation !== 'none')))
+  if (elements.some((e) => e.animation !== 'none'))
     warnings.push('Element entrance animations are not written to PPTX.');
   if (
-    deck.slides.some((s) =>
-      s.elements.some(
-        (e) => (e.type === 'table' || e.type === 'chart') && (e.rotation !== 0 || e.opacity !== 1),
-      ),
+    leaves.some(
+      (e) => (e.type === 'table' || e.type === 'chart') && (e.rotation !== 0 || e.opacity !== 1),
     )
   )
     warnings.push('Table and chart rotation/opacity are not preserved in PPTX.');
-  for (const text of deck.slides
-    .flatMap((slide) => slide.elements)
-    .filter((element) => element.type === 'text')) {
+  for (const text of leaves.filter((element) => element.type === 'text')) {
     if (text.decoration?.line?.join === 'miter' && (text.decoration.line.miterLimit ?? 8) < 1)
       warnings.push(
         'Miter limits below 1 are retained in PPTX, but browser outlines use a minimum limit of 1.',
@@ -620,7 +792,7 @@ export async function exportPptx(deck: Deck): Promise<Blob> {
     slide.background = { color: hex(source.background) };
     slide.hidden = source.hidden;
     if (source.notes) slide.addNotes(source.notes);
-    for (const element of source.elements) {
+    for (const element of exportLeaves(source.elements)) {
       const pos = {
         x: element.x / 96,
         y: element.y / 96,
@@ -769,26 +941,35 @@ export async function exportPptx(deck: Deck): Promise<Blob> {
       'application/xml',
     );
     child(doc.documentElement, 'cSld')?.setAttribute('name', source.name);
-    const tableSources = source.elements.filter((e) => e.type === 'table');
+    const leafSources = exportLeaves(source.elements);
+    const graphicSources = leafSources.filter(
+      (element) => element.type === 'table' || element.type === 'chart',
+    );
+    descendants(doc, 'graphicFrame').forEach((frame, frameIndex) => {
+      const element = graphicSources[frameIndex];
+      if (element)
+        child(child(frame, 'nvGraphicFramePr'), 'cNvPr')?.setAttribute('name', element.name);
+    });
+    const tableSources = leafSources.filter((e) => e.type === 'table');
     descendants(doc, 'tbl').forEach((table, tableIndex) =>
       child(table, 'tblPr')?.setAttribute('firstRow', tableSources[tableIndex]?.header ? '1' : '0'),
     );
     const textShapes = descendants(doc, 'sp').filter(
       (sp) => attr(descendant(sp, 'cNvSpPr'), 'txBox') === '1',
     );
-    const textSources = source.elements.filter((e) => e.type === 'text');
+    const textSources = leafSources.filter((e) => e.type === 'text');
     textShapes.forEach((shape, textIndex) => {
       const textSource = textSources[textIndex];
       if (textSource) writeTextBody(doc, shape, textSource, relations);
     });
-    const imageSources = source.elements.filter((element) => element.type === 'image');
+    const imageSources = leafSources.filter((element) => element.type === 'image');
     descendants(doc, 'pic').forEach((picture, imageIndex) => {
       if (imageSources[imageIndex]) writePicture(doc, picture, imageSources[imageIndex]);
     });
     const ordinaryShapes = descendants(doc, 'sp').filter(
       (sp) => attr(descendant(sp, 'cNvSpPr'), 'txBox') !== '1',
     );
-    const ordinarySources = source.elements.filter((element) => element.type === 'shape');
+    const ordinarySources = leafSources.filter((element) => element.type === 'shape');
     ordinaryShapes.forEach((shape, shapeIndex) => {
       const element = ordinarySources[shapeIndex];
       const properties = child(shape, 'spPr');
@@ -847,6 +1028,7 @@ export async function exportPptx(deck: Deck): Promise<Blob> {
         if (!bg.parentNode) root.prepend(bg);
       }
     }
+    writeGroups(doc, source.elements);
     zip.file(relPath, new XMLSerializer().serializeToString(relations));
     xml = new XMLSerializer().serializeToString(doc);
     if (source.transition !== 'none') {
@@ -919,15 +1101,6 @@ interface Relation {
 type Relations = Map<string, Relation>;
 type Colors = Record<string, string>;
 type Warn = (message: string) => void;
-interface Transform {
-  x: number;
-  y: number;
-  sx: number;
-  sy: number;
-  rotation: number;
-}
-const identity: Transform = { x: 0, y: 0, sx: 1, sy: 1, rotation: 0 };
-
 function packagePath(base: string, target: string): string {
   if (/^[a-z][a-z\d+.-]*:/i.test(target) || target.includes('\\') || /[?#\0]/.test(target))
     throw new Error('Unsafe PPTX relationship target.');
@@ -1436,7 +1609,6 @@ function readDecoration(
 function shapeGeometry(
   node: Element,
   fallback: Element | undefined,
-  transform: Transform,
 ): Pick<ElementBase, 'x' | 'y' | 'width' | 'height' | 'rotation'> {
   const xfrm =
     child(child(node, 'spPr'), 'xfrm') ??
@@ -1445,29 +1617,21 @@ function shapeGeometry(
   const off = child(xfrm, 'off');
   const ext = child(xfrm, 'ext');
   return {
-    x: clamp(
-      transform.x + (number(attr(off, 'x'), 80 * EMU) / EMU) * transform.sx,
-      -100000,
-      100000,
-    ),
-    y: clamp(
-      transform.y + (number(attr(off, 'y'), 80 * EMU) / EMU) * transform.sy,
-      -100000,
-      100000,
-    ),
-    width: clamp((number(attr(ext, 'cx'), 600 * EMU) / EMU) * transform.sx, 0.01, 100000),
-    height: clamp((number(attr(ext, 'cy'), 100 * EMU) / EMU) * transform.sy, 0.01, 100000),
-    rotation: clamp(number(attr(xfrm, 'rot')) / 60000 + transform.rotation, -360000, 360000),
+    x: clamp(number(attr(off, 'x'), 80 * EMU) / EMU, -100000, 100000),
+    y: clamp(number(attr(off, 'y'), 80 * EMU) / EMU, -100000, 100000),
+    width: clamp(number(attr(ext, 'cx'), 600 * EMU) / EMU, 0.01, 100000),
+    height: clamp(number(attr(ext, 'cy'), 100 * EMU) / EMU, 0.01, 100000),
+    rotation: clamp(number(attr(xfrm, 'rot')) / 60000, -360000, 360000),
   };
 }
 
-function base(node: Element, fallback: Element | undefined, transform: Transform): ElementBase {
+function base(node: Element, fallback: Element | undefined): ElementBase {
   const metadata = descendant(node, 'cNvPr');
   const alpha = descendant(child(node, 'spPr'), 'alpha');
   return {
     id: identifier(),
     name: (attr(metadata, 'name') ?? 'Imported object').slice(0, 256),
-    ...shapeGeometry(node, fallback, transform),
+    ...shapeGeometry(node, fallback),
     opacity: clamp(number(attr(alpha, 'val'), 100000) / 100000, 0, 1),
     locked: false,
     animation: 'none',
@@ -2006,6 +2170,7 @@ export async function importPptx(
   if (Object.keys(zip.files).some((p) => /comments|commentAuthors/i.test(p)))
     warn('Comments and review metadata are not imported.');
 
+  let importedNodes = 0;
   for (const [slideIndex, slideId] of slideIds.entries()) {
     const rel = presentationRels.get(relationshipId(slideId) ?? '');
     if (!rel || rel.external || !rel.type.endsWith('/slide'))
@@ -2126,34 +2291,91 @@ export async function importPptx(
     if ([...layoutTemplates, ...masterTemplates].some((sp) => !descendant(sp, 'ph')))
       warn('Decorative master/layout objects are not imported.');
 
-    async function parseShape(node: Element, transform: Transform): Promise<void> {
-      if (slide.elements.length >= 1000)
-        throw new Error('A slide exceeds the 1,000-object import limit.');
+    let slideNodes = 0;
+    async function parseShape(node: Element, target: SlideElement[], depth = 0): Promise<void> {
+      if (++slideNodes > MAX_SLIDE_NODES)
+        throw new Error(
+          'A slide exceeds the 2,000-object import limit, including group containers.',
+        );
+      if (++importedNodes > MAX_DECK_NODES)
+        throw new Error(
+          'A presentation exceeds the 20,000-object import limit, including group containers.',
+        );
       if (node.localName === 'grpSp') {
-        const xfrm = child(child(node, 'grpSpPr'), 'xfrm');
+        if (depth >= MAX_GROUP_DEPTH)
+          throw new Error('A presentation exceeds the 16-level group nesting limit.');
+        const properties = child(node, 'grpSpPr');
+        const xfrm = child(properties, 'xfrm');
         const off = child(xfrm, 'off');
         const ext = child(xfrm, 'ext');
         const chOff = child(xfrm, 'chOff');
         const chExt = child(xfrm, 'chExt');
-        const sx = number(attr(ext, 'cx'), 1) / Math.max(1, number(attr(chExt, 'cx'), 1));
-        const sy = number(attr(ext, 'cy'), 1) / Math.max(1, number(attr(chExt, 'cy'), 1));
-        const group: Transform = {
-          x:
-            transform.x +
-            ((number(attr(off, 'x')) - number(attr(chOff, 'x')) * sx) / EMU) * transform.sx,
-          y:
-            transform.y +
-            ((number(attr(off, 'y')) - number(attr(chOff, 'y')) * sy) / EMU) * transform.sy,
-          sx: sx * transform.sx,
-          sy: sy * transform.sy,
-          rotation: transform.rotation + number(attr(xfrm, 'rot')) / 60000,
+        const coordinate = (entry: Element | undefined, key: string, min: number, fallback = 0) => {
+          const raw = attr(entry, key);
+          const valid =
+            raw === null || (/^[+-]?\d+$/.test(raw.trim()) && Number.isFinite(Number(raw)));
+          if (!valid) warn('Invalid group transform values used their default coordinates.');
+          const value = valid ? number(raw, fallback * EMU) / EMU : fallback;
+          if (value < min || value > 100000)
+            warn('Group transform coordinates outside the supported range were limited.');
+          return clamp(value, min, 100000);
         };
-        warn(
-          'Grouped objects are imported as individual editable objects; rotated/flipped groups may differ.',
-        );
+        const flip = (name: string) => {
+          const value = attr(xfrm, name);
+          if (value === null) return undefined;
+          if (!['0', '1', 'true', 'false'].includes(value))
+            warn('An invalid group flip used false.');
+          return value === '1' || value === 'true';
+        };
+        const rawRotation = attr(xfrm, 'rot');
+        const validRotation =
+          rawRotation === null ||
+          (/^[+-]?\d+$/.test(rawRotation.trim()) && Number.isFinite(Number(rawRotation)));
+        const rotation = validRotation ? number(rawRotation) / 60000 : 0;
+        if (!validRotation) warn('An invalid group rotation used zero.');
+        if (rotation < -360000 || rotation > 360000)
+          warn('Group rotation outside the supported range was limited.');
+        if (!xfrm || !off || !ext)
+          warn('A group with incomplete transform metadata used default bounds.');
+        const flipH = flip('flipH'),
+          flipV = flip('flipV');
+        const group: GroupElement = {
+          id: identifier(),
+          name: (attr(child(child(node, 'nvGrpSpPr'), 'cNvPr'), 'name') ?? 'Imported group').slice(
+            0,
+            256,
+          ),
+          type: 'group',
+          x: coordinate(off, 'x', -100000),
+          y: coordinate(off, 'y', -100000),
+          width: coordinate(ext, 'cx', 0.01, 1),
+          height: coordinate(ext, 'cy', 0.01, 1),
+          rotation: clamp(rotation, -360000, 360000),
+          opacity: 1,
+          locked: false,
+          animation: 'none',
+          childFrame: {
+            x: coordinate(chOff, 'x', -100000),
+            y: coordinate(chOff, 'y', -100000),
+            width: coordinate(chExt, 'cx', 0),
+            height: coordinate(chExt, 'cy', 0),
+          },
+          ...(flipH !== undefined ? { flipH } : {}),
+          ...(flipV !== undefined ? { flipV } : {}),
+          children: [],
+        };
+        if (
+          child(properties, 'effectDag') ||
+          child(properties, 'effectLst')?.children.length ||
+          child(properties, 'scene3d')
+        )
+          warn('Group effects, including composite opacity and 3D effects, are not retained.');
+        if (paintChild(properties) && !child(properties, 'noFill'))
+          warn('Group paints and inherited group-fill effects are not retained.');
         for (const nested of Array.from(node.children))
           if (['sp', 'pic', 'graphicFrame', 'cxnSp', 'grpSp'].includes(nested.localName))
-            await parseShape(nested, group);
+            await parseShape(nested, group.children, depth + 1);
+        target.push(group);
         return;
       }
       const layoutPlaceholder = layoutPlaceholderFor(node, layoutTemplates);
@@ -2161,7 +2383,7 @@ export async function importPptx(
       const template = child(child(layoutPlaceholder, 'spPr'), 'xfrm')
         ? layoutPlaceholder
         : (masterPlaceholder ?? layoutPlaceholder);
-      const geometry = base(node, template, transform);
+      const geometry = base(node, template);
       const properties = child(node, 'spPr');
       if (
         descendant(properties, 'pattFill') ||
@@ -2236,8 +2458,8 @@ export async function importPptx(
           if (kind === 'line' || (kind === 'arrow' && preset !== 'rightArrow')) {
             const xfrm = child(properties, 'xfrm');
             const ext = child(xfrm, 'ext');
-            const dx = (number(attr(ext, 'cx')) / EMU) * transform.sx;
-            const dy = (number(attr(ext, 'cy')) / EMU) * transform.sy;
+            const dx = number(attr(ext, 'cx')) / EMU;
+            const dy = number(attr(ext, 'cy')) / EMU;
             const length = Math.max(1, Math.hypot(dx, dy));
             lineGeometry = {
               x: geometry.x + dx / 2 - length / 2,
@@ -2247,7 +2469,7 @@ export async function importPptx(
               rotation: geometry.rotation + (Math.atan2(dy, dx) * 180) / Math.PI,
             };
           }
-          slide.elements.push({
+          target.push({
             ...geometry,
             ...lineGeometry,
             type: 'shape',
@@ -2304,7 +2526,7 @@ export async function importPptx(
           const textAlpha = textAlphas[0] ?? 1;
           if (new Set(textAlphas).size > 1)
             warn('Mixed per-run text opacity is flattened to the first text opacity.');
-          slide.elements.push({
+          target.push({
             ...geometry,
             id: identifier(),
             type: 'text',
@@ -2440,8 +2662,9 @@ export async function importPptx(
         };
         const layout = imageGeometry(picture);
         if (layout?.reason) warn(layout.reason);
-        slide.elements.push(picture);
+        target.push(picture);
       } else if (node.localName === 'graphicFrame') {
+        if (depth > 0) warn(groupedGraphicWarning);
         const table = descendant(node, 'tbl');
         const chart = descendant(node, 'chart');
         if (table) {
@@ -2468,7 +2691,7 @@ export async function importPptx(
             )
               warn('Merged table cells are flattened into a rectangular grid.');
             warn('Table styling and unequal row/column sizes are simplified.');
-            slide.elements.push({
+            target.push({
               ...geometry,
               type: 'table',
               rows,
@@ -2529,7 +2752,7 @@ export async function importPptx(
               'A pie chart with negative or all-zero values was imported as a bar chart so its data remains visible.',
             );
           }
-          slide.elements.push({
+          target.push({
             ...geometry,
             type: 'chart',
             chartType,
@@ -2544,7 +2767,7 @@ export async function importPptx(
     const tree = child(child(slideDoc.documentElement, 'cSld'), 'spTree');
     for (const shape of Array.from(tree?.children ?? []))
       if (['sp', 'cxnSp', 'pic', 'graphicFrame', 'grpSp'].includes(shape.localName))
-        await parseShape(shape, identity);
+        await parseShape(shape, slide.elements);
     const notesRel = Array.from(slideRels.values()).find(
       (r) => !r.external && r.type.endsWith('/notesSlide'),
     );
@@ -2556,6 +2779,7 @@ export async function importPptx(
         .join('\n')
         .slice(0, 100000);
     }
+    for (const message of groupRenderingWarnings(slide.elements)) warn(message);
     deck.slides.push(slide);
   }
   warn(

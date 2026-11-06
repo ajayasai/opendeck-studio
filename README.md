@@ -2,7 +2,7 @@
 
 An open-source presentation studio for the browser. Create slides, keep your files locally, and exchange editable content through PowerPoint's PPTX format.
 
-**Status: 0.1.0-alpha.7.** OpenDeck is an original implementation with a focused editor, rich text authoring, and partial PPTX compatibility. It is not a complete replacement for every PowerPoint workflow. The [compatibility matrix](docs/COMPATIBILITY.md) states the boundaries; the [roadmap](docs/ROADMAP.md) tracks the work ahead.
+**Status: 0.1.0-alpha.8.** OpenDeck is an original implementation with a focused editor, rich text authoring, and partial PPTX compatibility. It is not a complete replacement for every PowerPoint workflow. The [compatibility matrix](docs/COMPATIBILITY.md) states the boundaries; the [roadmap](docs/ROADMAP.md) tracks the work ahead.
 
 [Try the public demo](https://ajayasai.github.io/opendeck-studio/) · [Download the release](https://github.com/ajayasai/opendeck-studio/releases) · [Testing evidence](docs/TESTING.md)
 
@@ -42,6 +42,7 @@ npm run preview
 - A visual picture crop editor with drag positioning, zoom, precise source/fill edges, horizontal/vertical flips, and reversible edits that retain the original image bytes.
 - Slide organization, five visual themes, reusable layouts, speaker notes, and presentation playback.
 - Object alignment, layer ordering, grid snapping, keyboard shortcuts, and a slide sorter.
+- Nested groups, editable members, group transforms, and guarded ungrouping, with preserved PPTX group hierarchy.
 - Fullscreen presenting with a timer, notes panel, next-slide preview, laser pointer, and blackout control.
 - Browser printing and Save as PDF through the browser's print dialog.
 - Local editing, undo/redo, browser persistence, a searchable presentation library, and a portable native JSON document.
@@ -72,6 +73,10 @@ Select a picture and choose **Format → Crop picture…** to reposition or zoom
 
 ![Visual picture cropping in OpenDeck](docs/assets/picture-crop-editor.jpg)
 
+Select several objects and choose **Arrange → Group objects** or press **Ctrl+G**. Double-click a group, or choose **Edit group contents**, to edit its members in their own coordinate space. The breadcrumb returns to a parent group or the slide. Copying a group retains its nested contents, and group commands participate in undo/redo. **Ctrl+Shift+G** ungroups supported unit-scale groups; groups whose scaling, flips, shared opacity, or animation cannot be removed safely remain intact with an explanation. Nested groups imported from PPTX retain their child coordinate frames rather than flattening into slide objects. The [group example](examples/groups.pptx) and [native copy](examples/groups.opendeck) exercise scaling, rotation, flips, nesting, and editable members.
+
+![Editing an object inside a nested PowerPoint group](docs/assets/group-editor.jpg)
+
 Tables and charts use simplified models. Advanced PowerPoint content can change or disappear during import/export; keep the original file and review the result before relying on it. Browser line metrics, autofit recalculation, complete-line clipping, unsupported paints/custom geometry, hyperlink theme colors, and some numbering restarts can differ. See the [compatibility notes](docs/COMPATIBILITY.md).
 
 ## Your files
@@ -91,6 +96,8 @@ Use alpha.5 or later for attached text decorations, text-only opacity, and parag
 Use alpha.6 or later for gradient and independent shape/background opacity backups. Earlier readers can discard these optional fields when re-saving. Existing solid paints remain unchanged when no gradient is present.
 
 Use alpha.7 or later for picture crop, fill, flip, and encoded-orientation backups. Earlier readers can reject the new stretch mode or lose crop/orientation information. Existing image files keep their prior browser orientation behavior until an explicit conversion is needed for PPTX export.
+
+Use alpha.8 or later for documents containing groups. Earlier readers reject the new group object type. Native backups preserve group hierarchy, member order, child frames, and transforms.
 
 You can edit without an internet connection after the application and its assets are loaded. For predictable offline access, run the built files on a local static server. This release does not install a PWA or guarantee that a hosted page will reopen offline.
 

@@ -13,6 +13,8 @@ if (
     'powerpoint-text-decoration.pptx',
     'powerpoint-gradients.pptx',
     'powerpoint-picture-geometry.pptx',
+    'powerpoint-groups.pptx',
+    'powerpoint-groups-rotation.pptx',
   ].some((name) => path?.endsWith(name))
 )
   throw new Error('Expected the dedicated original fixture filename.');

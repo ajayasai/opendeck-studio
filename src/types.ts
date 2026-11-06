@@ -170,7 +170,16 @@ export interface ChartElement extends ElementBase {
   values: number[];
   color: string;
 }
-export type SlideElement = TextElement | ShapeElement | ImageElement | TableElement | ChartElement;
+export interface GroupElement extends ElementBase {
+  type: 'group';
+  children: SlideElement[];
+  /** Native child coordinates; a zero extent disables scaling on that axis. */
+  childFrame: { x: number; y: number; width: number; height: number };
+  flipH?: boolean;
+  flipV?: boolean;
+}
+export type SlideElement =
+  TextElement | ShapeElement | ImageElement | TableElement | ChartElement | GroupElement;
 export interface Slide {
   id: string;
   name: string;

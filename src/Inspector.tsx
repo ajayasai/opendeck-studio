@@ -40,6 +40,7 @@ import type {
   TextDecorationLine,
   GradientFill,
   ImageElement,
+  GroupElement,
   Theme,
 } from './types';
 
@@ -55,6 +56,10 @@ export interface InspectorProps {
   onEditRichText?: (element: TextElement) => void;
   onEditImageCrop?: (element: ImageElement) => void;
   onFitText?: (element: TextElement) => void;
+  onEditGroup?: (element: GroupElement) => void;
+  onGroup?: () => void;
+  onUngroup?: () => void;
+  scopeName?: string;
 }
 
 function NumberField({
@@ -1076,6 +1081,10 @@ export function Inspector({
   onEditRichText,
   onEditImageCrop,
   onFitText,
+  onEditGroup,
+  onGroup,
+  onUngroup,
+  scopeName,
 }: InspectorProps) {
   const [tab, setTab] = useState<'format' | 'design' | 'layers'>('format');
   const element = selected.length === 1 ? selected[0] : undefined;
@@ -1218,13 +1227,15 @@ export function Inspector({
                           max={360000}
                           onChange={(rotation) => onElementPatch({ rotation })}
                         />
-                        <NumberField
-                          label="Opacity %"
-                          value={element.opacity * 100}
-                          min={0}
-                          max={100}
-                          onChange={(opacity) => onElementPatch({ opacity: opacity / 100 })}
-                        />
+                        {element.type !== 'group' && (
+                          <NumberField
+                            label="Opacity %"
+                            value={element.opacity * 100}
+                            min={0}
+                            max={100}
+                            onChange={(opacity) => onElementPatch({ opacity: opacity / 100 })}
+                          />
+                        )}
                       </div>
                     </fieldset>
                   )}
@@ -1233,6 +1244,15 @@ export function Inspector({
                       Arrange this selection together. Select a single object for its formatting
                       controls.
                     </p>
+                  )}
+                  {onGroup && selected.length > 1 && (
+                    <button
+                      className="secondary-button"
+                      disabled={selected.some((item) => item.locked)}
+                      onClick={onGroup}
+                    >
+                      Group objects
+                    </button>
                   )}
                   <div className="segmented" aria-label="Layer order">
                     <button
@@ -1273,6 +1293,41 @@ export function Inspector({
             </section>
             {element && (
               <fieldset disabled={element.locked} className="inspector-fieldset" key={element.id}>
+                {element.type === 'group' && (
+                  <section className="panel-section">
+                    <h3>Group contents</h3>
+                    <p className="inspector-hint">
+                      {element.children.length} members. Open the group to edit its objects in their
+                      own coordinate space.
+                    </p>
+                    {onEditGroup && (
+                      <button className="secondary-button" onClick={() => onEditGroup(element)}>
+                        Edit group contents
+                      </button>
+                    )}
+                    {onUngroup && (
+                      <button className="secondary-button" onClick={onUngroup}>
+                        Ungroup objects
+                      </button>
+                    )}
+                    <label className="checkbox-field">
+                      <input
+                        type="checkbox"
+                        checked={element.flipH ?? false}
+                        onChange={(event) => onElementPatch({ flipH: event.target.checked })}
+                      />
+                      Flip group horizontally
+                    </label>
+                    <label className="checkbox-field">
+                      <input
+                        type="checkbox"
+                        checked={element.flipV ?? false}
+                        onChange={(event) => onElementPatch({ flipV: event.target.checked })}
+                      />
+                      Flip group vertically
+                    </label>
+                  </section>
+                )}
                 {element.type === 'text' && (
                   <>
                     <section className="panel-section">
@@ -1723,7 +1778,7 @@ export function Inspector({
         )}
         {tab === 'layers' && (
           <section className="panel-section">
-            <h3>Objects on this slide</h3>
+            <h3>{scopeName ? `Objects in ${scopeName}` : 'Objects on this slide'}</h3>
             <p className="inspector-hint">
               Topmost objects appear first. Select an object to format or arrange it.
             </p>
@@ -1744,7 +1799,9 @@ export function Inspector({
                           ? '▥'
                           : item.type === 'table'
                             ? '▦'
-                            : '◇'}
+                            : item.type === 'group'
+                              ? '▣'
+                              : '◇'}
                   </span>
                   <span className="layer-name">{item.name || item.type}</span>
                   {item.locked && <LockKeyhole size={13} aria-label="Locked" />}

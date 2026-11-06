@@ -277,7 +277,7 @@ describe('asynchronous image insertion', () => {
           .some((element) => element.type === 'image'),
       ).toBe(false);
       expect(screen.getByRole('status').textContent).toContain(
-        'original presentation or slide is no longer open',
+        'original presentation, slide, or group is no longer available',
       );
     },
   );

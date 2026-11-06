@@ -6,6 +6,7 @@ import TextDecorationView from './TextDecorationView';
 import GradientDefinition from './GradientDefinition';
 import SlideBackground, { slideBaseBackground } from './SlideBackground';
 import ImageView from './ImageView';
+import { layoutGroupChildren } from './groups';
 
 export function ChartView({ element: e }: { element: ChartElement }) {
   const w = 600,
@@ -209,16 +210,54 @@ function ShapeView({ element: e }: { element: ShapeElement }) {
 export function ElementContent({
   element: e,
   interactiveLinks = false,
+  groupTextFlip = false,
 }: {
   element: SlideElement;
   interactiveLinks?: boolean;
+  groupTextFlip?: boolean;
 }) {
   switch (e.type) {
+    case 'group': {
+      return (
+        <div
+          className="group-child-coordinates"
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            width: e.width,
+            height: e.height,
+            transformOrigin: 'center',
+            transform: `scale(${e.flipH ? -1 : 1},${e.flipV ? -1 : 1})`,
+            overflow: 'visible',
+          }}
+        >
+          {layoutGroupChildren(e).map((child) => (
+            <div key={child.id} style={elementStyle(child)} data-group-child={child.id}>
+              <ElementContent
+                element={child}
+                interactiveLinks={interactiveLinks}
+                groupTextFlip={groupTextFlip !== (Boolean(e.flipH) !== Boolean(e.flipV))}
+              />
+            </div>
+          ))}
+        </div>
+      );
+    }
     case 'text':
       return (
         <>
           <TextDecorationView element={e} />
-          <RichTextView element={e} interactiveLinks={interactiveLinks} />
+          {groupTextFlip ? (
+            <div
+              className="group-text-orientation"
+              style={{ width: '100%', height: '100%', transform: 'scaleX(-1)' }}
+            >
+              <RichTextView element={e} interactiveLinks={interactiveLinks} />
+            </div>
+          ) : (
+            <RichTextView element={e} interactiveLinks={interactiveLinks} />
+          )}
         </>
       );
     case 'shape':

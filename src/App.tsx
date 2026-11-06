@@ -53,7 +53,17 @@ import type {
   GradientFill,
   TextDecorationPaint,
   ImageElement,
+  GroupElement,
 } from './types';
+import {
+  getElementsAtPath,
+  getGroupPath,
+  updateElementsAtPath,
+  flattenElements,
+  mapElements,
+  groupSelection,
+  ungroupSelection,
+} from './groups';
 import { slideBackgroundColor } from './gradient';
 import {
   createDeck,
@@ -74,7 +84,7 @@ import { useDialog } from './useDialog';
 import Library from './Library';
 import { applyTextPatch } from './richText';
 import RichTextEditor from './RichTextLoader';
-import { prepareTextLayout } from './textFit';
+import { prepareTextLayout, fitTextInGroups } from './textFit';
 import { fitTextElement } from './textFitting';
 import ImageCropEditor from './ImageCropEditor';
 import { readImageDimensions } from './imageDimensions';
@@ -85,6 +95,17 @@ const prepareLayout = (before: Deck, next: Deck) => prepareTextLayout(before, ne
 const isTyping = (target: EventTarget | null) =>
   target instanceof HTMLElement &&
   (Boolean(target.closest('input,textarea,select')) || target.isContentEditable);
+function validGroupPath(elements: SlideElement[], path: string[]): string[] {
+  const valid: string[] = [];
+  let siblings = elements;
+  for (const id of path) {
+    const group = siblings.find((e) => e.id === id);
+    if (group?.type !== 'group' || group.locked) break;
+    valid.push(id);
+    siblings = group.children;
+  }
+  return valid;
+}
 function download(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob),
     a = document.createElement('a');
@@ -143,6 +164,11 @@ export default function App() {
   } = useEditor(createDeck, prepareLayout);
   const [slideIndex, setSlideIndex] = useState(0),
     [selection, setSelection] = useState<string[]>([]),
+    [groupScope, setGroupScope] = useState<{
+      deckId: string;
+      slideId: string;
+      path: string[];
+    } | null>(null),
     [ready, setReady] = useState(false),
     [saveState, setSaveState] = useState('Opening…'),
     [saveAllowed, setSaveAllowed] = useState(true);
@@ -153,6 +179,7 @@ export default function App() {
       element: ImageElement;
       deckId: string;
       slideId: string;
+      path: string[];
     } | null>(null),
     [report, setReport] = useState<{ title: string; messages: string[] } | null>(null),
     [toast, setToast] = useState(''),
@@ -173,11 +200,32 @@ export default function App() {
     saveChain = useRef(Promise.resolve()),
     toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null),
     slideDrag = useRef<number | null>(null);
-  const slide = deck.slides[Math.min(slideIndex, deck.slides.length - 1)],
-    selected = slide.elements.filter((e) => selection.includes(e.id)),
+  const slide = deck.slides[Math.min(slideIndex, deck.slides.length - 1)];
+  const groupPath =
+    groupScope?.deckId === deck.id && groupScope.slideId === slide.id
+      ? validGroupPath(slide.elements, groupScope.path)
+      : [];
+  const groupChain: GroupElement[] = [];
+  let scopeElements = slide.elements;
+  for (const id of groupPath) {
+    const group = scopeElements.find((e) => e.id === id) as GroupElement;
+    groupChain.push(group);
+    scopeElements = group.children;
+  }
+  const activeGroup = groupChain.at(-1),
+    scopeFrame = activeGroup
+      ? {
+          ...activeGroup.childFrame,
+          width: activeGroup.childFrame.width || activeGroup.width,
+          height: activeGroup.childFrame.height || activeGroup.height,
+        }
+      : { x: 0, y: 0, width: deck.width, height: deck.height },
+    scopeSlide = { ...slide, elements: scopeElements },
+    selected = scopeElements.filter((e) => selection.includes(e.id)),
     zoom = Math.max(0.001, Math.min(2, fit * zoomValue));
-  const activeLocation = useRef({ deckId: deck.id, slideId: slide.id });
-  activeLocation.current = { deckId: deck.id, slideId: slide.id };
+  const scopeKey = groupPath.join('/');
+  const activeLocation = useRef({ deckId: deck.id, slideId: slide.id, scopeKey });
+  activeLocation.current = { deckId: deck.id, slideId: slide.id, scopeKey };
   const notify = useCallback((message: string) => {
     setToast(message);
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -251,15 +299,15 @@ export default function App() {
     const observer = new ResizeObserver((entries) => {
       const r = entries[0].contentRect;
       // ResizeObserver's contentRect already excludes the stage padding.
-      setFit(Math.min(r.width / deck.width, r.height / deck.height, 1));
+      setFit(Math.min(r.width / scopeFrame.width, r.height / scopeFrame.height, 1));
     });
     observer.observe(stage.current);
     return () => observer.disconnect();
-  }, [deck.width, deck.height, overview, notes, ready]);
+  }, [scopeFrame.width, scopeFrame.height, overview, notes, ready]);
   useEffect(() => {
     setSlideIndex((i) => Math.min(i, deck.slides.length - 1));
-    setSelection((ids) => ids.filter((id) => slide.elements.some((e) => e.id === id)));
-  }, [deck.slides.length, slide.id]);
+    setSelection((ids) => ids.filter((id) => scopeElements.some((e) => e.id === id)));
+  }, [deck.id, deck.slides.length, slide.id, scopeKey]);
   function finishCanvasDraft(): boolean {
     if (!canvas.current || canvas.current.finishText()) return true;
     canvas.current.focus();
@@ -284,10 +332,47 @@ export default function App() {
   function currentSlide() {
     return getCurrentDeck().slides.find((item) => item.id === slide.id);
   }
+  function currentElements() {
+    const latest = currentSlide();
+    return latest ? getElementsAtPath(latest.elements, groupPath) : null;
+  }
+  function changeGroupPath(path: string[]) {
+    if (!finishCanvasDraft()) return;
+    if (document.activeElement instanceof HTMLElement && isTyping(document.activeElement))
+      document.activeElement.blur();
+    setGroupScope({ deckId: deck.id, slideId: slide.id, path });
+    setSelection([]);
+    setOverview(false);
+    setMenu(null);
+  }
+  function editGroup(group: GroupElement) {
+    if (!group.locked) changeGroupPath([...groupPath, group.id]);
+  }
+  function arrangeGroup(ungroup = false) {
+    if (!finishCanvasDraft()) return;
+    if (document.activeElement instanceof HTMLElement && isTyping(document.activeElement))
+      document.activeElement.blur();
+    const elements = currentElements();
+    if (!elements) return;
+    const result = ungroup
+      ? ungroupSelection(elements, selection, groupChain)
+      : groupSelection(elements, selection);
+    if (result.reason) notify(result.reason);
+    if (result.elements !== elements) {
+      const accepted = replaceElements(result.elements);
+      if (
+        accepted?.some((element) => result.selected.includes(element.id)) ||
+        !result.selected.length
+      )
+        setSelection(result.selected);
+    }
+    setMenu(null);
+  }
   function navigate(i: number): boolean {
     if (!finishCanvasDraft()) return false;
     setSlideIndex(Math.max(0, Math.min(deck.slides.length - 1, i)));
     setSelection([]);
+    setGroupScope(null);
     setMenu(null);
     return true;
   }
@@ -299,8 +384,8 @@ export default function App() {
   }
   function patchElements(patch: Partial<SlideElement>) {
     try {
-      patchSlide({
-        elements: slide.elements.map((e) =>
+      replaceElements(
+        (currentElements() ?? []).map((e) =>
           selection.includes(e.id) &&
           (!e.locked || Object.keys(patch).every((k) => k === 'locked' || k === 'name'))
             ? e.type === 'text'
@@ -308,14 +393,32 @@ export default function App() {
               : ({ ...e, ...patch } as SlideElement)
             : e,
         ),
-      });
+      );
     } catch (reason) {
       notify(reason instanceof Error ? reason.message : 'This change could not be applied.');
     }
   }
   function replaceElements(elements: SlideElement[]) {
-    patchSlide({ elements });
-    return getCurrentDeck().slides.find((item) => item.id === slide.id)?.elements;
+    try {
+      commit((current) => {
+        const next = {
+          ...current,
+          slides: current.slides.map((item) =>
+            item.id === slide.id
+              ? {
+                  ...item,
+                  elements: updateElementsAtPath(item.elements, groupPath, () => elements),
+                }
+              : item,
+          ),
+        };
+        validateDeck(next);
+        return next;
+      });
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'These objects could not be changed.');
+    }
+    return currentElements() ?? undefined;
   }
   function recalculateTextFit(element: TextElement) {
     if (!finishCanvasDraft()) return;
@@ -326,10 +429,16 @@ export default function App() {
           item.id === slide.id
             ? {
                 ...item,
-                elements: item.elements.map((candidate) =>
-                  candidate.id === element.id && candidate.type === 'text' && !candidate.locked
-                    ? fitTextElement(candidate)
-                    : candidate,
+                elements: updateElementsAtPath(item.elements, groupPath, (elements) =>
+                  elements.map((candidate) =>
+                    candidate.id === element.id && candidate.type === 'text' && !candidate.locked
+                      ? fitTextInGroups(
+                          candidate,
+                          getGroupPath(item.elements, groupPath),
+                          fitTextElement,
+                        )
+                      : candidate,
+                  ),
                 ),
               }
             : item,
@@ -342,9 +451,7 @@ export default function App() {
     if (!finishCanvasDraft()) return;
     if (document.activeElement instanceof HTMLElement && isTyping(document.activeElement))
       document.activeElement.blur();
-    const current = getCurrentDeck()
-      .slides.find((s) => s.id === slide.id)
-      ?.elements.find((e) => e.id === element.id);
+    const current = currentElements()?.find((e) => e.id === element.id);
     if (current?.type === 'text' && !current.locked) setRichText(current);
   }
   function editImageCrop(element: ImageElement) {
@@ -352,11 +459,14 @@ export default function App() {
     if (document.activeElement instanceof HTMLElement && isTyping(document.activeElement))
       document.activeElement.blur();
     const currentDeck = getCurrentDeck();
-    const current = currentDeck.slides
-      .find((s) => s.id === slide.id)
-      ?.elements.find((e) => e.id === element.id);
+    const current = currentElements()?.find((e) => e.id === element.id);
     if (current?.type === 'image' && !current.locked)
-      setImageCrop({ element: current, deckId: currentDeck.id, slideId: slide.id });
+      setImageCrop({
+        element: current,
+        deckId: currentDeck.id,
+        slideId: slide.id,
+        path: groupPath,
+      });
   }
   function fitNewElement(element: SlideElement): SlideElement {
     const sx = deck.width / 1280,
@@ -380,10 +490,21 @@ export default function App() {
       return;
     }
     const e = fitNewElement(createElement(type, deck.theme));
+    if (activeGroup) {
+      e.x = scopeFrame.x + scopeFrame.width * 0.1;
+      e.y = scopeFrame.y + scopeFrame.height * 0.1;
+      const scale = Math.min(
+        1,
+        (scopeFrame.width * 0.8) / e.width,
+        (scopeFrame.height * 0.8) / e.height,
+      );
+      e.width = Math.max(0.01, e.width * scale);
+      e.height = Math.max(0.01, e.height * scale);
+    }
     if (e.type === 'shape' && shape) e.shape = shape as typeof e.shape;
-    const latest = currentSlide();
+    const latest = currentElements();
     if (!latest) return;
-    replaceElements([...latest.elements, e]);
+    replaceElements([...latest, e]);
     setSelection([e.id]);
     setMenu(null);
     setOverview(false);
@@ -438,9 +559,9 @@ export default function App() {
   function removeSelection() {
     if (!finishCanvasDraft()) return;
     if (!selected.length) return;
-    const latest = currentSlide();
+    const latest = currentElements();
     if (!latest) return;
-    replaceElements(latest.elements.filter((e) => !selection.includes(e.id) || e.locked));
+    replaceElements(latest.filter((e) => !selection.includes(e.id) || e.locked));
     setSelection([]);
   }
   function duplicateSelection() {
@@ -449,26 +570,26 @@ export default function App() {
       duplicateSlide();
       return;
     }
-    const latest = currentSlide();
+    const latest = currentElements();
     if (!latest) return;
-    const items = latest.elements
+    const items = latest
       .filter((element) => selection.includes(element.id))
       .map((e) => cloneElement(e));
-    replaceElements([...latest.elements, ...items]);
+    replaceElements([...latest, ...items]);
     setSelection(items.map((e) => e.id));
   }
   function paste() {
     if (!finishCanvasDraft()) return;
     if (!clipboard.current.length) return;
     const items = clipboard.current.map((e) => cloneElement(e));
-    const latest = currentSlide();
+    const latest = currentElements();
     if (!latest) return;
-    replaceElements([...latest.elements, ...items]);
+    replaceElements([...latest, ...items]);
     setSelection(items.map((e) => e.id));
     clipboard.current = items;
   }
   function layer(direction: 'front' | 'back' | 'forward' | 'backward') {
-    let items = [...slide.elements];
+    let items = [...(currentElements() ?? [])];
     const movable = new Set(selected.filter((e) => !e.locked).map((e) => e.id));
     if (direction === 'front')
       items = [
@@ -498,7 +619,12 @@ export default function App() {
     if (!items.length) return;
     const bounds =
       items.length === 1
-        ? { left: 0, top: 0, right: deck.width, bottom: deck.height }
+        ? {
+            left: scopeFrame.x,
+            top: scopeFrame.y,
+            right: scopeFrame.x + scopeFrame.width,
+            bottom: scopeFrame.y + scopeFrame.height,
+          }
         : {
             left: Math.min(...items.map((e) => e.x)),
             top: Math.min(...items.map((e) => e.y)),
@@ -506,7 +632,7 @@ export default function App() {
             bottom: Math.max(...items.map((e) => e.y + e.height)),
           };
     replaceElements(
-      slide.elements.map((e) =>
+      scopeElements.map((e) =>
         !items.includes(e)
           ? e
           : {
@@ -563,7 +689,7 @@ export default function App() {
         ...s,
         background: map(s.background),
         ...(s.backgroundGradient ? { backgroundGradient: mapGradient(s.backgroundGradient) } : {}),
-        elements: s.elements.map((e) =>
+        elements: mapElements(s.elements, (e) =>
           e.type === 'text'
             ? {
                 ...e,
@@ -736,7 +862,9 @@ export default function App() {
       return;
     }
     const targetDeckId = getCurrentDeck().id,
-      targetSlideId = slide.id;
+      targetSlideId = slide.id,
+      targetGroupPath = [...groupPath],
+      targetFrame = { ...scopeFrame };
     if (!['image/png', 'image/jpeg', 'image/gif', 'image/webp'].includes(file.type)) {
       notify('Choose a PNG, JPEG, GIF, or WebP image');
       return;
@@ -756,9 +884,14 @@ export default function App() {
       image.src = src;
       await image.decode();
       const latest = getCurrentDeck();
-      if (latest.id !== targetDeckId || !latest.slides.some((item) => item.id === targetSlideId)) {
+      const targetSlide = latest.slides.find((item) => item.id === targetSlideId);
+      if (
+        latest.id !== targetDeckId ||
+        !targetSlide ||
+        validGroupPath(targetSlide.elements, targetGroupPath).length !== targetGroupPath.length
+      ) {
         notify(
-          'The image was not inserted because its original presentation or slide is no longer open.',
+          'The image was not inserted because its original presentation, slide, or group is no longer available.',
         );
         return;
       }
@@ -766,35 +899,49 @@ export default function App() {
       e.src = src;
       e.alt = file.name;
       e.name = file.name;
-      e.width = Math.min(600, image.naturalWidth);
+      e.width = Math.min(600, image.naturalWidth, targetFrame.width * 0.8);
       e.height = (e.width * image.naturalHeight) / image.naturalWidth;
-      if (e.height > latest.height * 0.8) {
-        e.height = latest.height * 0.8;
+      if (e.height > targetFrame.height * 0.8) {
+        e.height = targetFrame.height * 0.8;
         e.width = (e.height * image.naturalWidth) / image.naturalHeight;
       }
-      e.x = (latest.width - e.width) / 2;
-      e.y = (latest.height - e.height) / 2;
+      e.x = targetFrame.x + (targetFrame.width - e.width) / 2;
+      e.y = targetFrame.y + (targetFrame.height - e.height) / 2;
       e = materializeImageOrientation(e, readImageDimensions(src)?.orientation);
-      commit((current) =>
-        current.id !== targetDeckId
-          ? current
-          : {
-              ...current,
-              slides: current.slides.map((item) =>
-                item.id === targetSlideId ? { ...item, elements: [...item.elements, e] } : item,
-              ),
-            },
-      );
+      commit((current) => {
+        if (current.id !== targetDeckId) return current;
+        const next = {
+          ...current,
+          slides: current.slides.map((item) =>
+            item.id === targetSlideId
+              ? {
+                  ...item,
+                  elements: updateElementsAtPath(item.elements, targetGroupPath, (elements) => [
+                    ...elements,
+                    e,
+                  ]),
+                }
+              : item,
+          ),
+        };
+        validateDeck(next);
+        return next;
+      });
       if (
         activeLocation.current.deckId === targetDeckId &&
         activeLocation.current.slideId === targetSlideId &&
+        activeLocation.current.scopeKey === targetGroupPath.join('/') &&
         !canvas.current?.hasPendingText()
       ) {
         setSelection([e.id]);
         setOverview(false);
       }
-    } catch {
-      notify('This image could not be decoded');
+    } catch (error) {
+      notify(
+        error instanceof Error
+          ? `The picture could not be inserted: ${error.message}`
+          : 'This image could not be decoded',
+      );
     } finally {
       if (imageInput.current) imageInput.current.value = '';
     }
@@ -836,6 +983,10 @@ export default function App() {
         return;
       }
       if (ev.key === 'Escape') {
+        if (!isTyping(ev.target) && !selection.length && groupPath.length) {
+          changeGroupPath(groupPath.slice(0, -1));
+          return;
+        }
         setMenu(null);
         setSelection([]);
         setOverview(false);
@@ -861,12 +1012,17 @@ export default function App() {
       }
       if (mod && key === 'a') {
         ev.preventDefault();
-        setSelection(slide.elements.map((e) => e.id));
+        setSelection(scopeElements.map((e) => e.id));
         return;
       }
       if (mod && key === 'd') {
         ev.preventDefault();
         duplicateSelection();
+        return;
+      }
+      if (mod && key === 'g') {
+        ev.preventDefault();
+        arrangeGroup(ev.shiftKey);
         return;
       }
       if (mod && (key === 'c' || key === 'x')) {
@@ -893,7 +1049,7 @@ export default function App() {
         if (selected.length) {
           const n = ev.shiftKey ? 10 : 1;
           replaceElements(
-            slide.elements.map((e) =>
+            scopeElements.map((e) =>
               selection.includes(e.id) && !e.locked
                 ? {
                     ...e,
@@ -1081,6 +1237,18 @@ export default function App() {
             </button>
             {menu === 'arrange' && (
               <div className="dropdown">
+                <button
+                  disabled={selected.length < 2 || selected.some((e) => e.locked)}
+                  onClick={() => arrangeGroup()}
+                >
+                  <Layers size={16} /> Group objects <kbd>Ctrl G</kbd>
+                </button>
+                <button
+                  disabled={!selected.some((e) => e.type === 'group' && !e.locked)}
+                  onClick={() => arrangeGroup(true)}
+                >
+                  <Layers size={16} /> Ungroup objects <kbd>Ctrl Shift G</kbd>
+                </button>
                 <p>
                   {selected.length
                     ? `${selected.length} selected · align to ${selected.length === 1 ? 'slide' : 'selection'}`
@@ -1293,15 +1461,37 @@ export default function App() {
           <main className="editor-main">
             <div className="canvas-heading">
               <div>
-                <span className="eyebrow">YOUR CANVAS</span>
-                <span className="canvas-slide-name">{slide.name}</span>
+                <span className="eyebrow">{activeGroup ? 'GROUP CONTENTS' : 'YOUR CANVAS'}</span>
+                <span className="canvas-slide-name">{activeGroup?.name ?? slide.name}</span>
               </div>
               <span>
-                {deck.width} × {deck.height}
+                {Math.round(scopeFrame.width * 100) / 100} ×{' '}
+                {Math.round(scopeFrame.height * 100) / 100}
                 <span className="heading-dot">·</span>
-                {deck.width / deck.height > 1.6 ? 'Widescreen' : 'Custom size'}
+                {activeGroup
+                  ? 'Group coordinates'
+                  : deck.width / deck.height > 1.6
+                    ? 'Widescreen'
+                    : 'Custom size'}
               </span>
             </div>
+            {activeGroup && (
+              <nav className="group-breadcrumb" aria-label="Group editing path">
+                <button onClick={() => changeGroupPath([])}>Back to slide</button>
+                {groupChain.map((group, index) => (
+                  <span key={group.id}>
+                    <ChevronRight size={14} aria-hidden="true" />
+                    <button
+                      aria-current={index === groupChain.length - 1 ? 'location' : undefined}
+                      onClick={() => changeGroupPath(groupPath.slice(0, index + 1))}
+                    >
+                      {group.name}
+                    </button>
+                  </span>
+                ))}
+                <small>Editing group contents</small>
+              </nav>
+            )}
             <div
               className={`canvas-stage ${overview ? 'overview-stage' : ''}`}
               ref={stage}
@@ -1349,13 +1539,16 @@ export default function App() {
                 </div>
               ) : (
                 <Canvas
+                  key={`${deck.id}/${slide.id}/${scopeKey}`}
                   ref={canvas}
-                  deck={deck}
-                  slide={slide}
+                  deck={{ ...deck, width: scopeFrame.width, height: scopeFrame.height }}
+                  slide={scopeSlide}
+                  origin={scopeFrame}
+                  onEditGroup={editGroup}
                   selected={selection}
                   onSelect={setSelection}
                   onChange={replaceElements}
-                  getElements={() => currentSlide()?.elements ?? []}
+                  getElements={() => currentElements() ?? []}
                   zoom={zoom}
                   grid={grid}
                 />
@@ -1365,7 +1558,7 @@ export default function App() {
               <span>
                 {selected.length
                   ? `${selected.length} object${selected.length > 1 ? 's' : ''} selected · Shift-click for more`
-                  : 'Double-click text to edit · Drag objects to move'}
+                  : 'Double-click text or groups to edit · Drag objects to move'}
               </span>
               <span>{grid ? '8 px grid · Alt to bypass' : 'Made for your next big idea'}</span>
             </div>
@@ -1387,7 +1580,8 @@ export default function App() {
           </main>
           <Inspector
             deck={deck}
-            slide={slide}
+            slide={scopeSlide}
+            scopeName={activeGroup?.name}
             selected={selected}
             onElementPatch={patchElements}
             onFitText={recalculateTextFit}
@@ -1397,6 +1591,9 @@ export default function App() {
             onLayer={layer}
             onEditRichText={editRichText}
             onEditImageCrop={editImageCrop}
+            onEditGroup={editGroup}
+            onGroup={() => arrangeGroup()}
+            onUngroup={() => arrangeGroup(true)}
           />
         </div>
         <footer className="statusbar">
@@ -1536,6 +1733,8 @@ export default function App() {
                 ['Select all objects', 'Ctrl A'],
                 ['Copy / cut / paste', 'Ctrl C / X / V'],
                 ['Duplicate selection or slide', 'Ctrl D'],
+                ['Group / ungroup objects', 'Ctrl G / Ctrl Shift G'],
+                ['Open group / leave group', 'Double-click / Esc'],
                 ['Nudge / big nudge', 'Arrow / Shift Arrow'],
                 ['Start presentation', 'F5'],
                 ['Exit presentation', 'Esc'],
@@ -1565,7 +1764,7 @@ export default function App() {
                 {deck.slides
                   .map((s, i) => ({ s, i }))
                   .filter(({ s }) =>
-                    s.elements.some(
+                    flattenElements(s.elements).some(
                       (e) =>
                         e.type === 'text' && e.text.toLowerCase().includes(search.toLowerCase()),
                     ),
@@ -1604,7 +1803,11 @@ export default function App() {
           background={slideBackgroundColor(slide)}
           onClose={() => setRichText(null)}
           onSave={(element) => {
-            replaceElements(slide.elements.map((e) => (e.id === element.id ? element : e)));
+            replaceElements(
+              (currentElements() ?? []).map((e) =>
+                e.id === element.id && !e.locked ? element : e,
+              ),
+            );
             setRichText(null);
           }}
         />
@@ -1615,11 +1818,14 @@ export default function App() {
           onClose={() => setImageCrop(null)}
           onSave={(updated) => {
             const current = getCurrentDeck();
+            const targetSlide = current.slides.find((s) => s.id === imageCrop.slideId);
             const target =
-              current.id === imageCrop.deckId
-                ? current.slides
-                    .find((s) => s.id === imageCrop.slideId)
-                    ?.elements.find((e) => e.id === updated.id)
+              current.id === imageCrop.deckId &&
+              targetSlide &&
+              validGroupPath(targetSlide.elements, imageCrop.path).length === imageCrop.path.length
+                ? getElementsAtPath(targetSlide.elements, imageCrop.path)?.find(
+                    (e) => e.id === updated.id,
+                  )
                 : undefined;
             if (target?.type !== 'image' || target.locked || target.src !== imageCrop.element.src) {
               notify('The original picture is no longer available for this crop.');
@@ -1633,17 +1839,19 @@ export default function App() {
                   s.id === imageCrop.slideId
                     ? {
                         ...s,
-                        elements: s.elements.map((e) =>
-                          e.id === updated.id && e.type === 'image'
-                            ? {
-                                ...e,
-                                fit: updated.fit,
-                                crop: updated.crop,
-                                fillRect: updated.fillRect,
-                                flipH: updated.flipH,
-                                flipV: updated.flipV,
-                              }
-                            : e,
+                        elements: updateElementsAtPath(s.elements, imageCrop.path, (elements) =>
+                          elements.map((e) =>
+                            e.id === updated.id && e.type === 'image'
+                              ? {
+                                  ...e,
+                                  fit: updated.fit,
+                                  crop: updated.crop,
+                                  fillRect: updated.fillRect,
+                                  flipH: updated.flipH,
+                                  flipV: updated.flipV,
+                                }
+                              : e,
+                          ),
                         ),
                       }
                     : s,

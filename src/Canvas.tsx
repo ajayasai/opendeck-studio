@@ -1,6 +1,6 @@
 import { useEffect, useId, useImperativeHandle, useRef, useState } from 'react';
 import type { PointerEvent, Ref } from 'react';
-import type { Deck, Slide, SlideElement } from './types';
+import type { Deck, Slide, SlideElement, GroupElement } from './types';
 import { ElementContent, elementStyle } from './SlideView';
 import { replacePlainText } from './richText';
 import { resolveTextFrame, textContentRect } from './textFrame';
@@ -18,6 +18,8 @@ interface Props {
   getElements?: () => SlideElement[];
   zoom: number;
   grid: boolean;
+  origin?: { x: number; y: number };
+  onEditGroup?: (group: GroupElement) => void;
 }
 export interface CanvasHandle {
   finishText: () => boolean;
@@ -41,6 +43,8 @@ export default function Canvas({
   getElements,
   zoom,
   grid,
+  origin = { x: 0, y: 0 },
+  onEditGroup,
   ref,
 }: Props) {
   const [draft, setDraft] = useState<SlideElement[] | null>(null),
@@ -143,8 +147,11 @@ export default function Canvas({
       if (g.kind === 'move')
         return {
           ...e,
-          x: Math.max(-e.width + 8, Math.min(deck.width - 8, snap(e.x + dx))),
-          y: Math.max(-e.height + 8, Math.min(deck.height - 8, snap(e.y + dy))),
+          x: Math.max(origin.x - e.width + 8, Math.min(origin.x + deck.width - 8, snap(e.x + dx))),
+          y: Math.max(
+            origin.y - e.height + 8,
+            Math.min(origin.y + deck.height - 8, snap(e.y + dy)),
+          ),
         };
       const radians = (e.rotation * Math.PI) / 180,
         localDx = dx * Math.cos(radians) + dy * Math.sin(radians),
@@ -171,12 +178,12 @@ export default function Canvas({
           ? {
               ...element,
               x: Math.max(
-                -element.width + 8,
-                Math.min(deck.width - 8, element.x + after.x - before.x),
+                origin.x - element.width + 8,
+                Math.min(origin.x + deck.width - 8, element.x + after.x - before.x),
               ),
               y: Math.max(
-                -element.height + 8,
-                Math.min(deck.height - 8, element.y + after.y - before.y),
+                origin.y - element.height + 8,
+                Math.min(origin.y + deck.height - 8, element.y + after.y - before.y),
               ),
             }
           : {
@@ -257,7 +264,14 @@ export default function Canvas({
             role="button"
             aria-label={`${e.type}: ${e.name}${e.locked ? ' (locked)' : ''}`}
             tabIndex={0}
-            style={{ ...elementStyle(e), '--handle-scale': 1 / zoom } as React.CSSProperties}
+            style={
+              {
+                ...elementStyle(e),
+                left: e.x - origin.x,
+                top: e.y - origin.y,
+                '--handle-scale': 1 / zoom,
+              } as React.CSSProperties
+            }
             onFocus={() => {}}
             onKeyDown={(ev) => {
               if (ev.target !== ev.currentTarget) return;
@@ -265,6 +279,7 @@ export default function Canvas({
                 ev.preventDefault();
                 if (editing && editing !== e.id && !finishText()) return;
                 onSelect([e.id]);
+                if (e.type === 'group' && !e.locked) onEditGroup?.(e);
                 if (e.type === 'text' && !e.locked) {
                   setTextError('');
                   setEditing(e.id);
@@ -282,6 +297,7 @@ export default function Canvas({
               ev.stopPropagation();
               if (editing === e.id) return;
               if (editing && !finishText()) return;
+              if (e.type === 'group' && !e.locked) onEditGroup?.(e);
               if (e.type === 'text' && !e.locked) {
                 setTextError('');
                 setEditing(e.id);

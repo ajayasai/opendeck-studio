@@ -10,6 +10,8 @@ import type {
   TextDecoration,
   GradientFill,
   ImageElement,
+  GroupElement,
+  SlideElement,
 } from './types';
 import { TEXT_LINE_DASHES } from './textDecoration';
 import { plainText } from './richText';
@@ -2377,7 +2379,7 @@ describe('editable PPTX interoperability', () => {
     ).toEqual(texts.map((e) => e.textFrame));
   });
 
-  it('flattens scaled groups with explicit warnings', async () => {
+  it('retains scaled groups and their original local child geometry', async () => {
     const result = await importPptx(
       await fixture((zip) =>
         zip.file(
@@ -2389,13 +2391,779 @@ describe('editable PPTX interoperability', () => {
       ),
     );
     expect(result.deck.slides[0].elements[0]).toMatchObject({
-      x: 292,
-      y: 196,
-      width: 768,
-      height: 192,
+      type: 'group',
+      x: 100,
+      y: 100,
+      width: 200,
+      height: 200,
+      childFrame: { x: 0, y: 0, width: 100, height: 100 },
+      children: [{ type: 'text', x: 96, y: 48, width: 384, height: 96, text: 'Grouped' }],
     });
-    expect(result.warnings.some((w) => w.includes('Grouped objects'))).toBe(true);
+    expect(result.warnings.some((w) => w.includes('individual editable objects'))).toBe(false);
   });
+
+  it('round-trips nested native groups with local transforms, ordering, and slide relationships', async () => {
+    const deck = sample();
+    const [text, shape, image, table, chart] = deck.slides[0].elements;
+    Object.assign(text, {
+      text: 'Linked',
+      paragraphs: [
+        { runs: [{ text: 'Linked', hyperlink: 'https://example.com/group?a=1&b=2', bold: false }] },
+      ],
+    });
+    const inner: GroupElement = {
+      ...base,
+      id: 'inner',
+      name: 'Inner <group>',
+      type: 'group',
+      x: -25,
+      y: 85,
+      width: 700,
+      height: 40,
+      rotation: -25,
+      flipV: true,
+      flipH: false,
+      childFrame: { x: -20, y: 100, width: 100, height: 300 },
+      children: [shape, image],
+    };
+    const outer: GroupElement = {
+      ...base,
+      id: 'outer',
+      name: 'Outer & group',
+      type: 'group',
+      x: 250,
+      y: -80,
+      width: 1000,
+      height: 100,
+      rotation: 37,
+      flipH: true,
+      childFrame: { x: 100, y: 50, width: 500, height: 600 },
+      children: [text, inner, table, chart],
+    };
+    deck.slides[0].elements = [outer, { ...shape, id: 'after', name: 'After group' }];
+    const before = structuredClone(deck);
+    const bytes = await buffer(await exportPptx(deck));
+    expect(deck).toEqual(before);
+    const zip = await JSZip.loadAsync(bytes);
+    const doc = new DOMParser().parseFromString(
+      await zip.file('ppt/slides/slide1.xml')!.async('string'),
+      'application/xml',
+    );
+    const tree = doc.getElementsByTagNameNS('*', 'spTree')[0];
+    expect(Array.from(tree.children).map((node) => node.localName)).toEqual([
+      'nvGrpSpPr',
+      'grpSpPr',
+      'grpSp',
+      'sp',
+    ]);
+    const groups = Array.from(doc.getElementsByTagNameNS('*', 'grpSp'));
+    expect(groups).toHaveLength(2);
+    expect(Array.from(groups[0].children).map((node) => node.localName)).toEqual([
+      'nvGrpSpPr',
+      'grpSpPr',
+      'sp',
+      'grpSp',
+      'graphicFrame',
+      'graphicFrame',
+    ]);
+    const ids = Array.from(doc.getElementsByTagNameNS('*', 'cNvPr')).map((node) =>
+      node.getAttribute('id'),
+    );
+    expect(new Set(ids).size).toBe(ids.length);
+    const rel = await zip.file('ppt/slides/_rels/slide1.xml.rels')!.async('string');
+    expect(rel).toContain('https://example.com/group?a=1&amp;b=2');
+    expect(rel).toContain('/image');
+    expect(rel).toContain('/chart');
+    const imported = await importPptx(bytes);
+    const group = imported.deck.slides[0].elements[0] as GroupElement;
+    expect(group).toMatchObject({ ...outer, id: expect.any(String), children: expect.any(Array) });
+    const nested = group.children[1] as GroupElement;
+    expect(nested).toMatchObject({ ...inner, id: expect.any(String), children: expect.any(Array) });
+    expect(group.children.map((element) => element.type)).toEqual([
+      'text',
+      'group',
+      'table',
+      'chart',
+    ]);
+    expect(nested.children.map((element) => element.type)).toEqual(['shape', 'image']);
+    expect(nested.children[1]).toMatchObject({
+      x: image.x,
+      y: image.y,
+      width: image.width,
+      height: image.height,
+      src: png,
+      alt: 'A tiny image',
+    });
+    expect(group.children[0]).toMatchObject({
+      text: 'Linked',
+      paragraphs: [
+        { runs: [{ text: 'Linked', hyperlink: 'https://example.com/group?a=1&b=2', bold: false }] },
+      ],
+    });
+    expect(group.children[2]).toMatchObject({
+      type: 'table',
+      name: 'Budget',
+      rows: [
+        ['Item', 'Value'],
+        ['A', '10'],
+      ],
+    });
+    expect(group.children[3]).toMatchObject({ type: 'chart', name: 'Results', values: [12, 31] });
+    const stripIds = (elements: SlideElement[]): unknown[] =>
+      elements.map(({ id: _id, ...element }) =>
+        element.type === 'group' ? { ...element, children: stripIds(element.children) } : element,
+      );
+    const second = await importPptx(await buffer(await exportPptx(imported.deck)));
+    expect(stripIds(second.deck.slides[0].elements)).toEqual(
+      stripIds(imported.deck.slides[0].elements),
+    );
+  });
+
+  it('retains empty groups, zero child extents, explicit false flips, and exact extreme transforms', async () => {
+    const deck = sample();
+    const group: GroupElement = {
+      ...base,
+      id: 'group',
+      name: 'Empty group',
+      type: 'group',
+      x: 50000,
+      y: -50000,
+      width: 0.01,
+      height: 100000,
+      rotation: 720,
+      flipH: false,
+      flipV: true,
+      childFrame: { x: -99999, y: 99999, width: 0, height: 0 },
+      children: [],
+    };
+    deck.slides[0].elements = [group];
+    const bytes = await buffer(await exportPptx(deck));
+    const zip = await JSZip.loadAsync(bytes);
+    const xml = await zip.file('ppt/slides/slide1.xml')!.async('string');
+    expect(xml).toContain('rot="43200000"');
+    expect(xml).toContain('flipH="0"');
+    expect(xml).toContain('cx="0" cy="0"');
+    const imported = await importPptx(bytes);
+    expect(imported.deck.slides[0].elements[0]).toEqual({ ...group, id: expect.any(String) });
+    expect(pptxExportWarnings(deck).join(' ')).not.toContain('library unit limit');
+  });
+
+  it('warns about group opacity and bakes cumulative alpha without mutating the document', async () => {
+    const deck = sample();
+    const text = {
+      ...(deck.slides[0].elements[0] as TextElement),
+      opacity: 1,
+      textOpacity: 0.5,
+      animation: 'fade' as const,
+    };
+    const image = { ...(deck.slides[0].elements[2] as ImageElement), opacity: 0.8 };
+    const inner: GroupElement = {
+      ...base,
+      id: 'inner',
+      type: 'group',
+      opacity: 0.4,
+      children: [text, image],
+      childFrame: { x: 0, y: 0, width: 100, height: 100 },
+    };
+    const outer: GroupElement = {
+      ...base,
+      id: 'outer',
+      type: 'group',
+      opacity: 0.5,
+      children: [inner],
+      childFrame: { x: 0, y: 0, width: 100, height: 100 },
+    };
+    deck.slides[0].elements = [outer];
+    const before = structuredClone(deck);
+    const warnings = pptxExportWarnings(deck).join(' ');
+    expect(warnings).toContain('overlapping members');
+    expect(warnings).toContain('Element entrance animations');
+    expect(warnings).toContain('omit whole lines');
+    const imported = await importPptx(await buffer(await exportPptx(deck)));
+    const group = imported.deck.slides[0].elements[0] as GroupElement;
+    const nested = group.children[0] as GroupElement;
+    expect(group.opacity).toBe(1);
+    expect(nested.opacity).toBe(1);
+    expect((nested.children[0] as TextElement).textOpacity).toBeCloseTo(0.1, 10);
+    expect(nested.children[1].opacity).toBeCloseTo(0.16, 10);
+    expect(deck).toEqual(before);
+  });
+
+  it('reports bounded browser group geometry without dropping the retained hierarchy', async () => {
+    const deck = sample();
+    const text = deck.slides[0].elements[0];
+    const group: GroupElement = {
+      ...base,
+      id: 'extreme-group',
+      type: 'group',
+      width: 100000,
+      childFrame: { x: 0, y: 0, width: 1 / 9525, height: 100 },
+      children: [text],
+    };
+    deck.slides[0].elements = [group];
+    expect(validateDeck(deck)).toBeTruthy();
+    expect(pptxExportWarnings(deck).join(' ')).toContain('safe browser geometry range');
+    const imported = await importPptx(await buffer(await exportPptx(deck)));
+    expect(imported.warnings.join(' ')).toContain('safe browser geometry range');
+    expect(imported.deck.slides[0].elements[0]).toMatchObject({
+      type: 'group',
+      children: [{ text: 'Hello <world> & friends\nNext line' }],
+    });
+    expect(group.children[0]).toBe(text);
+  });
+
+  it.each(['contain', 'cover', 'stretch'] as const)(
+    'derives automatic grouped picture %s from the displayed frame',
+    async (fit) => {
+      const deck = sample();
+      const raster = await readFile('tests/fixtures/picture-geometry-calibration.png');
+      const image: ImageElement = {
+        ...base,
+        id: 'automatic-image',
+        type: 'image',
+        x: 20,
+        y: 30,
+        width: 100,
+        height: 100,
+        fit,
+        src: `data:image/png;base64,${raster.toString('base64')}`,
+        alt: '',
+        orientation: 'encoded',
+      };
+      const group: GroupElement = {
+        ...base,
+        id: 'scaled-group',
+        type: 'group',
+        width: 300,
+        height: 100,
+        childFrame: { x: 0, y: 0, width: 100, height: 100 },
+        children: [image],
+      };
+      deck.slides[0].elements = [group];
+      const before = structuredClone(deck);
+      const result = await importPptx(await buffer(await exportPptx(deck)));
+      const imported = (result.deck.slides[0].elements[0] as GroupElement)
+        .children[0] as ImageElement;
+      expect(imported).toMatchObject({
+        x: 20,
+        y: 30,
+        width: 100,
+        height: 100,
+        orientation: 'encoded',
+      });
+      if (fit === 'contain') {
+        expect(imported.fillRect?.left).toBeCloseTo(1 / 6, 10);
+        expect(imported.fillRect?.right).toBeCloseTo(1 / 6, 10);
+        expect(imported.fillRect?.top ?? 0).toBe(0);
+      } else if (fit === 'cover') {
+        expect(imported.crop?.top).toBeCloseTo(1 / 6, 10);
+        expect(imported.crop?.bottom).toBeCloseTo(1 / 6, 10);
+        expect(imported.crop?.left ?? 0).toBe(0);
+      } else {
+        expect(imported.crop).toBeUndefined();
+        expect(imported.fillRect).toBeUndefined();
+      }
+      expect(deck).toEqual(before);
+    },
+  );
+
+  it.each([6, 7])(
+    'materializes legacy EXIF %i in the effective group frame before restoring local coordinates',
+    async (orientation) => {
+      const deck = sample();
+      const raster = await readFile(`tests/fixtures/picture-geometry-exif-${orientation}.jpg`);
+      const image: ImageElement = {
+        ...base,
+        id: 'legacy-image',
+        type: 'image',
+        x: 20,
+        y: 30,
+        width: 100,
+        height: 200,
+        fit: 'contain',
+        src: `data:image/jpeg;base64,${raster.toString('base64')}`,
+        alt: '',
+        rotation: 0,
+      };
+      const group: GroupElement = {
+        ...base,
+        id: 'scaled-group',
+        type: 'group',
+        width: 200,
+        height: 100,
+        childFrame: { x: 0, y: 0, width: 100, height: 100 },
+        children: [image],
+      };
+      deck.slides[0].elements = [group];
+      const before = structuredClone(deck);
+      const imported = (await importPptx(await buffer(await exportPptx(deck)))).deck.slides[0]
+        .elements[0] as GroupElement;
+      const picture = imported.children[0] as ImageElement;
+      // The displayed frame stays 200×200. At 90/270 degrees native size axes
+      // swap, so the inverse local frame is 200×100 with its original center.
+      expect(picture).toMatchObject({
+        x: -30,
+        y: 80,
+        width: 200,
+        height: 100,
+        rotation: orientation === 6 ? 90 : 270,
+        orientation: 'encoded',
+        src: image.src,
+      });
+      expect(picture.flipV ?? false).toBe(orientation === 7);
+      expect(picture.fillRect?.top).toBeCloseTo(0.25, 10);
+      expect(picture.fillRect?.bottom).toBeCloseTo(0.25, 10);
+      expect(deck).toEqual(before);
+    },
+  );
+
+  it('resets automatic picture-fit scaling at a nested zero child extent', async () => {
+    const deck = sample();
+    const raster = await readFile('tests/fixtures/picture-geometry-calibration.png');
+    const image: ImageElement = {
+      ...base,
+      id: 'automatic-image',
+      type: 'image',
+      width: 100,
+      height: 100,
+      fit: 'contain',
+      src: `data:image/png;base64,${raster.toString('base64')}`,
+      alt: '',
+      orientation: 'encoded',
+    };
+    const inner: GroupElement = {
+      ...base,
+      id: 'zero-group',
+      type: 'group',
+      width: 100,
+      height: 100,
+      childFrame: { x: 0, y: 0, width: 0, height: 50 },
+      children: [image],
+    };
+    const outer: GroupElement = {
+      ...base,
+      id: 'outer-group',
+      type: 'group',
+      width: 200,
+      height: 300,
+      childFrame: { x: 0, y: 0, width: 100, height: 100 },
+      children: [inner],
+    };
+    deck.slides[0].elements = [outer];
+    const imported = (await importPptx(await buffer(await exportPptx(deck)))).deck.slides[0]
+      .elements[0] as GroupElement;
+    const picture = (imported.children[0] as GroupElement).children[0] as ImageElement;
+    // Inner zero width bypasses inherited x scale; y remains 3×2. Frame is 100×600.
+    expect(picture.fillRect?.top).toBeCloseTo(11 / 24, 10);
+    expect(picture.fillRect?.bottom).toBeCloseTo(11 / 24, 10);
+  });
+
+  it('keeps inverse EXIF geometry finite through extreme native group scales', async () => {
+    const deck = sample();
+    const raster = await readFile('tests/fixtures/picture-geometry-exif-6.jpg');
+    const image: ImageElement = {
+      ...base,
+      id: 'legacy-image',
+      type: 'image',
+      width: 100,
+      height: 200,
+      fit: 'stretch',
+      src: `data:image/jpeg;base64,${raster.toString('base64')}`,
+      alt: '',
+    };
+    const inner: GroupElement = {
+      ...base,
+      id: 'inner',
+      type: 'group',
+      width: 0.01,
+      height: 100,
+      childFrame: { x: 0, y: 0, width: 100000, height: 100 },
+      children: [image],
+    };
+    const outer: GroupElement = { ...inner, id: 'outer', children: [inner] };
+    deck.slides[0].elements = [outer];
+    expect(validateDeck(deck)).toBeTruthy();
+    expect(pptxExportWarnings(deck).join(' ')).not.toContain('native geometry bounds');
+    const imported = (await importPptx(await buffer(await exportPptx(deck)))).deck.slides[0]
+      .elements[0] as GroupElement;
+    expect((imported.children[0] as GroupElement).children[0]).toMatchObject({
+      x: 46,
+      y: 98,
+      width: 200,
+      height: 100,
+      rotation: 90,
+      orientation: 'encoded',
+    });
+  });
+
+  it.each([
+    [44.999, false],
+    [45, true],
+    [134.999, true],
+    [135, false],
+    [224.999, false],
+    [225, true],
+    [314.999, true],
+    [315, false],
+  ] as const)(
+    'uses the native local rotation band at %s degrees for automatic image fitting',
+    async (rotation, swaps) => {
+      const raster = await readFile('tests/fixtures/picture-geometry-calibration.png');
+      for (const fit of ['contain', 'cover'] as const) {
+        const deck = sample();
+        const image: ImageElement = {
+          ...base,
+          id: 'threshold-image',
+          type: 'image',
+          width: 100,
+          height: 100,
+          rotation,
+          fit,
+          src: `data:image/png;base64,${raster.toString('base64')}`,
+          alt: '',
+          orientation: 'encoded',
+        };
+        const group: GroupElement = {
+          ...base,
+          id: 'threshold-group',
+          type: 'group',
+          width: 300,
+          height: 100,
+          rotation: 100,
+          childFrame: { x: 0, y: 0, width: 100, height: 100 },
+          children: [image],
+        };
+        deck.slides[0].elements = [group];
+        const imported = (await importPptx(await buffer(await exportPptx(deck)))).deck.slides[0]
+          .elements[0] as GroupElement;
+        const picture = imported.children[0] as ImageElement;
+        const rect = fit === 'contain' ? picture.fillRect : picture.crop;
+        const horizontal = fit === 'contain' ? !swaps : swaps;
+        expect(rect?.[horizontal ? 'left' : 'top']).toBeCloseTo(swaps ? 5 / 12 : 1 / 6, 10);
+        expect(rect?.[horizontal ? 'right' : 'bottom']).toBeCloseTo(swaps ? 5 / 12 : 1 / 6, 10);
+        expect(rect?.[horizontal ? 'top' : 'left'] ?? 0).toBe(0);
+        expect(picture.rotation).toBe(rotation);
+        expect([picture.x, picture.y, picture.width, picture.height]).toEqual([
+          image.x,
+          image.y,
+          100,
+          100,
+        ]);
+      }
+    },
+  );
+
+  it.each([6, 7])(
+    'inverts post-materialization rotation bands for legacy EXIF %i with flipped grouped pictures',
+    async (orientation) => {
+      const raster = await readFile(`tests/fixtures/picture-geometry-exif-${orientation}.jpg`);
+      for (const [rotation, swaps] of [
+        [20, false],
+        [60, true],
+        [135, false],
+        [225, true],
+      ] as const) {
+        const deck = sample();
+        const image: ImageElement = {
+          ...base,
+          id: 'legacy-threshold-image',
+          type: 'image',
+          x: 20,
+          y: 30,
+          width: 100,
+          height: 200,
+          rotation,
+          flipH: true,
+          flipV: false,
+          fit: 'contain',
+          src: `data:image/jpeg;base64,${raster.toString('base64')}`,
+          alt: '',
+        };
+        const group: GroupElement = {
+          ...base,
+          id: 'legacy-threshold-group',
+          type: 'group',
+          width: 120,
+          height: 90,
+          childFrame: { x: 0, y: 0, width: 100, height: 100 },
+          children: [image],
+        };
+        deck.slides[0].elements = [group];
+        const original = structuredClone(deck);
+        const imported = (await importPptx(await buffer(await exportPptx(deck)))).deck.slides[0]
+          .elements[0] as GroupElement;
+        const picture = imported.children[0] as ImageElement;
+        expect(picture).toMatchObject({
+          x: -30,
+          y: 80,
+          width: 200,
+          height: 100,
+          rotation: rotation - (orientation === 6 ? 90 : 270),
+          flipH: true,
+          flipV: orientation === 7,
+          orientation: 'encoded',
+        });
+        expect(picture.src).toBe(image.src);
+        expect(picture.fillRect?.[swaps ? 'left' : 'top']).toBeCloseTo(0.125, 10);
+        expect(picture.fillRect?.[swaps ? 'right' : 'bottom']).toBeCloseTo(0.125, 10);
+        expect(deck).toEqual(original);
+      }
+    },
+  );
+
+  it('selects size axes independently at each nested group boundary', async () => {
+    const deck = sample();
+    const raster = await readFile('tests/fixtures/picture-geometry-calibration.png');
+    const image: ImageElement = {
+      ...base,
+      id: 'nested-rotated-image',
+      type: 'image',
+      width: 100,
+      height: 100,
+      rotation: 45,
+      fit: 'contain',
+      src: `data:image/png;base64,${raster.toString('base64')}`,
+      alt: '',
+      orientation: 'encoded',
+    };
+    const inner: GroupElement = {
+      ...base,
+      id: 'inner-rotated',
+      type: 'group',
+      width: 100,
+      height: 100,
+      rotation: 60,
+      childFrame: { x: 0, y: 0, width: 100, height: 100 },
+      children: [image],
+    };
+    const outer: GroupElement = {
+      ...inner,
+      id: 'outer-rotated',
+      width: 300,
+      height: 100,
+      rotation: 100,
+      children: [inner],
+    };
+    deck.slides[0].elements = [outer];
+    const imported = (await importPptx(await buffer(await exportPptx(deck)))).deck.slides[0]
+      .elements[0] as GroupElement;
+    const picture = (imported.children[0] as GroupElement).children[0] as ImageElement;
+    // Outer3×1 is exchanged by inner60°, then exchanged again by leaf45°.
+    expect(picture.fillRect?.left).toBeCloseTo(1 / 6, 10);
+    expect(picture.fillRect?.right).toBeCloseTo(1 / 6, 10);
+    expect(picture.fillRect?.top ?? 0).toBe(0);
+  });
+
+  it('bounds malformed group metadata and warns only about active unsupported group effects', async () => {
+    const group = `<p:grpSp><p:nvGrpSpPr><p:cNvPr id="9" name="Malformed"/></p:nvGrpSpPr><p:grpSpPr><a:xfrm rot="oops" flipH="unexpected"><a:off x="oops" y="-9999999999999"/><a:ext cx="0" cy="9999999999999"/><a:chOff x="0" y="0"/><a:chExt cx="-1" cy="0"/></a:xfrm><a:solidFill><a:srgbClr val="FF0000"/></a:solidFill><a:effectDag><a:alphaModFix amt="50000"/></a:effectDag></p:grpSpPr>${textShape('Local')}</p:grpSp>`;
+    const imported = await importPptx(
+      await fixture((zip) => zip.file('ppt/slides/slide12.xml', slide(group))),
+    );
+    expect(imported.deck.slides[0].elements[0]).toMatchObject({
+      type: 'group',
+      x: 0,
+      y: -100000,
+      width: 0.01,
+      height: 100000,
+      rotation: 0,
+      flipH: false,
+      childFrame: { x: 0, y: 0, width: 0, height: 0 },
+    });
+    expect(imported.warnings.join(' ')).toContain('Invalid group transform');
+    expect(imported.warnings.join(' ')).toContain('invalid group rotation');
+    expect(imported.warnings.join(' ')).toContain('Group effects');
+    expect(imported.warnings.join(' ')).toContain('Group paints');
+    const neutral = group.replace(
+      '<a:solidFill><a:srgbClr val="FF0000"/></a:solidFill><a:effectDag><a:alphaModFix amt="50000"/></a:effectDag>',
+      '<a:noFill/><a:effectLst/>',
+    );
+    const clear = await importPptx(
+      await fixture((zip) => zip.file('ppt/slides/slide12.xml', slide(neutral))),
+    );
+    expect(clear.warnings.join(' ')).not.toContain('Group effects');
+    expect(clear.warnings.join(' ')).not.toContain('Group paints');
+  });
+
+  it.each([16, 17])(
+    'enforces the group depth limit on import at %i nested containers',
+    async (depth) => {
+      let content = textShape('Deep');
+      for (let i = 0; i < depth; i++)
+        content = `<p:grpSp><p:nvGrpSpPr/><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="952500" cy="952500"/><a:chOff x="0" y="0"/><a:chExt cx="952500" cy="952500"/></a:xfrm></p:grpSpPr>${content}</p:grpSp>`;
+      const pending = importPptx(
+        await fixture((zip) => zip.file('ppt/slides/slide12.xml', slide(content))),
+      );
+      if (depth === 17) await expect(pending).rejects.toThrow('16-level group nesting limit');
+      else expect(validateDeck((await pending).deck)).toBeTruthy();
+    },
+  );
+
+  it('counts nested containers and leaves toward the slide import object limit', async () => {
+    const empty =
+      '<p:grpSp><p:nvGrpSpPr/><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="9525" cy="9525"/></a:xfrm></p:grpSpPr></p:grpSp>';
+    const bytes = await fixture((zip) =>
+      zip.file('ppt/slides/slide12.xml', slide(empty.repeat(2001))),
+    );
+    await expect(importPptx(bytes)).rejects.toThrow('2,000-object import limit');
+  });
+
+  it('preserves every native group transform in the independent PowerPoint-authored fixture', async () => {
+    const source = await readFile('tests/fixtures/powerpoint-groups.pptx');
+    const data = source.buffer.slice(
+      source.byteOffset,
+      source.byteOffset + source.byteLength,
+    ) as ArrayBuffer;
+    const imported = await importPptx(data);
+    expect(imported.deck.slides).toHaveLength(8);
+    const walk = (elements: SlideElement[]): SlideElement[] =>
+      elements.flatMap((element) =>
+        element.type === 'group' ? [element, ...walk(element.children)] : [element],
+      );
+    const groups = imported.deck.slides
+      .flatMap((slide) => walk(slide.elements))
+      .filter((element) => element.type === 'group');
+    expect(groups).toHaveLength(19);
+    const zip = await JSZip.loadAsync(data);
+    for (let index = 0; index < 8; index++) {
+      const doc = new DOMParser().parseFromString(
+        await zip.file(`ppt/slides/slide${index + 1}.xml`)!.async('string'),
+        'application/xml',
+      );
+      for (const node of Array.from(doc.getElementsByTagNameNS('*', 'grpSp'))) {
+        const metadata = Array.from(node.children).find(
+          (child) => child.localName === 'nvGrpSpPr',
+        )!;
+        const name = metadata.getElementsByTagNameNS('*', 'cNvPr')[0].getAttribute('name');
+        const group = groups.find((group) => group.name === name)!;
+        const properties = Array.from(node.children).find(
+          (child) => child.localName === 'grpSpPr',
+        )!;
+        const xfrm = properties.getElementsByTagNameNS('*', 'xfrm')[0];
+        const values = (name: string, x: string, y: string) => {
+          const value = xfrm.getElementsByTagNameNS('*', name)[0];
+          return [Number(value.getAttribute(x)) / 9525, Number(value.getAttribute(y)) / 9525];
+        };
+        const [x, y] = values('off', 'x', 'y'),
+          [width, height] = values('ext', 'cx', 'cy');
+        const [childX, childY] = values('chOff', 'x', 'y'),
+          [childWidth, childHeight] = values('chExt', 'cx', 'cy');
+        expect(group).toMatchObject({
+          x,
+          y,
+          width,
+          height,
+          rotation: Number(xfrm.getAttribute('rot')) / 60000,
+          childFrame: { x: childX, y: childY, width: childWidth, height: childHeight },
+        });
+        expect(group.flipH ?? false).toBe(xfrm.getAttribute('flipH') === '1');
+        expect(group.flipV ?? false).toBe(xfrm.getAttribute('flipV') === '1');
+      }
+    }
+    const wide = groups.find((group) => group.name === 'Wide group')!;
+    expect(wide.width / wide.childFrame.width).toBe(1.5);
+    expect(wide.height / wide.childFrame.height).toBe(0.625);
+    expect(
+      wide.children.find((element) => element.name === 'Wide group rotated rectangle'),
+    ).toMatchObject({
+      x: 4508500 / 9525,
+      y: 2413000 / 9525,
+      width: 825500 / 9525,
+      height: 444500 / 9525,
+      rotation: 30,
+    });
+    expect(wide.children.find((element) => element.type === 'text')).toMatchObject({
+      fontSize: 20,
+    });
+    expect(imported.warnings.join(' ')).not.toContain('individual editable objects');
+    const reimported = await importPptx(await buffer(await exportPptx(imported.deck)));
+    const again = reimported.deck.slides
+      .flatMap((slide) => walk(slide.elements))
+      .filter((element) => element.type === 'group');
+    const transforms = (items: GroupElement[]) =>
+      items.map(({ x, y, width, height, rotation, flipH, flipV, childFrame, name, children }) => ({
+        x,
+        y,
+        width,
+        height,
+        rotation,
+        flipH,
+        flipV,
+        childFrame,
+        name,
+        order: children.map((child) => child.name),
+      }));
+    expect(transforms(again)).toEqual(transforms(groups));
+    expect(reimported.deck.slides.map((slide) => slide.notes)).toEqual(
+      imported.deck.slides.map((slide) => slide.notes),
+    );
+  }, 20000);
+
+  it('retains zero-axis and shifted-origin group probes, grouped tables, and effect warnings', async () => {
+    const bytes = await readFile('tests/fixtures/powerpoint-groups-probe.pptx');
+    const imported = await importPptx(
+      bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer,
+    );
+    const walk = (elements: SlideElement[]): SlideElement[] =>
+      elements.flatMap((element) =>
+        element.type === 'group' ? [element, ...walk(element.children)] : [element],
+      );
+    const all = imported.deck.slides.flatMap((slide) => walk(slide.elements));
+    const groups = all.filter((element) => element.type === 'group');
+    expect(groups).toHaveLength(20);
+    const find = (name: string) => groups.find((element) => element.name === name)!;
+    expect(find('XML negative child origin').childFrame).toMatchObject({
+      x: (508000 - 600 * 12700) / 9525,
+      y: (2159000 - 500 * 12700) / 9525,
+    });
+    expect(find('XML zero child width').childFrame.width).toBe(0);
+    expect(find('XML zero child height').childFrame.height).toBe(0);
+    expect(find('XML nested shifted child origin').childFrame).toMatchObject({
+      x: (1587500 - 400 * 12700) / 9525,
+      y: (2349500 + 300 * 12700) / 9525,
+    });
+    expect(find('XML grouped table control')).toMatchObject({
+      rotation: 10,
+      children: [{ type: 'table' }, { type: 'shape' }],
+    });
+    const reflectedText = all.find(
+      (element) => element.name === 'XML asymmetric Flip group 1 text',
+    ) as TextElement;
+    expect(reflectedText.textFrame?.insets).toEqual({ left: 40, right: 20 / 3, top: 4, bottom: 0 });
+    expect(imported.warnings.join(' ')).toContain('Group effects');
+    expect(imported.warnings.join(' ')).not.toContain('Grouped objects are imported as individual');
+    const again = await importPptx(await buffer(await exportPptx(imported.deck)));
+    const after = again.deck.slides
+      .flatMap((slide) => walk(slide.elements))
+      .filter((element) => element.type === 'group');
+    expect(
+      after.map(({ name, x, y, width, height, rotation, childFrame, flipH, flipV, children }) => ({
+        name,
+        x,
+        y,
+        width,
+        height,
+        rotation,
+        childFrame,
+        flipH,
+        flipV,
+        types: children.map((element) => element.type),
+      })),
+    ).toEqual(
+      groups.map(({ name, x, y, width, height, rotation, childFrame, flipH, flipV, children }) => ({
+        name,
+        x,
+        y,
+        width,
+        height,
+        rotation,
+        childFrame,
+        flipH,
+        flipV,
+        types: children.map((element) => element.type),
+      })),
+    );
+    expect(again.warnings.join(' ')).not.toContain('Group effects');
+  }, 20000);
 
   it.each(['contain', 'cover', 'stretch'] as const)(
     'exports %s using real pixel dimensions while retaining the full editable picture frame',

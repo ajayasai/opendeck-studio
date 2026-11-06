@@ -524,6 +524,39 @@ kbd {
   background-image: radial-gradient(#cfd7c4 0.65px, transparent 0.65px);
   background-size: 16px 16px;
 }
+.group-breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 9px 24px;
+  background: #eef4e9;
+  border-top: 1px solid #dfe5d7;
+  color: #4d6444;
+  font-size: 11px;
+}
+.group-breadcrumb span {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+.group-breadcrumb button {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+.group-breadcrumb button:hover {
+  background: #dfe9d8;
+}
+.group-breadcrumb button[aria-current] {
+  font-weight: 650;
+}
+.group-breadcrumb small {
+  margin-left: auto;
+}
 .canvas-frame {
   position: relative;
   flex-shrink: 0;

@@ -240,6 +240,53 @@ An additional original, editor-authored two-slide probe tests six contain/cover/
 
 To recreate the public inputs intentionally, run the calibration Python script, the native authoring PowerShell script and then the XML probe generator. Recreating inputs can change metadata, native defaults, JPEG/PNG encoding and package bytes. Review all content, sanitation, hashes and acceptance results before replacing frozen files. Regular CI reads committed inputs without Office. Generated provenance, COM properties, native saved copies, edge experiments, pixel measurements and PNGs remain under ignored `test-results/picture-geometry-powerpoint/`. Older published fixtures/examples were not changed.
 
+## Original native groups and XML controls (alpha.8)
+
+`tests/fixtures/powerpoint-groups.pptx` contains eight original slides authored through Microsoft PowerPoint COM, with 19 native group containers, 117 leaf objects and 15 embedded pictures. The original project calibration raster from alpha.7 is reused unchanged. All text, shapes, layout and raster content are distributed under the repository's [MIT license](../LICENSE); no customer presentation or external image is included. Authoring used PowerPoint `16.0`, executable product version `16.0.20527.20150`, at `2026-11-06T09:03:34.3153956Z`.
+
+`scripts/create-powerpoint-group-fixture.ps1` creates and closes its own windowless presentation. The shared sanitizer replaces Office profile attribution and organization metadata. Controls include 50%/120% resizing, nonuniform wide/tall scaling, a 30° child rectangle, group rotations/reflections, all four flip combinations, nonzero child coordinate origins, nested groups and three grouping levels. Text, a picture, shapes and a connector remain distinct group members. The final slide records a native COM table-grouping rejection; it leaves the original table and companion rectangle ungrouped. The native source is not claimed to contain a successfully COM-authored table group.
+
+`scripts/prepare-group-probe.mjs` creates the separate eight-slide `powerpoint-groups-probe.pptx`, with 20 groups and the same 117 leaves. It is **XML-derived, not directly PowerPoint-authored**. Ten explicit changes isolate shifted/negative child origins, zero child width/height, asymmetric text insets under reflections, a group shadow, and a grouped native table with 10° rotation. PowerPoint opened, rendered and saved this package. The shadow is a deliberately unsupported effect control; table appearance remains a separate limitation.
+
+`tests/fixtures/powerpoint-groups-rotation.pptx` is an additional **original COM-authored** three-slide diagnostic, created by `scripts/probe-group-rotation-scales.ps1` and sanitized with the same shared utility. Its five groups and 36 leaves isolate 25 local rotation angles, including values 0.001° either side of the 45°/135°/225°/315° scaling thresholds, and two nested cases with outer rotations 0° and 100°. The dense first-slide controls intentionally overlap at a few positions. This input exposed the native switch of dimension-scaling axes at quarter-turn bands; it is separate from the presentation-style eight-slide public example.
+
+Frozen inputs and tested exports:
+
+| File                                                           | SHA-256                                                            |
+| -------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `tests/fixtures/powerpoint-groups.pptx`                        | `956b6cbc7eee56b7d13d8a2785738be96176ba246778850364634486b91ea875` |
+| `tests/fixtures/powerpoint-groups-probe.pptx`                  | `97f36216967b75393a3dfd0ce24360e8586350373095bd6dba5f594dd64ed1a4` |
+| `tests/fixtures/powerpoint-groups-rotation.pptx`               | `11bba46bc8e19f4f4cd21e4ef7df6db5c144eef2681fa70babed816355c8c99a` |
+| `examples/groups.pptx`                                         | `7226dd6e0c051478f58528c88e53becdccd85330b9ad0686a6bffc0aeedc4ba3` |
+| Ignored `test-results/group-powerpoint/probe-exported.pptx`    | `9a60c08512de2ba38934a4306d0f7e4b2a192ac681bf423771e8cc5f01a6a881` |
+| Ignored `test-results/group-powerpoint/rotation-exported.pptx` | `54e4715dfad7320f8399dfb2bd52b14b2882fb91ac4ad0b4e2c144a2d936757a` |
+| Ignored `test-results/group-powerpoint/editor-authored.pptx`   | `e30cf7206d7079f458956fe0e330617a077c21d795f2c1a5660961a3009c657c` |
+
+The public `examples/groups.opendeck` and `.pptx` derive **directly from importing the original COM-authored fixture**. The XML controls have their own ignored export. Reproduce the native gate from committed inputs:
+
+```powershell
+node scripts/generate-group-example.mjs
+powershell -File scripts/verify-groups-with-powerpoint.ps1
+node scripts/check-group-office-roundtrip.mjs
+python scripts/analyze-group-native.py
+```
+
+The verifier opens only dedicated project files, records native computed geometry and text properties, exports PNGs and saves separate copies. The semantic checker verifies the current export hashes, source-versus-export COM geometry and the PowerPoint-saved hierarchy, names, local transforms, rich text, image bytes and table values. The independent Python calculation requires Pillow and NumPy; it reads original DrawingML and native PNGs without importing application geometry helpers. [TESTING.md](TESTING.md) records the 19 inspected fixture-export renders, 60 rectangle measurements and appearance limits. The rotation-only generator switch (`--rotation-only`) leaves the public example and other exports untouched.
+
+`scripts/generate-group-editor-probe.mjs` separately constructs ignored editor-authored controls for chart/table/image/hyperlink relationships, nonuniform automatic image fitting, and legacy EXIF 6/7 with existing crop, flips and rotation. It also creates an explicitly XML-derived nested-zero-extent control from the original package. These controls do not alter any frozen input. The corresponding verifier switches are `-OnlyEditor` and `-OnlyNestedZero`; semantic and pixel checks use `check-group-editor-roundtrip.mjs` and `analyze-group-editor-native.py`.
+
+The final editor-authored gate covers four slides, five groups and eleven pictures, plus a chart, table and hyperlink. Its exact tested hash is recorded above. Native saved-copy semantics and 145 sampled interior/transparent pixels passed after the rotation-aware scaling correction; all four PNGs were inspected. Sixteen candidate points within 1.5 px of clipping edges are recorded separately rather than compared with binary coverage math. Reproduce this additional gate without changing public files:
+
+```powershell
+node scripts/generate-group-editor-probe.mjs
+powershell -File scripts/verify-groups-with-powerpoint.ps1 -OnlyEditor
+node scripts/check-group-editor-roundtrip.mjs
+python scripts/analyze-group-editor-native.py
+powershell -File scripts/verify-groups-with-powerpoint.ps1 -OnlyNestedZero
+```
+
+To recreate the public inputs intentionally, run the native authoring script and then the XML probe generator. Recreating packages changes timestamps and can change Office defaults; review the content, sanitized metadata, hashes and native evidence before replacing frozen inputs. Normal CI uses committed inputs without Office. Native properties, generated provenance, extra probes, saved copies and PNGs remain under ignored `test-results/group-powerpoint/`. Older published fixtures and examples remain unchanged.
+
 ## Synthetic OOXML and generated round trips
 
 `src/pptx.test.ts` also creates small OOXML packages in memory to isolate relationship ordering, malformed input, theme/layout inheritance, groups, and warning behavior. These synthetic packages deliberately focus on importer cases; they are not all complete, independently validated PowerPoint presentations.
