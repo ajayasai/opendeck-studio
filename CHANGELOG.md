@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.1.0-alpha.2 — 2026-11-06
+
+Rich text authoring and interoperability milestone. Full PowerPoint parity remains an active, unfinished goal.
+
+- Add a Tiptap editor with selected-range fonts, sizes, colors, bold, italic, underline, safe hyperlinks, and local undo/redo before Save.
+- Add paragraph alignment, nested bullets and decimal numbered lists, start numbers, line spacing, and spacing before/after.
+- Preserve explicit false style overrides, blank paragraphs, soft line breaks, and continued numbering in the native document model.
+- Retain rich formatting on unchanged text during ordinary canvas/inspector text edits; whole-box formatting intentionally updates the corresponding overrides.
+- Preserve supported rich runs and paragraphs in editable PPTX import/export, including external HTTP/HTTPS/mailto text links.
+- Restrict rich pasted content to the supported schema and safe links; keep Save/Cancel and validation errors separate from the original deck.
+- Preserve earlier native files through optional rich paragraphs in schema version 1. Earlier alpha.1 readers can discard these new fields when re-saving.
+- Add selected-range editor, adapter, model, native validation, and PPTX regression tests, plus an original PowerPoint-authored rich-text fixture.
+- Keep invalid canvas drafts visible when navigating or exporting, reject invalid inspector text edits with accessible feedback, and preserve concurrent edits when an image finishes loading.
+- Contain rich-editor loading failures with Close/Retry, explain denied fullscreen requests, and correct slide fitting for compact windows and large slide sizes.
+- Parse pasted HTML in an inert template before rebuilding supported content; a browser clipboard probe observed no image, frame, or stylesheet requests from the pasted resource URLs.
+
+A focused browser check changed the first selected word to italic 48 pt while other characters remained 66 pt, then confirmed persistence after saving and reloading. A two-slide original rich-text fixture passed PowerPoint open/render/save and semantic re-import checks for each character's supported styles and links, paragraph/list/spacing data, breaks, and notes. See the [testing record](docs/TESTING.md) for exact evidence and limits.
+
+Known approximations include text-box insets, exact bullet/hanging indents, PowerPoint's theme hyperlink colors, fixed/percentage spacing conversion, and adjacent same-base numbering restarts. This milestone does not establish broad visual equivalence across presentation applications.
+
 ## 0.1.0-alpha.1 — 2026-11-06
 
 First public alpha of OpenDeck Studio, an original MIT-licensed presentation editor.

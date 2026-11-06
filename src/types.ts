@@ -22,6 +22,27 @@ export interface TextElement extends ElementBase {
   underline: boolean;
   align: 'left' | 'center' | 'right';
   verticalAlign: 'top' | 'middle' | 'bottom';
+  /** Optional rich representation. text remains the exact plain-text projection. */
+  paragraphs?: TextParagraph[];
+}
+export interface TextRun {
+  text: string;
+  fontSize?: number;
+  fontFamily?: string;
+  color?: string;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  hyperlink?: string;
+}
+export interface TextParagraph {
+  runs: TextRun[];
+  align?: 'left' | 'center' | 'right';
+  bullet?: { kind: 'bullet' | 'number'; level: number; start?: number; character?: string };
+  /** Line height multiplier and spacing before/after in points. */
+  lineSpacing?: number;
+  spaceBefore?: number;
+  spaceAfter?: number;
 }
 export interface ShapeElement extends ElementBase {
   type: 'shape';

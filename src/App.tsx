@@ -44,7 +44,7 @@ import {
   Github,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import type { Deck, Slide, SlideElement, Theme } from './types';
+import type { Deck, Slide, SlideElement, TextElement, Theme } from './types';
 import {
   createDeck,
   createElement,
@@ -57,10 +57,13 @@ import { loadDeck, saveDeck } from './storage';
 import { useEditor } from './useEditor';
 import { SlideView } from './SlideView';
 import Canvas from './Canvas';
+import type { CanvasHandle } from './Canvas';
 import Inspector from './Inspector';
 import Presenter from './Presenter';
 import { useDialog } from './useDialog';
 import Library from './Library';
+import { applyTextPatch } from './richText';
+import RichTextEditor from './RichTextLoader';
 
 const isTyping = (target: EventTarget | null) =>
   target instanceof HTMLElement &&
@@ -111,8 +114,16 @@ function Tool({
 }
 
 export default function App() {
-  const { deck, commit, reset, undo, redo, canUndo, canRedo, getCurrentDeck } =
-    useEditor(createDeck);
+  const {
+    deck,
+    commit,
+    reset,
+    undo: undoDocument,
+    redo: redoDocument,
+    canUndo,
+    canRedo,
+    getCurrentDeck,
+  } = useEditor(createDeck);
   const [slideIndex, setSlideIndex] = useState(0),
     [selection, setSelection] = useState<string[]>([]),
     [ready, setReady] = useState(false),
@@ -120,6 +131,7 @@ export default function App() {
     [saveAllowed, setSaveAllowed] = useState(true);
   const [menu, setMenu] = useState<'file' | 'insert' | 'layout' | 'arrange' | null>(null),
     [library, setLibrary] = useState(false),
+    [richText, setRichText] = useState<TextElement | null>(null),
     [report, setReport] = useState<{ title: string; messages: string[] } | null>(null),
     [toast, setToast] = useState(''),
     [busy, setBusy] = useState(false),
@@ -132,6 +144,7 @@ export default function App() {
     [help, setHelp] = useState(false),
     [search, setSearch] = useState('');
   const openInput = useRef<HTMLInputElement>(null),
+    canvas = useRef<CanvasHandle>(null),
     imageInput = useRef<HTMLInputElement>(null),
     stage = useRef<HTMLDivElement>(null),
     clipboard = useRef<SlideElement[]>([]),
@@ -140,7 +153,9 @@ export default function App() {
     slideDrag = useRef<number | null>(null);
   const slide = deck.slides[Math.min(slideIndex, deck.slides.length - 1)],
     selected = slide.elements.filter((e) => selection.includes(e.id)),
-    zoom = Math.max(0.1, Math.min(2, fit * zoomValue));
+    zoom = Math.max(0.001, Math.min(2, fit * zoomValue));
+  const activeLocation = useRef({ deckId: deck.id, slideId: slide.id });
+  activeLocation.current = { deckId: deck.id, slideId: slide.id };
   const notify = useCallback((message: string) => {
     setToast(message);
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -195,19 +210,25 @@ export default function App() {
   }, [deck, ready, saveAllowed]);
   useEffect(() => {
     const handler = (ev: BeforeUnloadEvent) => {
-      if (!saveAllowed || saveState === 'Saving…' || saveState.startsWith('Save failed')) {
+      if (
+        richText ||
+        !saveAllowed ||
+        saveState === 'Saving…' ||
+        saveState.startsWith('Save failed')
+      ) {
         ev.preventDefault();
         ev.returnValue = '';
       }
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [saveState, saveAllowed]);
+  }, [saveState, saveAllowed, richText]);
   useEffect(() => {
     if (!stage.current) return;
     const observer = new ResizeObserver((entries) => {
       const r = entries[0].contentRect;
-      setFit(Math.min((r.width - 80) / deck.width, (r.height - 64) / deck.height, 1));
+      // ResizeObserver's contentRect already excludes the stage padding.
+      setFit(Math.min(r.width / deck.width, r.height / deck.height, 1));
     });
     observer.observe(stage.current);
     return () => observer.disconnect();
@@ -216,10 +237,36 @@ export default function App() {
     setSlideIndex((i) => Math.min(i, deck.slides.length - 1));
     setSelection((ids) => ids.filter((id) => slide.elements.some((e) => e.id === id)));
   }, [deck.slides.length, slide.id]);
-  function navigate(i: number) {
+  function finishCanvasDraft(): boolean {
+    if (!canvas.current || canvas.current.finishText()) return true;
+    canvas.current.focus();
+    setMenu(null);
+    return false;
+  }
+  function undo() {
+    if (finishCanvasDraft()) undoDocument();
+  }
+  function redo() {
+    if (finishCanvasDraft()) redoDocument();
+  }
+  function toggleOverview() {
+    if (finishCanvasDraft()) setOverview((value) => !value);
+  }
+  function startPresentation() {
+    if (finishCanvasDraft()) setPresenting(true);
+  }
+  function requestOpenFile() {
+    if (finishCanvasDraft()) openInput.current?.click();
+  }
+  function currentSlide() {
+    return getCurrentDeck().slides.find((item) => item.id === slide.id);
+  }
+  function navigate(i: number): boolean {
+    if (!finishCanvasDraft()) return false;
     setSlideIndex(Math.max(0, Math.min(deck.slides.length - 1, i)));
     setSelection([]);
     setMenu(null);
+    return true;
   }
   function patchSlide(patch: Partial<Slide>) {
     commit((d) => ({
@@ -228,17 +275,32 @@ export default function App() {
     }));
   }
   function patchElements(patch: Partial<SlideElement>) {
-    patchSlide({
-      elements: slide.elements.map((e) =>
-        selection.includes(e.id) &&
-        (!e.locked || Object.keys(patch).every((k) => k === 'locked' || k === 'name'))
-          ? ({ ...e, ...patch } as SlideElement)
-          : e,
-      ),
-    });
+    try {
+      patchSlide({
+        elements: slide.elements.map((e) =>
+          selection.includes(e.id) &&
+          (!e.locked || Object.keys(patch).every((k) => k === 'locked' || k === 'name'))
+            ? e.type === 'text'
+              ? applyTextPatch(e, patch as Partial<TextElement>)
+              : ({ ...e, ...patch } as SlideElement)
+            : e,
+        ),
+      });
+    } catch (reason) {
+      notify(reason instanceof Error ? reason.message : 'This change could not be applied.');
+    }
   }
   function replaceElements(elements: SlideElement[]) {
     patchSlide({ elements });
+  }
+  function editRichText(element: TextElement) {
+    if (!finishCanvasDraft()) return;
+    if (document.activeElement instanceof HTMLElement && isTyping(document.activeElement))
+      document.activeElement.blur();
+    const current = getCurrentDeck()
+      .slides.find((s) => s.id === slide.id)
+      ?.elements.find((e) => e.id === element.id);
+    if (current?.type === 'text' && !current.locked) setRichText(current);
   }
   function fitNewElement(element: SlideElement): SlideElement {
     const sx = deck.width / 1280,
@@ -255,6 +317,7 @@ export default function App() {
     return e;
   }
   function addElement(type: SlideElement['type'], shape?: string) {
+    if (!finishCanvasDraft()) return;
     if (type === 'image') {
       imageInput.current?.click();
       setMenu(null);
@@ -262,12 +325,15 @@ export default function App() {
     }
     const e = fitNewElement(createElement(type, deck.theme));
     if (e.type === 'shape' && shape) e.shape = shape as typeof e.shape;
-    replaceElements([...slide.elements, e]);
+    const latest = currentSlide();
+    if (!latest) return;
+    replaceElements([...latest.elements, e]);
     setSelection([e.id]);
     setMenu(null);
     setOverview(false);
   }
   function addSlide(layout: 'blank' | 'title' | 'content' | 'split' | 'quote' = 'blank') {
+    if (!finishCanvasDraft()) return;
     const s = createSlide(deck.theme, layout);
     s.elements = s.elements.map(fitNewElement);
     commit((d) => ({
@@ -280,7 +346,10 @@ export default function App() {
     setOverview(false);
   }
   function duplicateSlide() {
-    const s = cloneSlide(slide);
+    if (!finishCanvasDraft()) return;
+    const latest = currentSlide();
+    if (!latest) return;
+    const s = cloneSlide(latest);
     commit((d) => ({
       ...d,
       slides: [...d.slides.slice(0, slideIndex + 1), s, ...d.slides.slice(slideIndex + 1)],
@@ -290,6 +359,7 @@ export default function App() {
     notify('Slide duplicated');
   }
   function deleteSlide() {
+    if (!finishCanvasDraft()) return;
     if (deck.slides.length === 1) {
       notify('Keep at least one slide in your deck');
       return;
@@ -298,6 +368,7 @@ export default function App() {
     navigate(Math.max(0, slideIndex - 1));
   }
   function moveSlide(from: number, to: number) {
+    if (!finishCanvasDraft()) return;
     if (to < 0 || to >= deck.slides.length || from === to) return;
     commit((d) => {
       const slides = [...d.slides];
@@ -309,23 +380,34 @@ export default function App() {
     setSelection([]);
   }
   function removeSelection() {
+    if (!finishCanvasDraft()) return;
     if (!selected.length) return;
-    replaceElements(slide.elements.filter((e) => !selection.includes(e.id) || e.locked));
+    const latest = currentSlide();
+    if (!latest) return;
+    replaceElements(latest.elements.filter((e) => !selection.includes(e.id) || e.locked));
     setSelection([]);
   }
   function duplicateSelection() {
+    if (!finishCanvasDraft()) return;
     if (!selected.length) {
       duplicateSlide();
       return;
     }
-    const items = selected.map((e) => cloneElement(e));
-    replaceElements([...slide.elements, ...items]);
+    const latest = currentSlide();
+    if (!latest) return;
+    const items = latest.elements
+      .filter((element) => selection.includes(element.id))
+      .map((e) => cloneElement(e));
+    replaceElements([...latest.elements, ...items]);
     setSelection(items.map((e) => e.id));
   }
   function paste() {
+    if (!finishCanvasDraft()) return;
     if (!clipboard.current.length) return;
     const items = clipboard.current.map((e) => cloneElement(e));
-    replaceElements([...slide.elements, ...items]);
+    const latest = currentSlide();
+    if (!latest) return;
+    replaceElements([...latest.elements, ...items]);
     setSelection(items.map((e) => e.id));
     clipboard.current = items;
   }
@@ -414,7 +496,25 @@ export default function App() {
         background: map(s.background),
         elements: s.elements.map((e) =>
           e.type === 'text'
-            ? { ...e, color: map(e.color), fontFamily: theme.fontFamily }
+            ? {
+                ...e,
+                color: map(e.color),
+                fontFamily: theme.fontFamily,
+                ...(e.paragraphs
+                  ? {
+                      paragraphs: e.paragraphs.map((p) => ({
+                        ...p,
+                        runs: p.runs.map((r) => ({
+                          ...r,
+                          ...(r.color ? { color: map(r.color) } : {}),
+                          ...(r.fontFamily === previous.fontFamily
+                            ? { fontFamily: theme.fontFamily }
+                            : {}),
+                        })),
+                      })),
+                    }
+                  : {}),
+              }
             : e.type === 'shape'
               ? { ...e, fill: map(e.fill), stroke: map(e.stroke) }
               : e.type === 'chart'
@@ -428,6 +528,7 @@ export default function App() {
     notify(`${theme.name} applied to all slides`);
   }
   function saveNative() {
+    if (!finishCanvasDraft()) return;
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
     const deck = getCurrentDeck();
     download(
@@ -444,6 +545,7 @@ export default function App() {
     await saveChain.current;
   }
   async function openLibrary() {
+    if (!finishCanvasDraft()) return;
     setMenu(null);
     setBusy(true);
     try {
@@ -459,6 +561,7 @@ export default function App() {
     }
   }
   async function openSavedDeck(next: Deck) {
+    if (!finishCanvasDraft()) return;
     setBusy(true);
     try {
       await preserveCurrent();
@@ -477,6 +580,10 @@ export default function App() {
     }
   }
   async function openFile(file: File) {
+    if (!finishCanvasDraft()) {
+      if (openInput.current) openInput.current.value = '';
+      return;
+    }
     if (file.size > 50 * 1024 * 1024) {
       notify('Please choose a file smaller than 50 MB');
       return;
@@ -516,12 +623,14 @@ export default function App() {
     }
   }
   async function exportPowerPoint() {
+    if (!finishCanvasDraft()) return;
+    const current = getCurrentDeck();
     setBusy(true);
     setMenu(null);
     try {
       const { exportPptx, pptxExportWarnings } = await import('./pptx');
-      const warnings = pptxExportWarnings(deck);
-      download(await exportPptx(deck), `${filename(deck.title)}.pptx`);
+      const warnings = pptxExportWarnings(current);
+      download(await exportPptx(current), `${filename(current.title)}.pptx`);
       if (warnings.length)
         setReport({
           title: 'PowerPoint export report',
@@ -538,6 +647,12 @@ export default function App() {
     }
   }
   async function addImage(file: File) {
+    if (!finishCanvasDraft()) {
+      if (imageInput.current) imageInput.current.value = '';
+      return;
+    }
+    const targetDeckId = getCurrentDeck().id,
+      targetSlideId = slide.id;
     if (!['image/png', 'image/jpeg', 'image/gif', 'image/webp'].includes(file.type)) {
       notify('Choose a PNG, JPEG, GIF, or WebP image');
       return;
@@ -556,22 +671,43 @@ export default function App() {
       const image = new Image();
       image.src = src;
       await image.decode();
-      const e = createElement('image', deck.theme);
-      if (e.type !== 'image') return;
+      const latest = getCurrentDeck();
+      if (latest.id !== targetDeckId || !latest.slides.some((item) => item.id === targetSlideId)) {
+        notify(
+          'The image was not inserted because its original presentation or slide is no longer open.',
+        );
+        return;
+      }
+      const e = createElement('image', latest.theme);
       e.src = src;
       e.alt = file.name;
       e.name = file.name;
       e.width = Math.min(600, image.naturalWidth);
       e.height = (e.width * image.naturalHeight) / image.naturalWidth;
-      if (e.height > deck.height * 0.8) {
-        e.height = deck.height * 0.8;
+      if (e.height > latest.height * 0.8) {
+        e.height = latest.height * 0.8;
         e.width = (e.height * image.naturalWidth) / image.naturalHeight;
       }
-      e.x = (deck.width - e.width) / 2;
-      e.y = (deck.height - e.height) / 2;
-      replaceElements([...slide.elements, e]);
-      setSelection([e.id]);
-      setOverview(false);
+      e.x = (latest.width - e.width) / 2;
+      e.y = (latest.height - e.height) / 2;
+      commit((current) =>
+        current.id !== targetDeckId
+          ? current
+          : {
+              ...current,
+              slides: current.slides.map((item) =>
+                item.id === targetSlideId ? { ...item, elements: [...item.elements, e] } : item,
+              ),
+            },
+      );
+      if (
+        activeLocation.current.deckId === targetDeckId &&
+        activeLocation.current.slideId === targetSlideId &&
+        !canvas.current?.hasPendingText()
+      ) {
+        setSelection([e.id]);
+        setOverview(false);
+      }
     } catch {
       notify('This image could not be decoded');
     } finally {
@@ -579,6 +715,7 @@ export default function App() {
     }
   }
   async function newDeck() {
+    if (!finishCanvasDraft()) return;
     setBusy(true);
     setMenu(null);
     try {
@@ -607,7 +744,7 @@ export default function App() {
   });
   useEffect(() => {
     const handler = (ev: KeyboardEvent) => {
-      if (presenting || report || help || busy || library) return;
+      if (presenting || report || help || busy || library || richText) return;
       if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 's') {
         ev.preventDefault();
         saveNative();
@@ -621,7 +758,7 @@ export default function App() {
       }
       if (ev.key === 'F5') {
         ev.preventDefault();
-        setPresenting(true);
+        startPresentation();
         return;
       }
       if (isTyping(ev.target)) return;
@@ -751,7 +888,7 @@ export default function App() {
             <Download size={16} />
             Export PPTX
           </button>
-          <button className="primary-button" onClick={() => setPresenting(true)}>
+          <button className="primary-button" onClick={startPresentation}>
             <Play size={15} fill="currentColor" />
             Present
           </button>
@@ -775,7 +912,7 @@ export default function App() {
                   <Layers size={17} />
                   My presentations
                 </button>
-                <button onClick={() => openInput.current?.click()}>
+                <button onClick={requestOpenFile}>
                   <FolderOpen size={17} />
                   Open PPTX or OpenDeck
                 </button>
@@ -790,8 +927,9 @@ export default function App() {
                 </button>
                 <button
                   onClick={() => {
+                    if (!finishCanvasDraft()) return;
                     setMenu(null);
-                    window.print();
+                    requestAnimationFrame(() => window.print());
                   }}
                 >
                   <Download size={17} />
@@ -899,7 +1037,7 @@ export default function App() {
               </div>
             )}
           </div>
-          <button onClick={() => setOverview((v) => !v)}>
+          <button onClick={toggleOverview}>
             View
             <ChevronDown size={12} />
           </button>
@@ -977,7 +1115,7 @@ export default function App() {
           <Tool
             icon={Layers}
             label="Slide sorter"
-            onClick={() => setOverview((v) => !v)}
+            onClick={toggleOverview}
             active={overview}
             compact
           />
@@ -991,7 +1129,7 @@ export default function App() {
               <Tool
                 icon={Grid2X2}
                 label="Slide sorter"
-                onClick={() => setOverview((v) => !v)}
+                onClick={toggleOverview}
                 active={overview}
                 compact
               />
@@ -1126,6 +1264,7 @@ export default function App() {
                 </div>
               ) : (
                 <Canvas
+                  ref={canvas}
                   deck={deck}
                   slide={slide}
                   selected={selection}
@@ -1169,11 +1308,12 @@ export default function App() {
             onTheme={applyTheme}
             onSelect={(id) => setSelection([id])}
             onLayer={layer}
+            onEditRichText={editRichText}
           />
         </div>
         <footer className="statusbar">
           <div>
-            <button onClick={() => setOverview((v) => !v)} title="Toggle slide sorter">
+            <button onClick={toggleOverview} title="Toggle slide sorter">
               <Grid2X2 size={14} />
             </button>
             <span>
@@ -1370,6 +1510,17 @@ export default function App() {
         </div>
       )}
       {library && <Library onClose={() => setLibrary(false)} onOpen={openSavedDeck} />}
+      {richText && (
+        <RichTextEditor
+          element={richText}
+          background={slide.background}
+          onClose={() => setRichText(null)}
+          onSave={(element) => {
+            replaceElements(slide.elements.map((e) => (e.id === element.id ? element : e)));
+            setRichText(null);
+          }}
+        />
+      )}
       {presenting && <Presenter deck={deck} start={slideIndex} onClose={closePresentation} />}
       <style media="print">{`@page { size: ${deck.width / 96}in ${deck.height / 96}in; margin: 0; } .print-slide { zoom: 1; }`}</style>
       <div className="print-deck">

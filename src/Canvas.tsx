@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
-import type { PointerEvent } from 'react';
+import { useEffect, useId, useImperativeHandle, useRef, useState } from 'react';
+import type { PointerEvent, Ref } from 'react';
 import type { Deck, Slide, SlideElement } from './types';
 import { ElementContent, elementStyle } from './SlideView';
+import { replacePlainText } from './richText';
 
 interface Props {
+  ref?: Ref<CanvasHandle>;
   deck: Deck;
   slide: Slide;
   selected: string[];
@@ -11,6 +13,11 @@ interface Props {
   onChange: (elements: SlideElement[]) => void;
   zoom: number;
   grid: boolean;
+}
+export interface CanvasHandle {
+  finishText: () => boolean;
+  focus: () => void;
+  hasPendingText: () => boolean;
 }
 type Gesture = {
   kind: 'move' | 'resize';
@@ -20,22 +27,75 @@ type Gesture = {
   ids: string[];
   pointerId: number;
 };
-export default function Canvas({ deck, slide, selected, onSelect, onChange, zoom, grid }: Props) {
+export default function Canvas({
+  deck,
+  slide,
+  selected,
+  onSelect,
+  onChange,
+  zoom,
+  grid,
+  ref,
+}: Props) {
   const [draft, setDraft] = useState<SlideElement[] | null>(null),
     draftRef = useRef<SlideElement[] | null>(null),
     gesture = useRef<Gesture | null>(null);
   const [editing, setEditing] = useState<string | null>(null),
-    [text, setText] = useState('');
+    [text, setText] = useState(''),
+    [textError, setTextError] = useState('');
+  const textInput = useRef<HTMLTextAreaElement>(null),
+    editingId = useRef<string | null>(null),
+    textValue = useRef(''),
+    currentElements = useRef(slide.elements),
+    errorId = useId();
+  currentElements.current = slide.elements;
+  useImperativeHandle(ref, () => ({
+    finishText: () => finishText() !== null,
+    focus: () => textInput.current?.focus(),
+    hasPendingText: () =>
+      Boolean(
+        editingId.current &&
+        currentElements.current.some(
+          (element) =>
+            element.id === editingId.current &&
+            element.type === 'text' &&
+            element.text !== textValue.current,
+        ),
+      ),
+  }));
   useEffect(() => {
     setEditing(null);
+    editingId.current = null;
+    setTextError('');
     setDraft(null);
     draftRef.current = null;
     gesture.current = null;
   }, [slide.id]);
+  useEffect(() => {
+    if (
+      !editing ||
+      !slide.elements.some(
+        (element) => element.id === editing && element.type === 'text' && element.text !== text,
+      )
+    )
+      return;
+    const protectDraft = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', protectDraft);
+    return () => window.removeEventListener('beforeunload', protectDraft);
+  }, [editing, text, slide.elements]);
   const elements = draft ?? slide.elements;
   function start(ev: PointerEvent<HTMLElement>, element: SlideElement, kind: 'move' | 'resize') {
     if (ev.button !== 0 || editing === element.id) return;
     ev.stopPropagation();
+    const original = finishText();
+    if (!original) {
+      ev.preventDefault();
+      textInput.current?.focus();
+      return;
+    }
     const ids = ev.shiftKey
       ? selected.includes(element.id)
         ? selected.filter((id) => id !== element.id)
@@ -45,13 +105,6 @@ export default function Canvas({ deck, slide, selected, onSelect, onChange, zoom
         : [element.id];
     onSelect(ids);
     if (element.locked || !ids.includes(element.id)) return;
-    const original = editing
-      ? slide.elements.map((e) => (e.id === editing && e.type === 'text' ? { ...e, text } : e))
-      : slide.elements;
-    if (editing) {
-      setEditing(null);
-      onChange(original);
-    }
     gesture.current = {
       kind,
       startX: ev.clientX,
@@ -99,12 +152,29 @@ export default function Canvas({ deck, slide, selected, onSelect, onChange, zoom
     draftRef.current = null;
     setDraft(null);
   }
-  function finishText() {
-    if (!editing) return;
-    const id = editing;
+  function finishText(): SlideElement[] | null {
+    if (!editingId.current) return currentElements.current;
+    const id = editingId.current;
+    let next = currentElements.current;
+    try {
+      if (next.some((e) => e.id === id && e.type === 'text' && e.text !== textValue.current))
+        next = next.map((e) =>
+          e.id === id && e.type === 'text' ? replacePlainText(e, textValue.current) : e,
+        );
+    } catch (error) {
+      setTextError(
+        `${error instanceof Error ? error.message : 'This text could not be applied.'} Your draft is still in the text box. Shorten it, or press Escape to discard the draft.`,
+      );
+      return null;
+    }
     setEditing(null);
-    if (slide.elements.some((e) => e.id === id && e.type === 'text' && e.text !== text))
-      onChange(slide.elements.map((e) => (e.id === id && e.type === 'text' ? { ...e, text } : e)));
+    editingId.current = null;
+    setTextError('');
+    if (next !== currentElements.current) {
+      currentElements.current = next;
+      onChange(next);
+    }
+    return next;
   }
   return (
     <div className="canvas-frame" style={{ width: deck.width * zoom, height: deck.height * zoom }}>
@@ -119,8 +189,13 @@ export default function Canvas({ deck, slide, selected, onSelect, onChange, zoom
           backgroundColor: slide.background,
           transform: `scale(${zoom})`,
         }}
-        onPointerDown={() => {
-          finishText();
+        onPointerDown={(ev) => {
+          if (ev.button !== 0) return;
+          if (!finishText()) {
+            ev.preventDefault();
+            textInput.current?.focus();
+            return;
+          }
           onSelect([]);
         }}
       >
@@ -138,10 +213,14 @@ export default function Canvas({ deck, slide, selected, onSelect, onChange, zoom
               if (ev.target !== ev.currentTarget) return;
               if (ev.key === 'Enter' || ev.key === ' ') {
                 ev.preventDefault();
+                if (editing && editing !== e.id && !finishText()) return;
                 onSelect([e.id]);
                 if (e.type === 'text' && !e.locked) {
+                  setTextError('');
                   setEditing(e.id);
+                  editingId.current = e.id;
                   setText(e.text);
+                  textValue.current = e.text;
                 }
               }
             }}
@@ -151,20 +230,32 @@ export default function Canvas({ deck, slide, selected, onSelect, onChange, zoom
             onPointerCancel={cancel}
             onDoubleClick={(ev) => {
               ev.stopPropagation();
+              if (editing === e.id) return;
+              if (editing && !finishText()) return;
               if (e.type === 'text' && !e.locked) {
+                setTextError('');
                 setEditing(e.id);
+                editingId.current = e.id;
                 setText(e.text);
+                textValue.current = e.text;
               }
             }}
           >
             {editing === e.id && e.type === 'text' ? (
               <textarea
                 autoFocus
+                ref={textInput}
                 maxLength={100000}
                 aria-label="Edit text on slide"
+                aria-invalid={Boolean(textError)}
+                aria-describedby={textError ? errorId : undefined}
                 className="canvas-text-editor"
                 value={text}
-                onChange={(ev) => setText(ev.target.value)}
+                onChange={(ev) => {
+                  setText(ev.target.value);
+                  textValue.current = ev.target.value;
+                  setTextError('');
+                }}
                 onBlur={finishText}
                 onPointerDown={(ev) => ev.stopPropagation()}
                 onKeyDown={(ev) => {
@@ -172,6 +263,8 @@ export default function Canvas({ deck, slide, selected, onSelect, onChange, zoom
                     ev.stopPropagation();
                   if (ev.key === 'Escape') {
                     setEditing(null);
+                    editingId.current = null;
+                    setTextError('');
                   }
                   if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) {
                     finishText();
@@ -209,6 +302,28 @@ export default function Canvas({ deck, slide, selected, onSelect, onChange, zoom
           </div>
         ))}
       </div>
+      {textError && (
+        <div
+          id={errorId}
+          className="canvas-text-error"
+          role="alert"
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 50,
+            padding: '10px 14px',
+            background: '#fff4e8',
+            color: '#783d18',
+            borderTop: '1px solid #d8a071',
+            fontSize: 13,
+            lineHeight: 1.4,
+          }}
+        >
+          {textError}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import type { ChartElement, Deck, Slide, SlideElement } from './types';
 import { contrastText } from './model';
+import RichTextView from './RichTextView';
 
 export function ChartView({ element: e }: { element: ChartElement }) {
   const w = 600,
@@ -113,31 +114,16 @@ export function ChartView({ element: e }: { element: ChartElement }) {
   );
 }
 
-export function ElementContent({ element: e }: { element: SlideElement }) {
+export function ElementContent({
+  element: e,
+  interactiveLinks = false,
+}: {
+  element: SlideElement;
+  interactiveLinks?: boolean;
+}) {
   switch (e.type) {
     case 'text':
-      return (
-        <div
-          className="text-content"
-          style={{
-            fontSize: `${e.fontSize}pt`,
-            fontFamily: e.fontFamily,
-            color: e.color,
-            fontWeight: e.bold ? 700 : 400,
-            fontStyle: e.italic ? 'italic' : 'normal',
-            textDecoration: e.underline ? 'underline' : 'none',
-            textAlign: e.align,
-            justifyContent:
-              e.verticalAlign === 'middle'
-                ? 'center'
-                : e.verticalAlign === 'bottom'
-                  ? 'flex-end'
-                  : 'flex-start',
-          }}
-        >
-          {e.text}
-        </div>
-      );
+      return <RichTextView element={e} interactiveLinks={interactiveLinks} />;
     case 'shape':
       return (
         <svg
@@ -252,11 +238,13 @@ export function SlideView({
   deck,
   scale = 1,
   animate = false,
+  interactiveLinks = false,
 }: {
   slide: Slide;
   deck: Pick<Deck, 'width' | 'height'>;
   scale?: number;
   animate?: boolean;
+  interactiveLinks?: boolean;
 }) {
   return (
     <div
@@ -281,7 +269,7 @@ export function SlideView({
           }
           className={animate ? `object-animation-${e.animation}` : undefined}
         >
-          <ElementContent element={e} />
+          <ElementContent element={e} interactiveLinks={interactiveLinks} />
         </div>
       ))}
     </div>

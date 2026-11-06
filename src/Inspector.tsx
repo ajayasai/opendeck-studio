@@ -18,7 +18,16 @@ import {
   UnlockKeyhole,
 } from 'lucide-react';
 import { THEMES } from './model';
-import type { ChartElement, Deck, Slide, SlideElement, TableElement, Theme } from './types';
+import { replacePlainText } from './richText';
+import type {
+  ChartElement,
+  Deck,
+  Slide,
+  SlideElement,
+  TableElement,
+  TextElement,
+  Theme,
+} from './types';
 
 export interface InspectorProps {
   deck: Deck;
@@ -29,6 +38,7 @@ export interface InspectorProps {
   onTheme: (theme: Theme) => void;
   onSelect: (id: string) => void;
   onLayer: (direction: 'front' | 'back' | 'forward' | 'backward') => void;
+  onEditRichText?: (element: TextElement) => void;
 }
 
 function NumberField({
@@ -87,41 +97,70 @@ function TextField({
   onChange,
   multiline = false,
   maxLength = 100000,
+  validate,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   multiline?: boolean;
   maxLength?: number;
+  validate?: (value: string) => void;
 }) {
   const [draft, setDraft] = useState(value);
-  useEffect(() => setDraft(value), [value]);
+  const [error, setError] = useState('');
+  const errorId = useId();
+  useEffect(() => {
+    setDraft(value);
+    setError('');
+  }, [value]);
+  function accept(candidate: string) {
+    try {
+      validate?.(candidate);
+      setDraft(candidate);
+      setError('');
+    } catch (reason) {
+      setError(
+        `${reason instanceof Error ? reason.message : 'This text exceeds the supported limits.'} This edit was not accepted; the last valid text is still shown. Shorten the edit or use the styled editor.`,
+      );
+    }
+  }
   const commit = () => {
     if (draft !== value) onChange(draft);
   };
   return (
-    <label className="field">
-      <span>{label}</span>
-      {multiline ? (
-        <textarea
-          value={draft}
-          rows={4}
-          maxLength={maxLength}
-          onChange={(event) => setDraft(event.target.value)}
-          onBlur={commit}
-        />
-      ) : (
-        <input
-          value={draft}
-          maxLength={maxLength}
-          onChange={(event) => setDraft(event.target.value)}
-          onBlur={commit}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') event.currentTarget.blur();
-          }}
-        />
+    <>
+      <label className="field">
+        <span>{label}</span>
+        {multiline ? (
+          <textarea
+            value={draft}
+            rows={4}
+            maxLength={maxLength}
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? errorId : undefined}
+            onChange={(event) => accept(event.target.value)}
+            onBlur={commit}
+          />
+        ) : (
+          <input
+            value={draft}
+            maxLength={maxLength}
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? errorId : undefined}
+            onChange={(event) => accept(event.target.value)}
+            onBlur={commit}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') event.currentTarget.blur();
+            }}
+          />
+        )}
+      </label>
+      {error && (
+        <p id={errorId} className="field-error" role="alert">
+          {error}
+        </p>
       )}
-    </label>
+    </>
   );
 }
 
@@ -320,6 +359,7 @@ export function Inspector({
   onTheme,
   onSelect,
   onLayer,
+  onEditRichText,
 }: InspectorProps) {
   const [tab, setTab] = useState<'format' | 'design' | 'layers'>('format');
   const element = selected.length === 1 ? selected[0] : undefined;
@@ -524,10 +564,28 @@ export function Inspector({
                 {element.type === 'text' && (
                   <section className="panel-section">
                     <h3>Typography</h3>
+                    {onEditRichText && (
+                      <button className="secondary-button" onClick={() => onEditRichText(element)}>
+                        Edit styles & lists
+                      </button>
+                    )}
+                    {element.paragraphs && (
+                      <p className="inspector-hint">
+                        This box has character and paragraph formatting. Use the styled editor to
+                        format a selection. Controls below apply to the entire box.
+                      </p>
+                    )}
                     <TextField
                       label="Text"
                       value={element.text}
                       multiline
+                      validate={
+                        element.paragraphs
+                          ? (candidate) => {
+                              replacePlainText(element, candidate);
+                            }
+                          : undefined
+                      }
                       onChange={(text) => onElementPatch({ text })}
                     />
                     <label className="field">

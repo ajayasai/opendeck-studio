@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import JSZip from 'jszip';
 import { exportPptx, importPptx, pptxExportWarnings } from './pptx';
-import type { Deck, ElementBase, Theme } from './types';
+import type { Deck, ElementBase, Theme, TextElement } from './types';
+import { plainText } from './richText';
 import { validateDeck } from './model';
 import { readFile } from 'node:fs/promises';
 
@@ -438,7 +439,7 @@ describe('editable PPTX interoperability', () => {
     await expect(importPptx(bytes)).rejects.toThrow('oversized');
   });
 
-  it('reports unsupported animations and mixed formatting', async () => {
+  it('preserves mixed formatting while still reporting unsupported animations', async () => {
     const deck = sample();
     deck.slides[0].elements[0].animation = 'rise';
     expect(pptxExportWarnings(deck).join(' ')).toContain('animations');
@@ -451,8 +452,172 @@ describe('editable PPTX interoperability', () => {
         zip.file('ppt/slides/slide12.xml', slide(mixed).replace('</p:sld>', '<p:timing/></p:sld>')),
       ),
     );
-    expect(result.warnings.join(' ')).toContain('Mixed character formatting');
+    const text = result.deck.slides[0].elements.find((e) => e.type === 'text')!;
+    expect(text.paragraphs?.[0].runs).toMatchObject([
+      { text: 'Hello', fontSize: 28 },
+      { text: 'Small', fontSize: 12 },
+    ]);
+    expect(result.warnings.join(' ')).not.toContain('Mixed character formatting');
     expect(result.warnings.join(' ')).toContain('animations');
+  });
+
+  it('imports native PowerPoint rich text with lists, paragraph spacing, a blank paragraph, and a safe hyperlink', async () => {
+    const source = await readFile('tests/fixtures/powerpoint-rich-text.pptx');
+    const { deck } = await importPptx(
+      source.buffer.slice(source.byteOffset, source.byteOffset + source.byteLength),
+    );
+    const rich = deck.slides[0].elements.find(
+      (e) => e.name === 'Mixed runs and paragraphs',
+    ) as TextElement;
+    expect(rich.paragraphs).toHaveLength(4);
+    expect(rich.text).toBe(
+      'Original bold, italic, color, and link.\nSecond paragraph with larger type.\n\nSoft line\nbreak stays in one paragraph.',
+    );
+    const p = rich.paragraphs!;
+    expect(p[0]).toMatchObject({ lineSpacing: 1.25, spaceBefore: 6, spaceAfter: 12 });
+    expect(p[0].runs.find((r) => r.text === 'bold')).toMatchObject({
+      bold: true,
+      italic: false,
+      fontSize: 24,
+      fontFamily: 'Arial',
+    });
+    expect(p[0].runs.find((r) => r.text === 'italic')).toMatchObject({ italic: true, bold: false });
+    expect(p[0].runs.find((r) => r.text === 'color')).toMatchObject({ color: '#c76a35' });
+    expect(p[0].runs.find((r) => r.text === 'link')).toMatchObject({
+      underline: true,
+      hyperlink: 'https://example.com/opendeck?from=fixture&mode=rich',
+    });
+    expect(p[1]).toMatchObject({
+      align: 'center',
+      runs: [{ fontSize: 30, fontFamily: 'Georgia' }],
+    });
+    expect(p[2].runs.map((r) => r.text).join('')).toBe('');
+    expect(p[3].runs.some((r) => r.text === '\n')).toBe(true);
+    const bullets = deck.slides[1].elements.find((e) => e.name === 'Bullet list') as TextElement;
+    expect(bullets.paragraphs?.map((p) => p.bullet)).toEqual([
+      { kind: 'bullet', level: 0, character: '•' },
+      { kind: 'bullet', level: 1, character: '•' },
+      { kind: 'bullet', level: 0, character: '•' },
+    ]);
+    const numbers = deck.slides[1].elements.find((e) => e.name === 'Numbered list') as TextElement;
+    expect(numbers.paragraphs?.map((p) => p.bullet)).toEqual([
+      { kind: 'number', level: 0, start: 3 },
+      { kind: 'number', level: 0 },
+      { kind: 'number', level: 0 },
+    ]);
+    const exported = await buffer(await exportPptx(deck));
+    const again = await importPptx(exported);
+    const richAgain = again.deck.slides[0].elements.find(
+      (e) => e.name === rich.name,
+    ) as TextElement;
+    expect(richAgain.paragraphs).toEqual(rich.paragraphs);
+    const numbersAgain = again.deck.slides[1].elements.find(
+      (e) => e.name === numbers.name,
+    ) as TextElement;
+    expect(numbersAgain.paragraphs).toEqual(numbers.paragraphs);
+  });
+
+  it('writes one native paragraph per model paragraph, preserving consecutive/trailing blanks and soft breaks', async () => {
+    const deck = sample();
+    const text = deck.slides[0].elements[0] as TextElement;
+    text.paragraphs = [
+      {
+        runs: [
+          { text: 'A', bold: true },
+          { text: '\nB', italic: true, hyperlink: 'mailto:team@example.com' },
+        ],
+        align: 'right',
+        lineSpacing: 1.4,
+        spaceBefore: 3,
+        spaceAfter: 7,
+      },
+      { runs: [] },
+      { runs: [{ text: '' }] },
+      { runs: [{ text: 'Last' }], bullet: { kind: 'number', level: 1, start: 7 } },
+      { runs: [] },
+    ];
+    text.text = plainText(text.paragraphs);
+    deck.slides[0].elements = [text];
+    const bytes = await buffer(await exportPptx(deck));
+    const zip = await JSZip.loadAsync(bytes);
+    const doc = new DOMParser().parseFromString(
+      await zip.file('ppt/slides/slide1.xml')!.async('string'),
+      'application/xml',
+    );
+    expect(doc.getElementsByTagNameNS('*', 'p')).toHaveLength(5);
+    expect(doc.getElementsByTagNameNS('*', 'br')).toHaveLength(1);
+    expect(doc.getElementsByTagNameNS('*', 'buAutoNum')[0].getAttribute('startAt')).toBe('7');
+    const result = await importPptx(bytes);
+    const imported = result.deck.slides[0].elements[0] as TextElement;
+    expect(imported.text).toBe(text.text);
+    expect(imported.paragraphs).toHaveLength(5);
+    expect(imported.paragraphs?.[0]).toMatchObject({
+      align: 'right',
+      lineSpacing: 1.4,
+      spaceBefore: 3,
+      spaceAfter: 7,
+    });
+    expect(
+      imported.paragraphs?.[0].runs
+        .filter((r) => r.text !== 'A')
+        .every((r) => r.hyperlink === 'mailto:team@example.com'),
+    ).toBe(true);
+  });
+
+  it.each([
+    'javascript:alert(1)',
+    'file:///private',
+    'https://user:secret@example.com/',
+    'mailto:team@example.com?body=%0d%0aevil',
+  ])('drops unsafe imported text hyperlink %s without fetching', async (target) => {
+    const result = await importPptx(
+      await fixture((zip) => {
+        zip.file(
+          'ppt/slides/slide12.xml',
+          slide(textShape('Link', '2', '<a:hlinkClick r:id="badLink"/>')),
+        );
+        zip.file(
+          'ppt/slides/_rels/slide12.xml.rels',
+          rels(relationship('badLink', 'hyperlink', target, true)),
+        );
+      }),
+    );
+    const text = result.deck.slides[0].elements[0] as TextElement;
+    expect(text.paragraphs?.[0].runs[0].hyperlink).toBeUndefined();
+    expect(result.warnings.join(' ')).toContain('Unsafe, internal, or action-based hyperlinks');
+  });
+
+  it('resolves local paragraph defaults over list and master styles with theme font aliases', async () => {
+    const result = await importPptx(
+      await fixture((zip) => {
+        zip.file(
+          'ppt/slides/slide12.xml',
+          slide(
+            '<p:sp><p:nvSpPr><p:cNvPr id="2" name="Inherited"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr/><p:txBody><a:bodyPr/><a:lstStyle><a:lvl1pPr><a:defRPr sz="2200" b="1"><a:latin typeface="+mj-lt"/><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></a:defRPr></a:lvl1pPr></a:lstStyle><a:p><a:pPr algn="ctr"><a:defRPr i="1" b="0"/></a:pPr><a:r><a:t>Inherited style</a:t></a:r></a:p></p:txBody></p:sp>',
+          ),
+        );
+        zip.file(
+          'ppt/theme/theme1.xml',
+          `<a:theme ${ns}><a:themeElements><a:clrScheme name="Test"><a:accent1><a:srgbClr val="9A4B13"/></a:accent1></a:clrScheme><a:fontScheme name="Test"><a:majorFont><a:latin typeface="Georgia"/></a:majorFont><a:minorFont><a:latin typeface="Arial"/></a:minorFont></a:fontScheme></a:themeElements></a:theme>`,
+        );
+      }),
+    );
+    const text = result.deck.slides[0].elements[0] as TextElement;
+    expect(text.paragraphs?.[0]).toMatchObject({
+      align: 'center',
+      runs: [{ fontSize: 22, fontFamily: 'Georgia', bold: false, italic: true, color: '#9a4b13' }],
+    });
+  });
+
+  it('warns about adjacent same-base list restarts that OOXML may merge into one sequence', () => {
+    const deck = sample();
+    const text = deck.slides[0].elements[0] as TextElement;
+    text.paragraphs = [
+      { runs: [{ text: 'Three' }], bullet: { kind: 'number', level: 0, start: 3 } },
+      { runs: [{ text: 'Three again' }], bullet: { kind: 'number', level: 0, start: 3 } },
+    ];
+    text.text = plainText(text.paragraphs);
+    expect(pptxExportWarnings(deck).join(' ')).toContain('same sequence base');
   });
 
   it('never passes remote image paths to the exporter', async () => {

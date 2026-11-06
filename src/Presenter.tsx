@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -8,6 +8,7 @@ import {
   EyeOff,
   MousePointer2,
   Maximize,
+  Minimize,
 } from 'lucide-react';
 import type { Deck } from './types';
 import { SlideView } from './SlideView';
@@ -34,9 +35,80 @@ export default function Presenter({
     [laser, setLaser] = useState(false),
     [point, setPoint] = useState({ x: 0, y: 0 }),
     [elapsed, setElapsed] = useState(0),
-    [scale, setScale] = useState(1);
-  const stage = useRef<HTMLDivElement>(null),
+    [scale, setScale] = useState(1),
+    [fullscreen, setFullscreen] = useState(false),
+    [fullscreenBusy, setFullscreenBusy] = useState(false),
+    [fullscreenMessage, setFullscreenMessage] = useState('');
+  const presenter = useRef<HTMLDivElement>(null),
+    stage = useRef<HTMLDivElement>(null),
+    ownedFullscreen = useRef<HTMLElement | null>(null),
+    mounted = useRef(false),
     slide = slides[index];
+  const fullscreenMessageId = useId();
+  function releaseOwnedFullscreen() {
+    const owned = ownedFullscreen.current;
+    if (
+      owned &&
+      document.fullscreenElement === owned &&
+      typeof document.exitFullscreen === 'function'
+    ) {
+      try {
+        void Promise.resolve(document.exitFullscreen()).catch(() => {});
+      } catch {
+        /* The presenter is already closing; browser UI remains available. */
+      }
+    }
+  }
+  async function toggleFullscreen() {
+    const target = presenter.current;
+    if (!target || fullscreenBusy) return;
+    const leaving = document.fullscreenElement === target;
+    setFullscreenMessage('');
+    if (
+      (leaving && typeof document.exitFullscreen !== 'function') ||
+      (!leaving && typeof target.requestFullscreen !== 'function')
+    ) {
+      setFullscreenMessage(
+        'Fullscreen is not available in this browser. You can keep presenting in this window.',
+      );
+      return;
+    }
+    setFullscreenBusy(true);
+    try {
+      if (leaving) await document.exitFullscreen();
+      else {
+        ownedFullscreen.current = target;
+        await target.requestFullscreen();
+      }
+      if (!mounted.current) {
+        releaseOwnedFullscreen();
+        return;
+      }
+      const active = document.fullscreenElement === target;
+      setFullscreen(active);
+      if (active === leaving)
+        setFullscreenMessage(
+          leaving
+            ? 'The browser did not leave fullscreen. Use its fullscreen control or Escape; your presentation remains available.'
+            : 'The browser did not allow fullscreen. You can keep presenting in this window.',
+        );
+      if (!active) ownedFullscreen.current = null;
+    } catch {
+      if (!mounted.current) {
+        releaseOwnedFullscreen();
+        return;
+      }
+      setFullscreen(document.fullscreenElement === target);
+      if (document.fullscreenElement !== target) ownedFullscreen.current = null;
+      setFullscreenMessage(
+        leaving
+          ? 'The browser did not leave fullscreen. Use its fullscreen control or Escape; your presentation remains available.'
+          : 'The browser did not allow fullscreen. You can keep presenting in this window.',
+      );
+    } finally {
+      if (mounted.current) setFullscreenBusy(false);
+    }
+  }
   function step(n: number) {
     setIndex((i) => Math.max(0, Math.min(slides.length - 1, i + n)));
     setBlack(false);
@@ -72,21 +144,37 @@ export default function Presenter({
     observer.observe(stage.current);
     return () => observer.disconnect();
   }, [notes, deck.width, deck.height]);
-  useEffect(
-    () => () => {
-      if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
-    },
-    [],
-  );
+  useEffect(() => {
+    mounted.current = true;
+    const updateFullscreen = () => {
+      const active = document.fullscreenElement === presenter.current && presenter.current !== null;
+      setFullscreen(active);
+      setFullscreenMessage('');
+    };
+    document.addEventListener('fullscreenchange', updateFullscreen);
+    updateFullscreen();
+    return () => {
+      mounted.current = false;
+      document.removeEventListener('fullscreenchange', updateFullscreen);
+      releaseOwnedFullscreen();
+    };
+  }, []);
   if (!slide)
     return (
-      <div className="presenter" role="dialog" aria-label="Presentation" aria-modal="true">
+      <div
+        ref={presenter}
+        className="presenter"
+        role="dialog"
+        aria-label="Presentation"
+        aria-modal="true"
+      >
         <p>All slides are hidden.</p>
         <button onClick={onClose}>Back to editor</button>
       </div>
     );
   return (
     <div
+      ref={presenter}
       className={`presenter ${notes ? 'with-notes' : ''}`}
       role="dialog"
       aria-label="Presentation"
@@ -104,6 +192,11 @@ export default function Presenter({
         <button aria-label="Close presentation" onClick={onClose}>
           <X size={20} />
         </button>
+        {fullscreenMessage && (
+          <p id={fullscreenMessageId} className="presenter-fullscreen-message" role="alert">
+            {fullscreenMessage}
+          </p>
+        )}
       </header>
       <div className="presenter-body">
         <div
@@ -121,7 +214,7 @@ export default function Presenter({
               visibility: black ? 'hidden' : 'visible',
             }}
           >
-            <SlideView slide={slide} deck={deck} scale={scale} animate />
+            <SlideView slide={slide} deck={deck} scale={scale} animate interactiveLinks />
           </div>
           {laser && !black && (
             <div className="laser-pointer" style={{ left: point.x, top: point.y }} />
@@ -175,10 +268,14 @@ export default function Presenter({
             <EyeOff size={17} />
           </button>
           <button
-            aria-label="Enter fullscreen"
-            onClick={() => void document.documentElement.requestFullscreen?.().catch(() => {})}
+            aria-label={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+            title={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+            aria-pressed={fullscreen}
+            aria-describedby={fullscreenMessage ? fullscreenMessageId : undefined}
+            disabled={fullscreenBusy}
+            onClick={() => void toggleFullscreen()}
           >
-            <Maximize size={17} />
+            {fullscreen ? <Minimize size={17} /> : <Maximize size={17} />}
           </button>
         </div>
         <span className="presenter-hint">← → navigate · B blackout · Esc exit</span>

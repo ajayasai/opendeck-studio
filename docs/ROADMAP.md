@@ -6,6 +6,10 @@ Use Microsoft 365 PowerPoint for Windows as the comparison baseline, while recor
 
 Milestones are ordered by dependency and usefulness, not promised dates.
 
+## Current progress
+
+The alpha.1 foundation is public. Alpha.2 adds a bounded rich-text milestone: selected-range editing, validated character runs and paragraphs, safe text links, list continuation/nesting/starts, spacing, and supported PPTX interchange. Focused browser editing and original PowerPoint-authored rich-text round trips have been checked; the [testing record](TESTING.md) describes their scope. This advances the interchange milestone without completing it or the broader parity goal.
+
 ## 0.1 — Usable public foundation
 
 Build and publish a locally usable editor with:
@@ -21,7 +25,7 @@ Release gate: the test suite and production build pass; the editor's principal u
 
 ## 0.2 — Reliable interchange
 
-Prioritize rich text runs and paragraphs, theme/master/layout inheritance, grouped transforms, editable table fidelity, multi-series charts, image cropping, gradients, shadows, hyperlinks, and preservation of unsupported package content where feasible.
+Build on alpha.2's rich runs, paragraphs, and external text links. Next priorities are full theme/master/layout inheritance, grouped transforms, editable table fidelity, multi-series charts, image cropping, gradients, shadows, internal slide links/actions, and preservation of unsupported package content where feasible. Improve rich-text insets, tab stops, typography, numbering restart behavior, and layout fidelity against a broader corpus.
 
 Release gate: a redistributable corpus of independently authored decks, explicit per-feature import/export results, package validation, and visual comparisons in multiple applications. Add regression fixtures for every compatibility bug. Track content preservation, editability, visual fidelity, and behavior separately.
 
@@ -54,4 +58,4 @@ Release gate: specific, published acceptance tests per feature. A generic "suppo
 
 ## Completion accounting
 
-Publishing the alpha completes the first shipping milestone only. It does not complete the broader feature-parity goal. Record remaining gaps in the compatibility matrix and convert the next bounded pieces into issues with acceptance criteria.
+Publishing an alpha or finishing a bounded rich-text milestone does not complete the broader feature-parity goal. Record remaining gaps in the compatibility matrix and convert the next bounded pieces into issues with acceptance criteria. Distinguish implemented features from their tested coverage and outstanding acceptance checks.

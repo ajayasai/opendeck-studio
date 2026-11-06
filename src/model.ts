@@ -1,4 +1,5 @@
 import type { Deck, Slide, SlideElement, Theme, TextElement, ShapeElement } from './types';
+import { validateParagraphs } from './richText';
 
 export const uid = (): string =>
   globalThis.crypto?.randomUUID?.() ??
@@ -579,6 +580,9 @@ export function validateDeck(input: unknown): Deck {
               ['top', 'middle', 'bottom'] as const,
               'vertical alignment',
             ),
+            ...(e.paragraphs !== undefined
+              ? { paragraphs: validateParagraphs(e.paragraphs, string(e.text, 'text', 100000)) }
+              : {}),
           };
         case 'shape':
           return {

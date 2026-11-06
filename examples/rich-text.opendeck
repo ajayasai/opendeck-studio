@@ -1,0 +1,482 @@
+{
+  "schemaVersion": 1,
+  "id": "8a2155a8-580c-4f3f-b045-8cc3728f3b80",
+  "title": "Rich text, real compatibility",
+  "width": 1280,
+  "height": 720,
+  "theme": {
+    "id": "imported",
+    "name": "Imported",
+    "background": "#ffffff",
+    "foreground": "#000000",
+    "accent": "#156082",
+    "muted": "#6b7771",
+    "fontFamily": "Aptos"
+  },
+  "slides": [
+    {
+      "id": "07178d27-c1ea-4c28-b601-d0f7760507de",
+      "name": "Slide 1",
+      "background": "#ffffff",
+      "elements": [
+        {
+          "id": "cec466a0-cb7a-485e-81a3-d38ce318240e",
+          "name": "Rich text heading",
+          "x": 72,
+          "y": 56,
+          "width": 1133.3333333333333,
+          "height": 67.85627296587927,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "PowerPoint rich text",
+          "fontSize": 36,
+          "fontFamily": "Georgia",
+          "color": "#000000",
+          "bold": true,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "PowerPoint rich text",
+                  "fontSize": 36,
+                  "fontFamily": "Georgia",
+                  "color": "#000000",
+                  "bold": true,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ]
+        },
+        {
+          "id": "4d35bafd-fa2b-48ab-8f28-31d2038e6859",
+          "name": "Mixed runs and paragraphs",
+          "x": 72,
+          "y": 186.66666666666666,
+          "width": 1133.3333333333333,
+          "height": 239.11254593175852,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Original bold, italic, color, and link.\nSecond paragraph with larger type.\n\nSoft line\nbreak stays in one paragraph.",
+          "fontSize": 24,
+          "fontFamily": "Arial",
+          "color": "#023e29",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Original ",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "bold",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": true,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": ", ",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "italic",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": true,
+                  "underline": false
+                },
+                {
+                  "text": ", ",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "color",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#c76a35",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": ", and ",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "link",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": true,
+                  "hyperlink": "https://example.com/opendeck?from=fixture&mode=rich"
+                },
+                {
+                  "text": ".",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1.25,
+              "spaceBefore": 6,
+              "spaceAfter": 12
+            },
+            {
+              "runs": [
+                {
+                  "text": "Second paragraph with larger type.",
+                  "fontSize": 30,
+                  "fontFamily": "Georgia",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "center",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            },
+            {
+              "runs": [
+                {
+                  "text": "Soft line",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "\n",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                },
+                {
+                  "text": "break stays in one paragraph.",
+                  "fontSize": 24,
+                  "fontFamily": "Arial",
+                  "color": "#023e29",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ]
+        }
+      ],
+      "notes": "Rich runs, paragraph spacing, an external hyperlink, a blank paragraph, and a soft line break.",
+      "transition": "none",
+      "hidden": false
+    },
+    {
+      "id": "442790eb-e6ad-4e02-a70f-21b6b5c5289d",
+      "name": "Slide 2",
+      "background": "#ffffff",
+      "elements": [
+        {
+          "id": "32da2ba8-5b87-4f27-9b7a-0b1dbdddea4c",
+          "name": "Lists heading",
+          "x": 72,
+          "y": 56,
+          "width": 1133.3333333333333,
+          "height": 64.62498687664042,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Real bullets and numbered lists",
+          "fontSize": 34,
+          "fontFamily": "Aptos",
+          "color": "#000000",
+          "bold": true,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Real bullets and numbered lists",
+                  "fontSize": 34,
+                  "fontFamily": "Aptos",
+                  "color": "#000000",
+                  "bold": true,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0
+            }
+          ]
+        },
+        {
+          "id": "f54d8875-add0-4785-94eb-8563be3c09c0",
+          "name": "Bullet list",
+          "x": 93.33333333333333,
+          "y": 200,
+          "width": 506.6666666666667,
+          "height": 135.71254593175854,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "First bullet\nNested bullet\nThird bullet",
+          "fontSize": 26,
+          "fontFamily": "Arial",
+          "color": "#000000",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "First bullet",
+                  "fontSize": 26,
+                  "fontFamily": "Arial",
+                  "color": "#000000",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0,
+              "bullet": {
+                "kind": "bullet",
+                "level": 0,
+                "character": "•"
+              }
+            },
+            {
+              "runs": [
+                {
+                  "text": "Nested bullet",
+                  "fontSize": 26,
+                  "fontFamily": "Arial",
+                  "color": "#000000",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0,
+              "bullet": {
+                "kind": "bullet",
+                "level": 1,
+                "character": "•"
+              }
+            },
+            {
+              "runs": [
+                {
+                  "text": "Third bullet",
+                  "fontSize": 26,
+                  "fontFamily": "Arial",
+                  "color": "#000000",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0,
+              "bullet": {
+                "kind": "bullet",
+                "level": 0,
+                "character": "•"
+              }
+            }
+          ]
+        },
+        {
+          "id": "9cb12d34-ed1b-4369-aef9-459d5d760a04",
+          "name": "Numbered list",
+          "x": 680,
+          "y": 200,
+          "width": 506.6666666666667,
+          "height": 135.71254593175854,
+          "rotation": 0,
+          "opacity": 1,
+          "locked": false,
+          "animation": "none",
+          "type": "text",
+          "text": "Start at three\nContinue at four\nContinue at five",
+          "fontSize": 26,
+          "fontFamily": "Arial",
+          "color": "#000000",
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "align": "left",
+          "verticalAlign": "top",
+          "paragraphs": [
+            {
+              "runs": [
+                {
+                  "text": "Start at three",
+                  "fontSize": 26,
+                  "fontFamily": "Arial",
+                  "color": "#000000",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0,
+              "bullet": {
+                "kind": "number",
+                "level": 0,
+                "start": 3
+              }
+            },
+            {
+              "runs": [
+                {
+                  "text": "Continue at four",
+                  "fontSize": 26,
+                  "fontFamily": "Arial",
+                  "color": "#000000",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0,
+              "bullet": {
+                "kind": "number",
+                "level": 0
+              }
+            },
+            {
+              "runs": [
+                {
+                  "text": "Continue at five",
+                  "fontSize": 26,
+                  "fontFamily": "Arial",
+                  "color": "#000000",
+                  "bold": false,
+                  "italic": false,
+                  "underline": false
+                }
+              ],
+              "align": "left",
+              "lineSpacing": 1,
+              "spaceBefore": 0,
+              "spaceAfter": 0,
+              "bullet": {
+                "kind": "number",
+                "level": 0
+              }
+            }
+          ]
+        }
+      ],
+      "notes": "Original bulleted and numbered list fixture. Numbered sequence starts at three.",
+      "transition": "none",
+      "hidden": false
+    }
+  ],
+  "updatedAt": "2026-11-06T04:44:31.927Z"
+}

@@ -1,6 +1,7 @@
 import PptxGenJS from 'pptxgenjs';
 import JSZip from 'jszip';
 import { contrastText, validateDeck } from './model';
+import { getParagraphs, plainText, safeHyperlink } from './richText';
 import type {
   Deck,
   ElementBase,
@@ -9,11 +10,17 @@ import type {
   Slide,
   SlideElement,
   Theme,
+  TextElement,
+  TextParagraph,
+  TextRun,
 } from './types';
 
 // ECMA-376: Open Packaging Conventions and PresentationML. Import deliberately
 // creates an editable subset; it is not a lossless OOXML round-trip engine.
 const EMU = 9525;
+const DRAWING_NS = 'http://schemas.openxmlformats.org/drawingml/2006/main';
+const RELATIONSHIP_NS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+const PACKAGE_NS = 'http://schemas.openxmlformats.org/package/2006/relationships';
 const MAX_INPUT = 50 * 1024 * 1024;
 const MAX_EXPANDED = 100 * 1024 * 1024;
 const MAX_PART = 20 * 1024 * 1024;
@@ -41,6 +48,174 @@ const relationshipId = (node: Element | undefined | null, name = 'id') =>
       )?.value ?? node.getAttribute(`r:${name}`))
     : null;
 
+function drawingNode(
+  doc: Document,
+  name: string,
+  attributes: Record<string, string | number> = {},
+): Element {
+  const node = doc.createElementNS(DRAWING_NS, `a:${name}`);
+  for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, String(value));
+  return node;
+}
+
+function writeTextBody(
+  doc: Document,
+  shape: Element,
+  source: TextElement,
+  relations: Document,
+): void {
+  const body = child(shape, 'txBody');
+  if (!body) return;
+  const bodyPr = child(body, 'bodyPr') ?? drawingNode(doc, 'bodyPr');
+  bodyPr.setAttribute(
+    'anchor',
+    source.verticalAlign === 'middle' ? 'ctr' : source.verticalAlign === 'bottom' ? 'b' : 't',
+  );
+  for (const margin of ['lIns', 'rIns', 'tIns', 'bIns']) bodyPr.setAttribute(margin, '0');
+  body.replaceChildren(bodyPr, drawingNode(doc, 'lstStyle'));
+  const linkIds = new Map<string, string>();
+  const usedIds = new Set(descendants(relations, 'Relationship').map((r) => attr(r, 'Id')));
+  for (const rel of descendants(relations, 'Relationship')) {
+    if (
+      (attr(rel, 'Type') ?? '').endsWith('/hyperlink') &&
+      attr(rel, 'TargetMode') === 'External'
+    ) {
+      const target = attr(rel, 'Target') ?? '';
+      if (safeHyperlink(target)) linkIds.set(target, attr(rel, 'Id') ?? '');
+    }
+  }
+  function hyperlinkId(url: string): string | undefined {
+    const target = url;
+    if (!safeHyperlink(target)) return undefined;
+    if (linkIds.has(target)) return linkIds.get(target);
+    let id = 1;
+    while (usedIds.has(`rIdOpenDeckLink${id}`)) id++;
+    const key = `rIdOpenDeckLink${id}`;
+    usedIds.add(key);
+    linkIds.set(target, key);
+    const relation = relations.createElementNS(PACKAGE_NS, 'Relationship');
+    relation.setAttribute('Id', key);
+    relation.setAttribute('Type', `${RELATIONSHIP_NS}/hyperlink`);
+    relation.setAttribute('Target', target);
+    relation.setAttribute('TargetMode', 'External');
+    relations.documentElement.appendChild(relation);
+    return key;
+  }
+  function runProperties(name: 'rPr' | 'defRPr' | 'endParaRPr', run: Partial<TextRun>): Element {
+    const props = drawingNode(doc, name, {
+      lang: 'en-US',
+      sz: Math.round((run.fontSize ?? source.fontSize) * 100),
+      b: (run.bold ?? source.bold) ? '1' : '0',
+      i: (run.italic ?? source.italic) ? '1' : '0',
+      u: (run.underline ?? source.underline) ? 'sng' : 'none',
+    });
+    const fill = drawingNode(doc, 'solidFill');
+    const rgb = drawingNode(doc, 'srgbClr', { val: hex(run.color ?? source.color, '172E29') });
+    if (source.opacity < 1)
+      rgb.appendChild(drawingNode(doc, 'alpha', { val: Math.round(source.opacity * 100000) }));
+    fill.appendChild(rgb);
+    props.appendChild(fill);
+    props.appendChild(drawingNode(doc, 'latin', { typeface: run.fontFamily ?? source.fontFamily }));
+    if (run.hyperlink) {
+      const id = hyperlinkId(run.hyperlink);
+      if (id) {
+        const link = drawingNode(doc, 'hlinkClick');
+        link.setAttributeNS(RELATIONSHIP_NS, 'r:id', id);
+        props.appendChild(link);
+      }
+    }
+    return props;
+  }
+  let numberingStarts: Array<number | undefined> = [];
+  let numberingValues: Array<number | undefined> = [];
+  for (const paragraph of getParagraphs(source)) {
+    const node = drawingNode(doc, 'p');
+    const props = drawingNode(doc, 'pPr', {
+      algn:
+        paragraph.align === 'center'
+          ? 'ctr'
+          : paragraph.align === 'right'
+            ? 'r'
+            : paragraph.align === 'left'
+              ? 'l'
+              : source.align === 'center'
+                ? 'ctr'
+                : source.align === 'right'
+                  ? 'r'
+                  : 'l',
+    });
+    const spacing = drawingNode(doc, 'lnSpc');
+    spacing.appendChild(
+      drawingNode(doc, 'spcPct', { val: Math.round((paragraph.lineSpacing ?? 1.16) * 100000) }),
+    );
+    props.appendChild(spacing);
+    for (const [name, value] of [
+      ['spcBef', paragraph.spaceBefore ?? 0],
+      ['spcAft', paragraph.spaceAfter ?? 0],
+    ] as const) {
+      const space = drawingNode(doc, name);
+      space.appendChild(drawingNode(doc, 'spcPts', { val: Math.round(value * 100) }));
+      props.appendChild(space);
+    }
+    if (paragraph.bullet) {
+      const bullet = paragraph.bullet;
+      numberingStarts.length = bullet.level + 1;
+      numberingValues.length = bullet.level + 1;
+      const sequenceStart =
+        bullet.kind === 'number' ? (bullet.start ?? numberingStarts[bullet.level] ?? 1) : undefined;
+      numberingStarts[bullet.level] = sequenceStart;
+      const displayedNumber =
+        bullet.kind === 'number'
+          ? (bullet.start ?? (numberingValues[bullet.level] ?? 0) + 1)
+          : undefined;
+      numberingValues[bullet.level] = displayedNumber;
+      const size = paragraph.runs[0]?.fontSize ?? source.fontSize;
+      const markerWidth =
+        displayedNumber === undefined
+          ? 1.2
+          : Math.max(1.5, String(displayedNumber).length * 0.6 + 0.7);
+      props.setAttribute('lvl', String(bullet.level));
+      props.setAttribute(
+        'marL',
+        String(Math.round((bullet.level * 1.4 + markerWidth) * size * 12700)),
+      );
+      props.setAttribute('indent', String(-Math.round(size * markerWidth * 12700)));
+      props.appendChild(drawingNode(doc, 'buClrTx'));
+      props.appendChild(drawingNode(doc, 'buSzTx'));
+      props.appendChild(drawingNode(doc, 'buFontTx'));
+      props.appendChild(
+        bullet.kind === 'number'
+          ? drawingNode(doc, 'buAutoNum', { type: 'arabicPeriod', startAt: sequenceStart! })
+          : drawingNode(doc, 'buChar', { char: bullet.character ?? '•' }),
+      );
+    } else {
+      numberingStarts = [];
+      numberingValues = [];
+      props.appendChild(drawingNode(doc, 'buNone'));
+    }
+    props.appendChild(runProperties('defRPr', {}));
+    node.appendChild(props);
+    for (const run of paragraph.runs) {
+      run.text.split('\n').forEach((part, index) => {
+        if (index > 0) {
+          const br = drawingNode(doc, 'br');
+          br.appendChild(runProperties('rPr', run));
+          node.appendChild(br);
+        }
+        if (!part) return;
+        const runNode = drawingNode(doc, 'r');
+        runNode.appendChild(runProperties('rPr', run));
+        const text = drawingNode(doc, 't');
+        text.textContent = part;
+        runNode.appendChild(text);
+        node.appendChild(runNode);
+      });
+    }
+    node.appendChild(runProperties('endParaRPr', paragraph.runs.at(-1) ?? {}));
+    body.appendChild(node);
+  }
+}
+
 export function pptxExportWarnings(deck: Deck): string[] {
   const warnings: string[] = [];
   if (deck.slides.some((s) => s.elements.some((e) => e.animation !== 'none')))
@@ -53,10 +228,38 @@ export function pptxExportWarnings(deck: Deck): string[] {
     )
   )
     warnings.push('Table and chart rotation/opacity are not preserved in PPTX.');
+  for (const text of deck.slides
+    .flatMap((slide) => slide.elements)
+    .filter((element) => element.type === 'text')) {
+    if (getParagraphs(text).some((paragraph) => paragraph.runs.some((run) => run.hyperlink)))
+      warnings.push(
+        'PowerPoint may display hyperlinks using its theme link colors even when an explicit run color is stored.',
+      );
+    let starts: Array<number | undefined> = [];
+    for (const paragraph of getParagraphs(text)) {
+      if (!paragraph.bullet) {
+        starts = [];
+        continue;
+      }
+      const bullet = paragraph.bullet;
+      starts.length = bullet.level + 1;
+      if (bullet.kind === 'bullet') {
+        starts[bullet.level] = undefined;
+        continue;
+      }
+      if (bullet.start !== undefined && starts[bullet.level] === bullet.start) {
+        warnings.push(
+          'An adjacent numbered-list restart at the same sequence base may continue numbering in PowerPoint. Separate the sequences with an unnumbered paragraph to preserve the restart.',
+        );
+        break;
+      }
+      starts[bullet.level] = bullet.start ?? starts[bullet.level] ?? 1;
+    }
+  }
   warnings.push(
     'Fonts and text wrapping can differ between browsers and PowerPoint. Check the exported deck before presenting.',
   );
-  return warnings;
+  return [...new Set(warnings)];
 }
 
 export async function exportPptx(deck: Deck): Promise<Blob> {
@@ -84,7 +287,7 @@ export async function exportPptx(deck: Deck): Promise<Blob> {
       };
       const transparency = Math.round((1 - element.opacity) * 100);
       if (element.type === 'text') {
-        slide.addText(element.text, {
+        slide.addText(element.text || ' ', {
           ...pos,
           fontSize: element.fontSize,
           fontFace: element.fontFamily,
@@ -216,6 +419,12 @@ export async function exportPptx(deck: Deck): Promise<Blob> {
     const path = `ppt/slides/slide${index + 1}.xml`;
     let xml = await zip.file(path)!.async('string');
     const doc = new DOMParser().parseFromString(xml, 'application/xml');
+    const relPath = `ppt/slides/_rels/slide${index + 1}.xml.rels`;
+    const relXml = await zip.file(relPath)?.async('string');
+    const relations = new DOMParser().parseFromString(
+      relXml ?? `<Relationships xmlns="${PACKAGE_NS}"/>`,
+      'application/xml',
+    );
     child(doc.documentElement, 'cSld')?.setAttribute('name', source.name);
     const tableSources = source.elements.filter((e) => e.type === 'table');
     descendants(doc, 'tbl').forEach((table, tableIndex) =>
@@ -226,16 +435,10 @@ export async function exportPptx(deck: Deck): Promise<Blob> {
     );
     const textSources = source.elements.filter((e) => e.type === 'text');
     textShapes.forEach((shape, textIndex) => {
-      const opacity = textSources[textIndex]?.opacity ?? 1;
-      if (opacity === 1) return;
-      for (const property of descendants(shape, 'rPr')) {
-        const rgb = child(child(property, 'solidFill'), 'srgbClr');
-        if (!rgb) continue;
-        const alpha = doc.createElementNS(rgb.namespaceURI, 'a:alpha');
-        alpha.setAttribute('val', String(Math.round(opacity * 100000)));
-        rgb.appendChild(alpha);
-      }
+      const textSource = textSources[textIndex];
+      if (textSource) writeTextBody(doc, shape, textSource, relations);
     });
+    zip.file(relPath, new XMLSerializer().serializeToString(relations));
     xml = new XMLSerializer().serializeToString(doc);
     if (source.transition !== 'none') {
       const transition = source.transition === 'fade' ? '<p:fade/>' : '<p:push dir="l"/>';
@@ -342,7 +545,7 @@ function color(node: Element | undefined | null, colors: Colors, fallback: strin
   const value = attr(c, 'val') ?? '';
   let rgb =
     c.localName === 'schemeClr'
-      ? colors[aliases[value] ?? value]
+      ? (colors[value] ?? colors[aliases[value] ?? value])
       : c.localName === 'sysClr'
         ? attr(c, 'lastClr')
         : value;
@@ -436,6 +639,224 @@ function placeholder(node: Element, templates: Element[]): Element | undefined {
       return candidate && (attr(candidate, 'idx') ?? '0') === idx;
     }) ?? templates.find((template) => (attr(descendant(template, 'ph'), 'type') ?? 'obj') === type)
   );
+}
+
+/** Resolve the supported DrawingML text cascade from nearest to most distant. */
+function readParagraphs(
+  body: Element | undefined,
+  inheritedBodies: Array<Element | undefined>,
+  masterStyle: Element | undefined,
+  defaultStyle: Element | undefined,
+  colors: Colors,
+  font: string,
+  majorFont: string,
+  relations: Relations,
+  warn: Warn,
+): TextParagraph[] {
+  const firstDefinedAttribute = (nodes: Array<Element | undefined>, name: string) =>
+    nodes.map((node) => attr(node, name)).find((value) => value !== null) ?? null;
+  const firstChild = (nodes: Array<Element | undefined>, name: string) =>
+    nodes.map((node) => child(node, name)).find(Boolean);
+  const listStyle = (target: Element | undefined, level: number) =>
+    child(child(target, 'lstStyle'), `lvl${level + 1}pPr`);
+  const paragraphs = children(body, 'p').map((paragraph) => {
+    const local = child(paragraph, 'pPr');
+    const inheritedParagraphProps = inheritedBodies.map((target) =>
+      child(children(target, 'p')[0], 'pPr'),
+    );
+    const level = clamp(
+      Math.trunc(number(firstDefinedAttribute([local, ...inheritedParagraphProps], 'lvl'))),
+      0,
+      8,
+    );
+    const cascade = [
+      local,
+      listStyle(body, level),
+      ...inheritedBodies.flatMap((target) => [
+        child(children(target, 'p')[0], 'pPr'),
+        listStyle(target, level),
+      ]),
+      child(masterStyle, `lvl${level + 1}pPr`),
+      child(defaultStyle, `lvl${level + 1}pPr`),
+      child(defaultStyle, 'defPPr'),
+    ];
+    const defaults = cascade.map((props) => child(props, 'defRPr'));
+    const readRun = (runNode: Element | undefined, text: string): TextRun => {
+      const direct = child(runNode, 'rPr');
+      const styles = [direct, runNode ? undefined : child(paragraph, 'endParaRPr'), ...defaults];
+      const typeface = attr(firstChild(styles, 'latin'), 'typeface') || font;
+      const family = typeface.startsWith('+mj')
+        ? majorFont
+        : typeface.startsWith('+mn')
+          ? font
+          : typeface;
+      const bold = firstDefinedAttribute(styles, 'b');
+      const italic = firstDefinedAttribute(styles, 'i');
+      const underline = firstDefinedAttribute(styles, 'u');
+      const run: TextRun = {
+        text,
+        fontSize: clamp(number(firstDefinedAttribute(styles, 'sz'), 2400) / 100, 1, 1000),
+        fontFamily: family.slice(0, 128),
+        color: color(
+          firstChild(styles, 'solidFill'),
+          colors,
+          `#${colors.tx1 ?? colors.dk1 ?? '172e29'}`,
+        ),
+        bold: bold === '1' || bold === 'true',
+        italic: italic === '1' || italic === 'true',
+        underline: underline !== null && underline !== 'none',
+      };
+      const link = child(direct, 'hlinkClick');
+      if (link) {
+        const relation = relations.get(relationshipId(link) ?? '');
+        if (
+          relation?.external &&
+          relation.type.endsWith('/hyperlink') &&
+          safeHyperlink(relation.target) &&
+          !attr(link, 'action')
+        )
+          run.hyperlink = relation.target;
+        else
+          warn(
+            'Unsafe, internal, or action-based hyperlinks were omitted; only external HTTP, HTTPS, and mailto text links are retained.',
+          );
+      }
+      if (
+        styles.some(
+          (style) =>
+            (attr(style, 'baseline') && attr(style, 'baseline') !== '0') ||
+            (attr(style, 'strike') && attr(style, 'strike') !== 'noStrike') ||
+            (attr(style, 'cap') && attr(style, 'cap') !== 'none'),
+        ) ||
+        firstChild(styles, 'highlight')
+      )
+        warn(
+          'Superscript, subscript, strike-through, capitalization effects, and text highlights are simplified.',
+        );
+      return run;
+    };
+    const runs: TextRun[] = [];
+    for (const runNode of Array.from(paragraph.children)) {
+      if (runNode.localName === 'r' || runNode.localName === 'fld') {
+        runs.push(
+          readRun(
+            runNode,
+            children(runNode, 't')
+              .map((text) => text.textContent ?? '')
+              .join(''),
+          ),
+        );
+        if (runNode.localName === 'fld')
+          warn('Dynamic text fields are imported as their current editable text values.');
+      } else if (runNode.localName === 'br') runs.push(readRun(runNode, '\n'));
+    }
+    if (!runs.length) runs.push(readRun(undefined, ''));
+    const align = firstDefinedAttribute(cascade, 'algn');
+    if (align && !['l', 'ctr', 'r'].includes(align))
+      warn('Justified and distributed paragraph alignment is simplified to left alignment.');
+    const result: TextParagraph = {
+      runs,
+      align: align === 'ctr' ? 'center' : align === 'r' ? 'right' : 'left',
+    };
+    const bulletRule = cascade
+      .map(
+        (props) =>
+          props &&
+          Array.from(props.children).find((node) =>
+            ['buNone', 'buChar', 'buAutoNum', 'buBlip'].includes(node.localName),
+          ),
+      )
+      .find(Boolean);
+    if (bulletRule?.localName === 'buAutoNum') {
+      result.bullet = {
+        kind: 'number',
+        level,
+        ...(attr(bulletRule, 'startAt') !== null
+          ? { start: clamp(Math.trunc(number(attr(bulletRule, 'startAt'), 1)), 1, 32767) }
+          : {}),
+      };
+      if (attr(bulletRule, 'type') !== 'arabicPeriod')
+        warn('Non-decimal numbering styles are normalized to decimal numbers with periods.');
+    } else if (bulletRule?.localName === 'buChar') {
+      let character = attr(bulletRule, 'char') || '•';
+      const bulletFont = attr(firstChild(cascade, 'buFont'), 'typeface');
+      if (
+        /\p{Co}/u.test(character) ||
+        (bulletFont && /wingdings|webdings|symbol/i.test(bulletFont))
+      ) {
+        character = '•';
+        warn('Font-specific bullet symbols are replaced with a standard bullet.');
+      }
+      if (character.length > 8 || /[\u0000-\u001f\u007f]/.test(character)) character = '•';
+      result.bullet = { kind: 'bullet', level, character };
+    } else if (bulletRule?.localName === 'buBlip') {
+      result.bullet = { kind: 'bullet', level, character: '•' };
+      warn('Picture bullets are replaced with a standard bullet.');
+    }
+    if (
+      result.bullet &&
+      (firstDefinedAttribute(cascade, 'marL') !== null ||
+        firstDefinedAttribute(cascade, 'indent') !== null)
+    )
+      warn('Exact bullet margins and hanging indents are normalized from the list level.');
+    const size = runs[0].fontSize ?? 24;
+    const lineSpacing = firstChild(cascade, 'lnSpc');
+    const percent = child(lineSpacing, 'spcPct');
+    const points = child(lineSpacing, 'spcPts');
+    result.lineSpacing = clamp(
+      percent
+        ? number(attr(percent, 'val'), 100000) / 100000
+        : points
+          ? number(attr(points, 'val'), size * 100) / (size * 100)
+          : 1,
+      0.5,
+      10,
+    );
+    if (points) warn('Fixed-point line spacing is converted to a relative line-height multiplier.');
+    for (const [name, key] of [
+      ['spcBef', 'spaceBefore'],
+      ['spcAft', 'spaceAfter'],
+    ] as const) {
+      const spacing = firstChild(cascade, name);
+      const points = child(spacing, 'spcPts');
+      const percent = child(spacing, 'spcPct');
+      result[key] = clamp(
+        points
+          ? number(attr(points, 'val')) / 100
+          : percent
+            ? (number(attr(percent, 'val')) / 100000) * size
+            : 0,
+        0,
+        1000,
+      );
+      if (percent)
+        warn(
+          'Percentage paragraph spacing is converted to points using the first run’s font size.',
+        );
+    }
+    if (firstChild(cascade, 'tabLst')) warn('Custom text tab stops are not preserved.');
+    return result;
+  });
+  // PowerPoint repeats the sequence's startAt on each adjacent numbered paragraph.
+  // Native documents instead store start only where a sequence starts or restarts.
+  let activeStarts: Array<number | undefined> = [];
+  for (const paragraph of paragraphs) {
+    const bullet = paragraph.bullet;
+    if (!bullet) {
+      activeStarts = [];
+      continue;
+    }
+    activeStarts.length = bullet.level + 1;
+    if (bullet.kind !== 'number') {
+      activeStarts[bullet.level] = undefined;
+      continue;
+    }
+    const start = bullet.start ?? activeStarts[bullet.level] ?? 1;
+    if (activeStarts[bullet.level] === start) delete bullet.start;
+    else if (start !== 1 || bullet.start !== undefined) bullet.start = start;
+    activeStarts[bullet.level] = start;
+  }
+  return paragraphs;
 }
 
 export async function importPptx(
@@ -619,6 +1040,18 @@ export async function importPptx(
     const font = (
       attr(child(descendant(themeDoc, 'minorFont'), 'latin'), 'typeface') || 'Arial'
     ).slice(0, 128);
+    const majorFont = (
+      attr(child(descendant(themeDoc, 'majorFont'), 'latin'), 'typeface') || font
+    ).slice(0, 128);
+    for (const mapping of [
+      child(master?.documentElement, 'clrMap'),
+      child(child(layout?.documentElement, 'clrMapOvr'), 'overrideClrMapping'),
+      child(child(slideDoc.documentElement, 'clrMapOvr'), 'overrideClrMapping'),
+    ]) {
+      if (mapping)
+        for (const entry of Array.from(mapping.attributes))
+          if (colors[entry.value]) colors[entry.localName] = colors[entry.value];
+    }
     if (slideIndex === 0) {
       theme.fontFamily = font;
       theme.accent = `#${colors.accent1}`;
@@ -654,8 +1087,11 @@ export async function importPptx(
     }
     if (descendant(slideDoc, 'timing'))
       warn('PowerPoint object animations and timing are not imported.');
-    if (descendant(slideDoc, 'hlinkClick') || descendant(slideDoc, 'hlinkHover'))
-      warn('Hyperlinks and interactive actions are not imported.');
+    if (
+      descendant(slideDoc, 'hlinkHover') ||
+      descendants(slideDoc, 'cNvPr').some((properties) => descendant(properties, 'hlinkClick'))
+    )
+      warn('Hover links, shape hyperlinks, and interactive actions are not imported.');
     if (descendant(slideDoc, 'videoFile') || descendant(slideDoc, 'audioFile'))
       warn('Embedded audio and video are not imported.');
     if (descendant(slideDoc, 'extLst')) warn('Vendor-specific drawing extensions may be omitted.');
@@ -692,7 +1128,10 @@ export async function importPptx(
             await parseShape(nested, group);
         return;
       }
-      const template = placeholder(node, templates);
+      const firstTemplate = placeholder(node, templates);
+      const template = child(child(firstTemplate, 'spPr'), 'xfrm')
+        ? firstTemplate
+        : (placeholder(firstTemplate ?? node, descendants(master, 'sp')) ?? firstTemplate);
       const geometry = base(node, template, transform);
       const properties = child(node, 'spPr');
       if (
@@ -724,7 +1163,8 @@ export async function importPptx(
         };
         const solidFill = child(properties, 'solidFill');
         const line = child(properties, 'ln');
-        const isTextBox = attr(descendant(node, 'cNvSpPr'), 'txBox') === '1';
+        const isTextBox = ['1', 'true'].includes(attr(descendant(node, 'cNvSpPr'), 'txBox') ?? '');
+        if (!text && descendant(node, 'ph') && !solidFill && !line) return;
         if (!isTextBox && (!text || solidFill || line)) {
           if (!shapeMap[preset])
             warn(`Unsupported shape geometry “${preset}” was approximated by a rectangle.`);
@@ -763,45 +1203,67 @@ export async function importPptx(
           });
         }
         if (text || isTextBox) {
-          const paragraphs = children(body, 'p');
-          const first = paragraphs[0];
-          const rPr =
-            descendant(body, 'rPr') ??
-            descendant(body, 'defRPr') ??
-            descendant(child(template, 'txBody'), 'rPr') ??
-            descendant(child(template, 'txBody'), 'defRPr');
-          const props = child(first, 'pPr');
-          const bodyPr = child(body, 'bodyPr');
-          const fontSize = clamp(number(attr(rPr, 'sz'), 2400) / 100, 1, 400);
-          const align = attr(props, 'algn');
-          const anchor = attr(bodyPr, 'anchor');
-          const fontFamily = (attr(child(rPr, 'latin'), 'typeface') || font).slice(0, 128);
-          const styles = descendants(body, 'rPr').map((r) =>
-            [
-              attr(r, 'sz'),
-              attr(r, 'b'),
-              attr(r, 'i'),
-              color(child(r, 'solidFill'), colors, theme.foreground),
-              attr(child(r, 'latin'), 'typeface'),
-            ].join('|'),
+          const layoutPlaceholder = placeholder(node, descendants(layout, 'sp'));
+          const masterPlaceholder = placeholder(
+            layoutPlaceholder ?? node,
+            descendants(master, 'sp'),
           );
-          if (new Set(styles).size > 1)
-            warn('Mixed character formatting within text boxes is flattened to the first style.');
-          if (paragraphs.some((p) => child(child(p, 'pPr'), 'buAutoNum')))
-            warn('Automatic numbered lists are converted to bullet text.');
+          const placeholderType =
+            attr(descendant(node, 'ph'), 'type') ??
+            attr(descendant(layoutPlaceholder, 'ph'), 'type');
+          const styleName =
+            placeholderType === 'title' || placeholderType === 'ctrTitle'
+              ? 'titleStyle'
+              : placeholderType
+                ? 'bodyStyle'
+                : 'otherStyle';
+          const paragraphs = readParagraphs(
+            body,
+            [child(layoutPlaceholder, 'txBody'), child(masterPlaceholder, 'txBody')],
+            child(child(master?.documentElement, 'txStyles'), styleName),
+            child(presentation!.documentElement, 'defaultTextStyle'),
+            colors,
+            font,
+            majorFont,
+            slideRels,
+            warn,
+          );
+          const first = paragraphs[0]?.runs[0];
+          const bodyPr = child(body, 'bodyPr');
+          if (
+            ['lIns', 'rIns', 'tIns', 'bIns'].some(
+              (name) =>
+                number(attr(bodyPr, name), name === 'lIns' || name === 'rIns' ? 91440 : 45720) !==
+                0,
+            )
+          )
+            warn(
+              'Text-box internal margins are not retained; imported text uses zero internal margins.',
+            );
+          const anchor =
+            attr(bodyPr, 'anchor') ??
+            attr(child(child(layoutPlaceholder, 'txBody'), 'bodyPr'), 'anchor') ??
+            attr(child(child(masterPlaceholder, 'txBody'), 'bodyPr'), 'anchor');
+          const rPr = descendant(body, 'rPr') ?? descendant(body, 'defRPr');
           const alpha = descendant(child(rPr, 'solidFill'), 'alpha');
+          const alphas = descendants(body, 'alpha').map((node) => attr(node, 'val'));
+          if (new Set(alphas).size > 1)
+            warn('Mixed per-run text opacity is flattened to the first text opacity.');
+          if (attr(bodyPr, 'vert') && attr(bodyPr, 'vert') !== 'horz')
+            warn('Vertical and rotated text layout is imported as horizontal text.');
           slide.elements.push({
             ...geometry,
             id: identifier(),
             type: 'text',
-            text: text.slice(0, 100000),
-            fontSize,
-            fontFamily: fontFamily.startsWith('+') ? font : fontFamily,
-            color: color(child(rPr, 'solidFill'), colors, theme.foreground),
-            bold: attr(rPr, 'b') === '1',
-            italic: attr(rPr, 'i') === '1',
-            underline: !!attr(rPr, 'u') && attr(rPr, 'u') !== 'none',
-            align: align === 'ctr' ? 'center' : align === 'r' ? 'right' : 'left',
+            text: plainText(paragraphs),
+            paragraphs,
+            fontSize: first?.fontSize ?? 24,
+            fontFamily: first?.fontFamily ?? font,
+            color: first?.color ?? theme.foreground,
+            bold: first?.bold ?? false,
+            italic: first?.italic ?? false,
+            underline: first?.underline ?? false,
+            align: paragraphs[0]?.align ?? 'left',
             verticalAlign: anchor === 'ctr' ? 'middle' : anchor === 'b' ? 'bottom' : 'top',
             opacity: alpha
               ? clamp(number(attr(alpha, 'val'), 100000) / 100000, 0, 1)

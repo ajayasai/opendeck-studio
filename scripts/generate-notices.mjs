@@ -42,7 +42,20 @@ async function collect(name, from) {
   }
   if (!license.length) throw new Error(`Review license manually for ${key}`);
   entries.push({ key, text: license.join('\n\n') });
-  for (const dependency of Object.keys(pkg.dependencies ?? {})) await collect(dependency, path);
+  const dependencies = new Set([
+    ...Object.keys(pkg.dependencies ?? {}),
+    ...Object.keys(pkg.peerDependencies ?? {}),
+  ]);
+  for (const dependency of dependencies) {
+    if (pkg.peerDependenciesMeta?.[dependency]?.optional) {
+      try {
+        await locate(dependency, path);
+      } catch {
+        continue;
+      }
+    }
+    await collect(dependency, path);
+  }
 }
 const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
 for (const name of Object.keys(manifest.dependencies)) await collect(name, root);
